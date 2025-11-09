@@ -23,7 +23,7 @@ const BudgetSummaryCard: React.FC<BudgetSummaryCardProps> = ({ budget, totalSpen
     }
 
     return (
-        <div className={`bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow h-full flex flex-col justify-between ${className || ''}`}>
+        <div className={`bg-white p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 h-full flex flex-col justify-between ${className || ''}`}>
             <div>
                 <div className="flex justify-between items-start">
                     <h3 className="text-sm font-medium text-text-secondary">Monthly Budget Remaining</h3>

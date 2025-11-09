@@ -10,8 +10,8 @@ interface PlannerBoardProps {
 }
 
 const Column: React.FC<{ title: string; children: React.ReactNode }>=({title,children})=> (
-  <div className="bg-surface/70 border border-border-shadow rounded-xl p-3 shadow-neu-sm min-h-[300px]">
-    <div className="text-sm font-semibold tracking-wide uppercase text-text-secondary mb-2">{title}</div>
+  <div className="bg-white rounded-xl p-4 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 min-h-[300px]">
+    <div className="text-sm font-semibold tracking-wide uppercase text-gray-600 mb-3">{title}</div>
     {children}
   </div>
 );
@@ -23,8 +23,8 @@ const SortableItem: React.FC<{ id: string; title: string }>=({ id, title })=>{
     transition,
   };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="px-3 py-2 rounded-md bg-surface hover:bg-surface/80 border border-border-shadow mb-2 cursor-grab">
-      <div className="text-sm">{title}</div>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="px-3 py-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 mb-2 cursor-grab shadow-neu-xs hover:shadow-neu-sm transition-all duration-200">
+      <div className="text-sm text-gray-800">{title}</div>
     </div>
   );
 };

@@ -124,17 +124,17 @@ const TransactionListItem: React.FC<TransactionListItemProps> = ({ transaction, 
                     {isMenuOpen && (
                         <div
                             ref={menuRef}
-                            className="absolute top-full right-0 mt-2 w-32 bg-surface backdrop-blur-xl p-2 rounded-lg shadow-neu-lg border border-border-shadow z-10"
+                            className="absolute top-full right-0 mt-2 w-32 bg-white p-2 rounded-lg shadow-neu-3d border border-gray-200 z-10"
                         >
                             <button
                                 onClick={handleEdit}
-                                className="w-full text-left px-3 py-2 text-sm rounded-md text-text-primary hover:bg-surface"
+                                className="w-full text-left px-3 py-2 text-sm rounded-md text-gray-800 hover:bg-gray-100 transition-colors"
                             >
                                 Edit
                             </button>
                             <button
                                 onClick={handleDelete}
-                                className="w-full text-left px-3 py-2 text-sm rounded-md text-danger hover:bg-surface"
+                                className="w-full text-left px-3 py-2 text-sm rounded-md text-danger hover:bg-red-50 transition-colors"
                             >
                                 Delete
                             </button>

@@ -22,15 +22,15 @@ const OverallBudgetCard: React.FC<OverallBudgetCardProps> = ({ budget, totalSpen
     }
 
     return (
-        <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
+        <div className="bg-white p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                 <div>
                     <h2 className="text-xl font-semibold text-text-primary">Overall Monthly Budget</h2>
                     <p className="text-text-secondary text-sm">Your total spending plan for the month.</p>
                 </div>
-                <button 
+                <button
                   onClick={onSetBudget}
-                  className="mt-3 md:mt-0 px-4 py-2 text-sm font-medium rounded-md text-text-primary bg-surface hover:bg-surface/80 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
+                  className="mt-3 md:mt-0 px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all shadow-neu-sm"
                 >
                     {budget ? 'Edit Budget' : 'Set Budget'}
                 </button>

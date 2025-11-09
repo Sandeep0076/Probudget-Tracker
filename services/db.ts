@@ -114,6 +114,12 @@ const ensureTablesExist = (db: any) => {
             description TEXT NOT NULL
         );
     `);
+    db.run(`
+        CREATE TABLE IF NOT EXISTS settings (
+            key TEXT PRIMARY KEY,
+            value TEXT
+        );
+    `);
 }
 
 export const createNewDatabase = async (): Promise<any> => {
@@ -751,4 +757,28 @@ export const getActivityLog = async (db: any): Promise<ActivityLog[]> => {
         };
     });
     return logs;
+};
+
+export const getSetting = async (db: any, key: string): Promise<string | null> => {
+    const stmt = db.prepare("SELECT value FROM settings WHERE key = ?");
+    stmt.bind([key]);
+    let value: string | null = null;
+    if (stmt.step()) {
+        value = stmt.get();
+    }
+    stmt.free();
+    return value;
+};
+
+export const updateSetting = async (db: any, key: string, value: string): Promise<void> => {
+    try {
+        db.run('BEGIN TRANSACTION;');
+        db.run('INSERT OR REPLACE INTO settings (key, value) VALUES (?, ?)', [key, value]);
+        await addActivityLog(db, 'UPDATE', `Updated setting: "${key}".`);
+        db.run('COMMIT;');
+    } catch (error) {
+        console.error("[DB Write] FAILED to update setting:", error);
+        db.run('ROLLBACK;');
+        throw error;
+    }
 };

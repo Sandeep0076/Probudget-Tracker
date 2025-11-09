@@ -118,14 +118,14 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
         }
     };
 
-    const commonInputClasses = "w-full px-4 py-3 bg-surface border border-border-shadow shadow-inner rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors";
+    const commonInputClasses = "w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-inner transition-colors";
 
     return (
         <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8 flex justify-center">
-            <div className="w-full max-w-2xl bg-surface backdrop-blur-xl p-8 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow relative">
-                
+            <div className="w-full max-w-2xl bg-white p-8 rounded-xl shadow-neu-3d relative">
+
                 {isScanning && (
-                    <div className="absolute inset-0 bg-surface/80 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl z-20">
+                    <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl z-20">
                         <SpinnerIcon className="w-12 h-12 animate-spin text-accent" />
                         <p className="mt-4 text-lg font-semibold text-text-primary">Scanning Receipt...</p>
                         <p className="text-sm text-text-secondary">Please wait while we analyze the items.</p>
@@ -224,8 +224,8 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                     </div>
                     
                      <div>
-                        <label htmlFor="labels" className="block text-sm font-medium text-text-secondary mb-1">Labels (optional)</label>
-                        <div className="flex flex-wrap items-center gap-2 p-2 bg-surface border border-border-shadow shadow-inner rounded-md">
+                        <label htmlFor="labels" className="block text-sm font-medium text-gray-600 mb-1">Labels (optional)</label>
+                        <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 border border-gray-300 shadow-inner rounded-md">
                             {labels.map(label => (
                                 <span key={label} className="label-chip">
                                     {label}
@@ -281,7 +281,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                         </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 bg-surface/80 p-4 rounded-lg shadow-inner">
+                    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg shadow-inner">
                         <label htmlFor="recurring-toggle" className="flex items-center cursor-pointer">
                             <div className="relative">
                                 <input type="checkbox" id="recurring-toggle" className="sr-only" checked={isRecurring} onChange={() => setIsRecurring(!isRecurring)} />
@@ -301,13 +301,13 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                         <button 
                             type="button" 
                             onClick={onCancel}
-                            className="px-6 py-3 text-sm font-medium rounded-md text-text-primary bg-surface hover:bg-surface/80 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
+                            className="px-6 py-3 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all shadow-neu-xs"
                         >
                             Cancel
                         </button>
-                        <button 
+                        <button
                             type="submit"
-                            className="px-6 py-3 text-sm font-medium rounded-md shadow-sm text-white bg-brand hover:bg-brand/90 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
+                            className="px-6 py-3 text-sm font-medium rounded-md shadow-sm text-white bg-brand hover:bg-brand/90 transition-all shadow-neu-sm"
                         >
                             Save Transaction
                         </button>

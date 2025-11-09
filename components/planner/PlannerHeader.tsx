@@ -18,11 +18,11 @@ const Item: React.FC<{active:boolean;label:string;onClick:()=>void}> = ({
   <a
     href="#"
     onClick={(e)=>{e.preventDefault();onClick();}}
-    className={`px-3 py-2 rounded-md text-sm font-medium transition-all ${
-      active
-        ? 'bg-surface shadow-inner text-text-primary'
-        : 'text-text-secondary hover:bg-surface/70 hover:text-text-primary'
-    }`}
+    className={`px-4 py-2 rounded-t-md text-sm font-semibold transition-all border-b-2 ${
+          active
+            ? 'border-brand text-brand'
+            : 'border-transparent text-text-secondary hover:text-text-primary'
+        }`}
   >
     {label}
   </a>
@@ -30,7 +30,7 @@ const Item: React.FC<{active:boolean;label:string;onClick:()=>void}> = ({
 
 const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTask }) => {
   return (
-    <header className="bg-surface/80 backdrop-blur-xl border-b border-border-shadow shadow-neu-lg sticky top-12 z-40">
+    <header className="bg-surface border-b border-border-shadow sticky top-12 z-40">
       <nav className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-14">
           <div className="flex items-center gap-2">

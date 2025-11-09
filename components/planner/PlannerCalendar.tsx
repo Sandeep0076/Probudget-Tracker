@@ -62,11 +62,11 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({ tasks, externalEvents
   };
 
   return (
-    <div className="bg-surface/70 border border-border-shadow rounded-xl p-3 shadow-neu-sm">
+    <div className="bg-white rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
-        initialView="timeGridWeek"
+        initialView="dayGridMonth"
         selectable
         selectMirror
         editable
