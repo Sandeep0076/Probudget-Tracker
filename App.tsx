@@ -50,11 +50,6 @@ const App: React.FC = () => {
   const [customThemeColor, setCustomThemeColor] = useState<string>('#5e258a');
 
   useEffect(() => {
-    // Persist theme to server settings whenever it changes
-    api.setSettings(theme, customThemeColor).catch(() => {});
-  }, [theme, customThemeColor]);
-
-  useEffect(() => {
     // Clear any inline styles first, then set the class name or apply new styles.
     document.documentElement.style.cssText = '';
     document.documentElement.className = '';
@@ -67,9 +62,15 @@ const App: React.FC = () => {
     }
   }, [theme, customThemeColor]);
 
+  const handleThemeChange = (newTheme: Theme) => {
+    setTheme(newTheme);
+    api.setSettings(newTheme, customThemeColor).catch(console.error);
+  };
+
   const handleCustomThemeChange = (color: string) => {
     setTheme('custom');
     setCustomThemeColor(color);
+    api.setSettings('custom', color).catch(console.error);
   };
 
   useEffect(() => {
@@ -337,6 +338,15 @@ const App: React.FC = () => {
     }
   };
 
+  const handleSectionChange = (s: 'budget' | 'planner') => {
+    setSection(s);
+    if (s === 'budget') {
+      setCurrentPage('dashboard');
+    } else {
+      setPlannerPage('dashboard');
+    }
+  };
+
   const openNewTaskModal = () => {
     setPrefillTask(null);
     setIsTaskModalOpen(true);
@@ -394,7 +404,7 @@ const App: React.FC = () => {
       case 'settings':
         return <SettingsPage 
             currentTheme={theme}
-            onThemeChange={setTheme}
+            onThemeChange={handleThemeChange}
             customThemeColor={customThemeColor}
             onCustomColorChange={handleCustomThemeChange}
             activityLogs={activityLogs}
@@ -412,7 +422,7 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen font-sans text-text-primary bg-transparent">
-      <TopSwitcher section={section} onChange={(s)=> setSection(s)} />
+      <TopSwitcher section={section} onChange={handleSectionChange} />
       {section === 'budget' ? (
         <>
           <Header 

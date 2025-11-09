@@ -10,21 +10,21 @@ interface PlannerDashboardProps {
 }
 
 const Section: React.FC<{ title: string; children: React.ReactNode }>=({title,children})=> (
-  <div className="bg-surface/70 border border-border-shadow rounded-xl p-4 shadow-neu-sm">
+  <div className="bg-white rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
     <div className="flex items-center justify-between">
-      <h3 className="text-sm font-semibold tracking-wide uppercase text-text-secondary">{title}</h3>
+      <h3 className="text-sm font-semibold tracking-wide uppercase text-gray-600">{title}</h3>
     </div>
     <div className="mt-3 space-y-2">{children}</div>
   </div>
 );
 
 const TaskRow: React.FC<{ task: Task; onToggle: () => void }>=({task,onToggle})=> (
-  <div className="flex items-center justify-between px-2 py-2 rounded-md hover:bg-surface/60">
+  <div className="flex items-center justify-between px-3 py-2.5 rounded-lg hover:bg-gray-50 transition-colors duration-200">
     <label className="flex items-center gap-2 cursor-pointer">
-      <input type="checkbox" checked={task.status==='completed'} onChange={onToggle} />
-      <span className={task.status==='completed'? 'line-through text-text-muted' : ''}>{task.title}</span>
+      <input type="checkbox" checked={task.status==='completed'} onChange={onToggle} className="w-4 h-4 rounded border-gray-300" />
+      <span className={task.status==='completed'? 'line-through text-gray-400' : 'text-gray-800'}>{task.title}</span>
     </label>
-    {task.due && <span className="text-xs text-warning">{new Date(task.due).toLocaleDateString()}</span>}
+    {task.due && <span className="text-xs text-warning font-medium">{new Date(task.due).toLocaleDateString()}</span>}
   </div>
 );
 
@@ -72,9 +72,9 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
       <div className="space-y-4 lg:col-span-1">
-        <div className="bg-surface/70 border border-border-shadow rounded-xl p-4 shadow-neu-sm">
+        <div className="bg-white rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-semibold tracking-wide uppercase text-text-secondary">Upcoming Calendar</h3>
+            <h3 className="text-sm font-semibold tracking-wide uppercase text-gray-600">Upcoming Calendar</h3>
             <div className="flex gap-2">
               {events && events.length > 0 && (
                 <>
@@ -96,13 +96,13 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
               const title = e.summary || e.title || 'Event';
               const dt = e.start?.dateTime || e.start?.date || e.start;
               const when = dt ? new Date(dt).toLocaleString() : '';
-              return <div key={e.id} className="text-sm flex items-start gap-2 w-full max-w-xs"><span className="mt-1 h-2 w-2 rounded-full bg-accent"/> <div><div className="font-medium">{title}</div><div className="text-xs text-text-secondary">{when}</div></div></div>
+              return <div key={e.id} className="text-sm flex items-start gap-2 w-full max-w-xs"><span className="mt-1 h-2 w-2 rounded-full bg-accent"/> <div><div className="font-medium text-gray-800">{title}</div><div className="text-xs text-gray-500">{when}</div></div></div>
             })}
             {(!events || events.length===0) && (
-              <div className="text-sm text-text-muted">
+              <div className="text-sm text-gray-500">
                 No calendar events.{" "}
                 <button
-                  className="text-brand underline"
+                  className="text-brand underline hover:text-brand/80 transition-colors"
                   onClick={handleConnectCalendar}
                 >Connect Google Calendar</button>.
               </div>
@@ -112,23 +112,23 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
       </div>
       <div className="space-y-4 lg:col-span-1">
         <Section title="Today">
-          {today.length===0 && <div className="text-sm text-text-muted">No tasks for today.</div>}
+          {today.length===0 && <div className="text-sm text-gray-500">No tasks for today.</div>}
           {today.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} />)}
         </Section>
       </div>
       <div className="space-y-4 lg:col-span-1">
         <Section title="Overdue">
-          {overdue.length===0 && <div className="text-sm text-text-muted">All clear.</div>}
+          {overdue.length===0 && <div className="text-sm text-gray-500">All clear.</div>}
           {overdue.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} />)}
         </Section>
         <Section title="Tomorrow">
-          {tomorrow.length===0 && <div className="text-sm text-text-muted">Nothing yet.</div>}
+          {tomorrow.length===0 && <div className="text-sm text-gray-500">Nothing yet.</div>}
           {tomorrow.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} />)}
         </Section>
       </div>
       <div className="lg:col-span-3">
         <Section title="Someday">
-          {someday.length===0 && <div className="text-sm text-text-muted">No backlog items.</div>}
+          {someday.length===0 && <div className="text-sm text-gray-500">No backlog items.</div>}
           {someday.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} />)}
         </Section>
       </div>

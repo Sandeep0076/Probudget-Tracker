@@ -29,7 +29,7 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spentAmount }) => {
     }
 
     return (
-        <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
+        <div className="bg-white p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full bg-surface shadow-inner text-accent">

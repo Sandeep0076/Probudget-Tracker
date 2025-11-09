@@ -22,7 +22,7 @@ interface TaskModalProps {
 
 const LabeledRow: React.FC<{ label: string; children: React.ReactNode }>=({label,children})=> (
   <div className="flex items-center gap-3">
-    <div className="w-28 text-sm text-text-secondary">{label}</div>
+    <div className="w-28 text-sm text-gray-600">{label}</div>
     <div className="flex-1">{children}</div>
   </div>
 );
@@ -41,8 +41,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   const [subtasks, setSubtasks] = useState<Subtask[]>(initial?.subtasks || []);
   const [saving, setSaving] = useState(false);
 
-  const commonInputClasses = "w-full px-3 py-2 bg-surface border border-border-shadow rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-1 focus:ring-accent";
-  const commonSelectClasses = "px-2 py-1 rounded-md bg-surface border border-border-shadow text-text-primary focus:outline-none focus:ring-1 focus:ring-accent";
+  const commonInputClasses = "w-full px-3 py-2 bg-white border border-gray-300 rounded-md text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-inner";
+  const commonSelectClasses = "px-2 py-1 rounded-md bg-white border border-gray-300 text-gray-800 focus:outline-none focus:ring-2 focus:ring-accent shadow-inner";
 
 
   if (!isOpen) return null;
@@ -78,10 +78,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-xl bg-surface/80 backdrop-blur-xl rounded-xl p-4 border border-border-shadow shadow-neu-lg">
-        <div className="flex items-center justify-between mb-3">
-          <h3 className="text-lg font-semibold">Task</h3>
-          <button className="text-text-secondary hover:text-text-primary" onClick={onClose}>✕</button>
+      <div className="relative w-full max-w-xl bg-white rounded-xl p-6 shadow-neu-3d">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-xl font-semibold text-gray-900">Task</h3>
+          <button className="text-gray-400 hover:text-gray-600 transition-colors" onClick={onClose}>✕</button>
         </div>
 
         <div className="space-y-4">
@@ -100,7 +100,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
             </select>
           </LabeledRow>
 
-          <details className="bg-surface/60 rounded-md p-3 border border-border-shadow">
+          <details className="bg-gray-50 rounded-lg p-4 border border-gray-200 shadow-inner">
             <summary className="cursor-pointer select-none">Schedule</summary>
             <div className="mt-3 space-y-3">
               <label className="flex items-center gap-2 text-sm">
@@ -166,7 +166,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
 
           <div>
             <div className="flex items-center justify-between mb-2">
-              <div className="text-sm text-text-secondary">Subtasks</div>
+              <div className="text-sm text-gray-600">Subtasks</div>
               <button className="text-sm text-brand" onClick={handleAddSubtask}>+ Add</button>
             </div>
             <div className="space-y-2">
@@ -188,9 +188,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
           </div>
         </div>
 
-        <div className="mt-4 flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 rounded-md bg-surface text-text-secondary border border-border-shadow">Cancel</button>
-          <button disabled={saving || !title.trim()} onClick={handleSave} className="px-4 py-2 rounded-md bg-brand text-white hover:bg-brand/90">Save</button>
+        <div className="mt-6 flex justify-end gap-3">
+          <button onClick={onClose} className="px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-colors shadow-neu-xs">Cancel</button>
+          <button disabled={saving || !title.trim()} onClick={handleSave} className="px-4 py-2 rounded-md bg-brand text-white hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-neu-sm">Save</button>
         </div>
       </div>
     </div>
