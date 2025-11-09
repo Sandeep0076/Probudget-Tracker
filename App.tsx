@@ -328,8 +328,13 @@ const App: React.FC = () => {
     setCurrentPage(page);
   };
 
-  const navigatePlanner = (page: PlannerPage) => {
-    setPlannerPage(page);
+  const navigatePlanner = (page: PlannerPage | Page) => {
+    if (page === 'settings') {
+      setSection('budget');
+      setCurrentPage('settings');
+    } else {
+      setPlannerPage(page as PlannerPage);
+    }
   };
 
   const openNewTaskModal = () => {
