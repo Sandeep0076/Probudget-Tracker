@@ -27,8 +27,11 @@ app.use(express.json({ limit: '5mb' }));
 const db = new Database(DB_PATH);
 db.pragma('journal_mode = WAL');
 
-tableInit();
-seedDefaults();
+const tableCount = db.prepare(`SELECT count(*) as c FROM sqlite_master WHERE type='table' AND name LIKE '%s'`).get().c;
+if (tableCount === 0) {
+  tableInit();
+  seedDefaults();
+}
 
 function tableInit() {
   db.exec(`
@@ -780,7 +783,7 @@ app.get('/api/activity', (req, res) => {
 
 app.get('/api/settings', (req, res) => {
   const theme = db.prepare('SELECT value FROM settings WHERE key = ?').get('theme')?.value || 'dark-blue';
-  const color = db.prepare('SELECT value FROM settings WHERE key = ?').get('customColor')?.value || '#5e258a';
+  const color = db.prepare('SELECT value FROM settings WHERE key = ?').get('customThemeColor')?.value || '#5e258a';
   res.json({ theme, customThemeColor: color });
 });
 
@@ -790,7 +793,7 @@ app.post('/api/settings', (req, res) => {
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
       .run('theme', theme);
     db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
-      .run('customColor', customThemeColor);
+      .run('customThemeColor', customThemeColor);
   });
   tx();
   res.json({ ok: true });

@@ -71,7 +71,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
 
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="space-y-4 order-1 lg:order-1">
+      <div className="space-y-4 lg:col-span-1">
         <div className="bg-surface/70 border border-border-shadow rounded-xl p-4 shadow-neu-sm">
           <div className="flex items-center justify-between">
             <h3 className="text-sm font-semibold tracking-wide uppercase text-text-secondary">Upcoming Calendar</h3>
@@ -85,11 +85,18 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
             </div>
           </div>
           <div className="mt-3 space-y-2">
-            {(events||[]).slice(0,8).map((e:any)=>{
+            {(events||[])
+              .filter((e: any) => {
+                const eventDate = new Date(e.start?.dateTime || e.start?.date || e.start);
+                const today = new Date();
+                const nextWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
+                return eventDate >= today && eventDate <= nextWeek;
+              })
+              .slice(0,8).map((e:any)=>{
               const title = e.summary || e.title || 'Event';
               const dt = e.start?.dateTime || e.start?.date || e.start;
               const when = dt ? new Date(dt).toLocaleString() : '';
-              return <div key={e.id} className="text-sm flex items-start gap-2"><span className="mt-1 h-2 w-2 rounded-full bg-accent"/> <div><div className="font-medium">{title}</div><div className="text-xs text-text-secondary">{when}</div></div></div>
+              return <div key={e.id} className="text-sm flex items-start gap-2 w-full max-w-xs"><span className="mt-1 h-2 w-2 rounded-full bg-accent"/> <div><div className="font-medium">{title}</div><div className="text-xs text-text-secondary">{when}</div></div></div>
             })}
             {(!events || events.length===0) && (
               <div className="text-sm text-text-muted">
@@ -103,11 +110,13 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
           </div>
         </div>
       </div>
-      <div className="lg:col-span-2 space-y-4 order-2 lg:order-2">
+      <div className="space-y-4 lg:col-span-1">
         <Section title="Today">
           {today.length===0 && <div className="text-sm text-text-muted">No tasks for today.</div>}
           {today.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} />)}
         </Section>
+      </div>
+      <div className="space-y-4 lg:col-span-1">
         <Section title="Overdue">
           {overdue.length===0 && <div className="text-sm text-text-muted">All clear.</div>}
           {overdue.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} />)}
@@ -116,6 +125,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
           {tomorrow.length===0 && <div className="text-sm text-text-muted">Nothing yet.</div>}
           {tomorrow.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} />)}
         </Section>
+      </div>
+      <div className="lg:col-span-3">
         <Section title="Someday">
           {someday.length===0 && <div className="text-sm text-text-muted">No backlog items.</div>}
           {someday.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} />)}
