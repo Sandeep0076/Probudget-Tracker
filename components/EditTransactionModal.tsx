@@ -57,7 +57,11 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
             alert('Please fill all fields');
             return;
         }
-        onSave(formData);
+        const pending = labelInput.trim().toLowerCase();
+        const finalLabels = pending && !formData.labels.includes(pending)
+            ? [...formData.labels, pending]
+            : formData.labels;
+        onSave({ ...formData, labels: finalLabels });
     };
 
     const commonInputClasses = "w-full px-4 py-3 bg-surface border border-border-shadow shadow-inner rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors";

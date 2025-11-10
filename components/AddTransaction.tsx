@@ -67,6 +67,11 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
             return;
         }
 
+        const pending = labelInput.trim().toLowerCase();
+        const finalLabels = pending && !labels.includes(pending)
+            ? [...labels, pending]
+            : labels;
+
         onSave({
             amount: parseFloat(amount),
             quantity: parseInt(quantity, 10) || 1,
@@ -74,7 +79,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
             category,
             date,
             type: transactionType,
-            labels,
+            labels: finalLabels,
             isRecurring,
         });
     };
