@@ -64,4 +64,6 @@ export const getAgenda = (range: 'today'|'week'|'overdue') => get<any[]>(`/api/t
 export const getCalendarAuthUrl = () => get<{ url: string }>(`/api/calendar/auth-url`);
 export const listCalendarEvents = (timeMin: string, timeMax: string) => get<any[]>(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`);
 export const listGoogleTasks = () => get<any[]>(`/api/google-tasks`);
+export const toggleGoogleTask = (taskId: string, currentStatus: string) => put<any>(`/api/google-tasks/${taskId}/toggle`, { currentStatus });
 export const disconnectCalendar = () => get<{ ok: boolean }>(`/api/calendar/disconnect`);
+export const toggleCalendarEvent = (eventId: string, currentStatus: string) => put<any>(`/api/calendar/events/${eventId}/toggle`, { currentStatus });

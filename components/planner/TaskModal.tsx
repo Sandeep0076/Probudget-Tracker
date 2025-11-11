@@ -4,6 +4,7 @@ import { Subtask, TaskPriority, TaskRepeat } from '../../types';
 interface TaskModalProps {
   isOpen: boolean;
   initial?: {
+    id?: string;
     title?: string;
     notes?: string;
     priority?: TaskPriority;
@@ -17,7 +18,7 @@ interface TaskModalProps {
     subtasks?: Subtask[];
   };
   onClose: () => void;
-  onSave: (data: any) => Promise<void> | void;
+  onSave: (data: any, id?: string) => Promise<void> | void;
 }
 
 const LabeledRow: React.FC<{ label: string; children: React.ReactNode }>=({label,children})=> (
@@ -68,7 +69,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         subtasks: subtasks.map(s=>({ title: s.title, done: s.done })),
         status: start || due ? 'scheduled' : 'new'
       };
-      await onSave(payload);
+      await onSave(payload, initial?.id);
       onClose();
     } finally {
       setSaving(false);
@@ -80,7 +81,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-xl bg-white rounded-xl p-6 shadow-neu-3d">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-gray-900">Task</h3>
+          <h3 className="text-xl font-semibold text-gray-900">{initial?.id ? 'Edit Task' : 'New Task'}</h3>
           <button className="text-gray-400 hover:text-gray-600 transition-colors" onClick={onClose}>✕</button>
         </div>
 

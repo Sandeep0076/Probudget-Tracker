@@ -70,14 +70,12 @@ const CategoryManager: React.FC<{
                     <li key={cat.id} className="flex items-center justify-between p-3 bg-surface rounded-lg shadow-inner">
                         <div className="flex items-center gap-3">
                            <span className="text-text-primary">{cat.name}</span>
-                           {cat.isDefault && <span className="text-xs font-medium text-text-secondary bg-surface shadow-neu-sm px-2 py-0.5 rounded-full">Default</span>}
                         </div>
                         <div className="flex items-center gap-3">
                             <button onClick={() => handleEditClick(cat)} className="text-sm font-medium text-accent hover:text-accent/[0.8]">Edit</button>
-                            <button 
-                                onClick={() => handleDeleteClick(cat)} 
-                                disabled={cat.isDefault}
-                                className="text-sm font-medium text-danger hover:text-danger/[0.8] disabled:text-text-muted disabled:cursor-not-allowed"
+                            <button
+                                onClick={() => handleDeleteClick(cat)}
+                                className="text-sm font-medium text-danger hover:text-danger/[0.8]"
                             >
                                 Delete
                             </button>

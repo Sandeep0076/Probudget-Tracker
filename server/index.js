@@ -1,17 +1,12 @@
 import express from 'express';
 import cors from 'cors';
-import Database from 'better-sqlite3';
-import path from 'path';
-import { fileURLToPath } from 'url';
+import { supabase } from './supabaseClient.js';
 import { randomUUID, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 import { google } from 'googleapis';
 import dotenv from 'dotenv';
 
 dotenv.config();
 
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const DB_PATH = path.resolve(__dirname, '..', 'probudget.sqlite');
 const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
 const OVERALL_BUDGET_CATEGORY = '##OVERALL_BUDGET##';
 const GOOGLE_API_SCOPES = [
@@ -24,154 +19,28 @@ const app = express();
 app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
-const db = new Database(DB_PATH);
-db.pragma('journal_mode = WAL');
 
-const tableCount = db.prepare(`SELECT count(*) as c FROM sqlite_master WHERE type='table' AND name LIKE '%s'`).get().c;
-if (tableCount === 0) {
-  tableInit();
-  seedDefaults();
+async function addActivity(action, description) {
+  await supabase.from('activity_log').insert({ action, description });
 }
 
-function tableInit() {
-  db.exec(`
-    CREATE TABLE IF NOT EXISTS transactions (
-      id TEXT PRIMARY KEY,
-      description TEXT,
-      amount REAL,
-      date TEXT,
-      type TEXT,
-      category TEXT,
-      quantity INTEGER DEFAULT 1,
-      recurring_transaction_id TEXT
-    );
-    CREATE TABLE IF NOT EXISTS budgets (
-      id TEXT PRIMARY KEY,
-      category TEXT,
-      amount REAL,
-      month INTEGER,
-      year INTEGER,
-      UNIQUE(category, month, year)
-    );
-    CREATE TABLE IF NOT EXISTS categories (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL,
-      type TEXT NOT NULL,
-      isDefault INTEGER DEFAULT 0,
-      UNIQUE(name, type)
-    );
-    CREATE TABLE IF NOT EXISTS labels (
-      id TEXT PRIMARY KEY,
-      name TEXT NOT NULL UNIQUE
-    );
-    CREATE TABLE IF NOT EXISTS transaction_labels (
-      transaction_id TEXT NOT NULL,
-      label_id TEXT NOT NULL,
-      PRIMARY KEY (transaction_id, label_id)
-    );
-    CREATE TABLE IF NOT EXISTS recurring_transactions (
-      id TEXT PRIMARY KEY,
-      description TEXT,
-      amount REAL,
-      type TEXT,
-      category TEXT,
-      start_date TEXT,
-      frequency TEXT,
-      day_of_month INTEGER
-    );
-    CREATE TABLE IF NOT EXISTS recurring_transaction_labels (
-      recurring_transaction_id TEXT NOT NULL,
-      label_id TEXT NOT NULL,
-      PRIMARY KEY (recurring_transaction_id, label_id)
-    );
-    CREATE TABLE IF NOT EXISTS savings (
-      id TEXT PRIMARY KEY,
-      amount REAL,
-      month INTEGER,
-      year INTEGER,
-      UNIQUE(month, year)
-    );
-    CREATE TABLE IF NOT EXISTS activity_log (
-      id TEXT PRIMARY KEY,
-      timestamp TEXT NOT NULL,
-      action TEXT NOT NULL,
-      description TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS settings (
-      key TEXT PRIMARY KEY,
-      value TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS tasks (
-      id TEXT PRIMARY KEY,
-      title TEXT NOT NULL,
-      notes TEXT,
-      status TEXT NOT NULL,
-      priority TEXT NOT NULL,
-      all_day INTEGER DEFAULT 0,
-      start TEXT,
-      end TEXT,
-      due TEXT,
-      repeat_json TEXT,
-      color TEXT,
-      gcal_event_id TEXT,
-      gtask_id TEXT,
-      created_at TEXT NOT NULL,
-      updated_at TEXT NOT NULL
-    );
-    CREATE TABLE IF NOT EXISTS task_labels (
-      task_id TEXT NOT NULL,
-      label_id TEXT NOT NULL,
-      PRIMARY KEY (task_id, label_id)
-    );
-    CREATE TABLE IF NOT EXISTS subtasks (
-      id TEXT PRIMARY KEY,
-      task_id TEXT NOT NULL,
-      title TEXT NOT NULL,
-      done INTEGER DEFAULT 0
-    );
-  `);
+async function upsertLabelIdByName(name) {
+  let { data: label, error } = await supabase.from('labels').select('id').eq('name', name).single();
+  if (label) return label.id;
+
+  const { data: newLabel, error: insertError } = await supabase.from('labels').insert({ name }).select('id').single();
+  if (insertError) throw insertError;
+  return newLabel.id;
 }
 
-function seedDefaults() {
-  const count = db.prepare('SELECT COUNT(*) AS c FROM categories').get().c;
-  if (count > 0) return;
-  const insert = db.prepare(
-    'INSERT INTO categories (id, name, type, isDefault) VALUES (?, ?, ?, ?)' 
-  );
-  const expense = [
-    'Groceries','Utilities','Transport','Entertainment','Health',
-    'Dining Out','Shopping','Other'
-  ];
-  const income = ['Salary','Stocks','Gifts','Other'];
-  const tx = db.transaction(() => {
-    for (const n of expense) insert.run(randomUUID(), n, 'EXPENSE', 1);
-    for (const n of income) insert.run(randomUUID(), n, 'INCOME', 1);
-  });
-  tx();
+async function getSetting(key) {
+    const { data, error } = await supabase.from('settings').select('value').eq('key', key).single();
+    if (error) return null;
+    return data.value;
 }
 
-function addActivity(action, description) {
-  const stmt = db.prepare(
-    'INSERT INTO activity_log (id, timestamp, action, description) VALUES (?, ?, ?, ?)'
-  );
-  stmt.run(randomUUID(), new Date().toISOString(), action, description);
-}
-
-function upsertLabelIdByName(name) {
-  const sel = db.prepare('SELECT id FROM labels WHERE name = ?').get(name);
-  if (sel) return sel.id;
-  const id = randomUUID();
-  db.prepare('INSERT INTO labels (id, name) VALUES (?, ?)').run(id, name);
-  return id;
-}
-
-function getSetting(key) {
-  return db.prepare('SELECT value FROM settings WHERE key = ?').get(key)?.value;
-}
-
-function setSetting(key, value) {
-  db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
-    .run(key, value);
+async function setSetting(key, value) {
+    await supabase.from('settings').upsert({ key, value });
 }
 
 function encryptJSON(obj) {
@@ -203,10 +72,10 @@ function getOAuth2Client() {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
-function getOAuthClientWithTokens() {
+async function getOAuthClientWithTokens() {
   const oauth = getOAuth2Client();
   if (!oauth) return null;
-  const enc = getSetting('gcal_tokens');
+  const enc = await getSetting('gcal_tokens');
   if (!enc) return null;
   oauth.setCredentials(decryptJSON(enc));
   return oauth;
@@ -216,7 +85,7 @@ function withOAuth2(callback) {
   return async (req, res) => {
     const oauth = getOAuth2Client();
     if (!oauth) return res.status(400).json({ error: 'Google OAuth not configured' });
-    const enc = getSetting('gcal_tokens');
+    const enc = await getSetting('gcal_tokens');
     if (!enc) return res.status(400).json({ error: 'Google Calendar not connected' });
     oauth.setCredentials(decryptJSON(enc));
     try {
@@ -297,175 +166,292 @@ async function ensureTaskOnGoogle(task, oauth) {
   }
 }
 
-function mapRows(rows) {
-  return rows.map(r => ({
-    ...r,
-    amount: Number(r.amount),
-    quantity: Number(r.quantity),
-  }));
-}
+app.get('/api/transactions', async (req, res) => {
+  const { data, error } = await supabase
+    .from('transactions')
+    .select(`
+      id,
+      description,
+      amount,
+      date,
+      type,
+      category,
+      quantity,
+      recurring_transaction_id,
+      labels:transaction_labels (
+        label:labels (name)
+      )
+    `)
+    .order('date', { ascending: false })
+    .order('id', { ascending: false });
 
-app.get('/api/transactions', (req, res) => {
-  const rows = db.prepare(`
-    SELECT t.id, t.description, t.amount, t.date, t.type, t.category, t.quantity,
-           t.recurring_transaction_id as recurringTransactionId,
-           GROUP_CONCAT(l.name) as labels
-    FROM transactions t
-    LEFT JOIN transaction_labels tl ON t.id = tl.transaction_id
-    LEFT JOIN labels l ON tl.label_id = l.id
-    GROUP BY t.id
-    ORDER BY t.date DESC, t.id DESC
-  `).all();
-  const out = mapRows(rows).map(r => ({
-    ...r,
-    labels: r.labels ? r.labels.split(',') : []
+  if (error) {
+    console.error('Error fetching transactions:', error);
+    return res.status(500).json({ error: 'Failed to fetch transactions' });
+  }
+
+  const out = data.map(t => ({
+    ...t,
+    labels: t.labels.map(l => l.label.name)
   }));
+
   res.json(out);
 });
 
-app.post('/api/transactions', (req, res) => {
+app.post('/api/transactions', async (req, res) => {
   const {
     description, amount, date, type, category, quantity = 1, labels = [],
     recurringTransactionId = null
   } = req.body || {};
-  const id = randomUUID();
-  const tx = db.transaction(() => {
-    db.prepare(
-      'INSERT INTO transactions (id, description, amount, date, type, category, quantity, recurring_transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-    ).run(id, description, amount, date, type, category, quantity, recurringTransactionId);
-    for (const name of labels) {
-      const lid = upsertLabelIdByName(name);
-      db.prepare('INSERT INTO transaction_labels (transaction_id, label_id) VALUES (?, ?)')
-        .run(id, lid);
+
+  const { data: transaction, error: txError } = await supabase
+    .from('transactions')
+    .insert({ description, amount, date, type, category, quantity, recurring_transaction_id: recurringTransactionId })
+    .select('id')
+    .single();
+
+  if (txError) {
+    console.error('Error creating transaction:', txError);
+    return res.status(500).json({ error: 'Failed to create transaction' });
+  }
+
+  if (labels.length > 0) {
+    const labelIds = await Promise.all(labels.map(name => upsertLabelIdByName(name)));
+    const transactionLabels = labelIds.map(label_id => ({
+      transaction_id: transaction.id,
+      label_id
+    }));
+    const { error: labelError } = await supabase.from('transaction_labels').insert(transactionLabels);
+    if (labelError) {
+      console.error('Error adding labels to transaction:', labelError);
     }
-  });
-  tx();
-  addActivity('CREATE', `Added transaction: "${description}".`);
-  res.json({ id, description, amount, date, type, category, quantity, labels, recurringTransactionId });
+  }
+
+  await addActivity('CREATE', `Added transaction: "${description}".`);
+  res.json({ id: transaction.id, description, amount, date, type, category, quantity, labels, recurringTransactionId });
 });
 
-app.put('/api/transactions/:id', (req, res) => {
+app.put('/api/transactions/:id', async (req, res) => {
   const { id } = req.params;
   const { description, amount, date, type, category, quantity = 1, labels = [] } = req.body || {};
-  const tx = db.transaction(() => {
-    db.prepare(
-      'UPDATE transactions SET description=?, amount=?, date=?, type=?, category=?, quantity=? WHERE id=?'
-    ).run(description, amount, date, type, category, quantity, id);
-    db.prepare('DELETE FROM transaction_labels WHERE transaction_id=?').run(id);
-    for (const name of labels) {
-      const lid = upsertLabelIdByName(name);
-      db.prepare('INSERT INTO transaction_labels (transaction_id, label_id) VALUES (?, ?)')
-        .run(id, lid);
+
+  const { error: updateError } = await supabase
+    .from('transactions')
+    .update({ description, amount, date, type, category, quantity })
+    .eq('id', id);
+
+  if (updateError) {
+    console.error('Error updating transaction:', updateError);
+    return res.status(500).json({ error: 'Failed to update transaction' });
+  }
+
+  const { error: deleteLabelsError } = await supabase.from('transaction_labels').delete().eq('transaction_id', id);
+  if (deleteLabelsError) {
+    console.error('Error clearing transaction labels:', deleteLabelsError);
+  }
+
+  if (labels.length > 0) {
+    const labelIds = await Promise.all(labels.map(name => upsertLabelIdByName(name)));
+    const transactionLabels = labelIds.map(label_id => ({
+      transaction_id: id,
+      label_id
+    }));
+    const { error: labelError } = await supabase.from('transaction_labels').insert(transactionLabels);
+    if (labelError) {
+      console.error('Error adding labels to transaction:', labelError);
     }
+  }
+
+  await addActivity('UPDATE', `Updated transaction: "${description}".`);
+  res.json({ ok: true });
+});
+
+app.delete('/api/transactions/:id', async (req, res) => {
+  const { id } = req.params;
+
+  const { data: transaction, error: fetchError } = await supabase
+    .from('transactions')
+    .select('description')
+    .eq('id', id)
+    .single();
+
+  if (fetchError) {
+    console.error('Error fetching transaction for deletion:', fetchError);
+  }
+
+  const { error: deleteError } = await supabase
+    .from('transactions')
+    .delete()
+    .eq('id', id);
+
+  if (deleteError) {
+    console.error('Error deleting transaction:', deleteError);
+    return res.status(500).json({ error: 'Failed to delete transaction' });
+  }
+
+  await addActivity('DELETE', `Deleted transaction: "${transaction?.description || 'Unknown'}".`);
+  res.json({ ok: true });
+});
+
+app.post('/api/transactions/bulk', async (req, res) => {
+  const items = Array.isArray(req.body) ? req.body : [];
+  if (items.length === 0) return res.json({ ok: true });
+
+  const transactions = items.map(item => ({
+    description: item.description,
+    amount: item.amount,
+    date: item.date,
+    type: item.type,
+    category: item.category,
+    quantity: item.quantity ?? 1,
+    recurring_transaction_id: item.recurringTransactionId ?? null
+  }));
+
+  const { data: insertedTxs, error: txError } = await supabase.from('transactions').insert(transactions).select('id');
+  if (txError) {
+    console.error('Bulk insert error:', txError);
+    return res.status(500).json({ error: 'Failed to bulk insert transactions' });
+  }
+
+  const labelPromises = items.flatMap((item, i) => {
+    const labels = item.labels || [];
+    if (labels.length === 0) return [];
+    const transactionId = insertedTxs[i].id;
+    return labels.map(async (name) => {
+      const labelId = await upsertLabelIdByName(name);
+      return { transaction_id: transactionId, label_id: labelId };
+    });
   });
-  tx();
-  addActivity('UPDATE', `Updated transaction: "${description}".`);
+
+  if (labelPromises.length > 0) {
+    const transactionLabels = await Promise.all(labelPromises);
+    await supabase.from('transaction_labels').insert(transactionLabels);
+  }
+
   res.json({ ok: true });
 });
 
 // ===== Planner: Tasks & Subtasks =====
-app.get('/api/tasks', (req, res) => {
-  const rows = db.prepare(`
-    SELECT t.*, GROUP_CONCAT(l.name) as labels
-    FROM tasks t
-    LEFT JOIN task_labels tl ON t.id = tl.task_id
-    LEFT JOIN labels l ON tl.label_id = l.id
-    GROUP BY t.id
-    ORDER BY t.updated_at DESC
-  `).all();
-  const tasks = rows.map(r => ({
-    id: r.id,
-    title: r.title,
-    notes: r.notes || '',
-    status: r.status,
-    priority: r.priority,
-    allDay: !!r.all_day,
-    start: r.start || null,
-    end: r.end || null,
-    due: r.due || null,
-    repeat: r.repeat_json ? JSON.parse(r.repeat_json) : null,
-    color: r.color || null,
-    labels: r.labels ? r.labels.split(',') : [],
-    gcalEventId: r.gcal_event_id || null,
-    createdAt: r.created_at,
-    updatedAt: r.updated_at,
-  }));
-  for (const t of tasks) {
-    t.subtasks = db.prepare('SELECT id, task_id as taskId, title, done FROM subtasks WHERE task_id = ?').all(t.id)
-      .map(s => ({ ...s, done: !!s.done }));
+app.get('/api/tasks', async (req, res) => {
+  const { data: tasks, error } = await supabase
+    .from('tasks')
+    .select(`
+      *,
+      labels:task_labels ( label:labels (name) ),
+      subtasks (*)
+    `)
+    .order('updated_at', { ascending: false });
+
+  if (error) {
+    console.error('Error fetching tasks:', error);
+    return res.status(500).json({ error: 'Failed to fetch tasks' });
   }
-  res.json(tasks);
+
+  const out = tasks.map(t => ({
+    ...t,
+    labels: t.labels.map(l => l.label.name),
+    allDay: t.all_day,
+    repeat: t.repeat_json,
+    gcalEventId: t.gcal_event_id,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+  }));
+
+  res.json(out);
 });
 
 app.post('/api/tasks', async (req, res) => {
-  const now = new Date().toISOString();
-  const id = randomUUID();
   const {
     title, notes = '', status = 'new', priority = 'medium', allDay = false,
     start = null, end = null, due = null, repeat = null, color = null, labels = [],
     subtasks = []
   } = req.body || {};
+
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
   }
 
-  const tx = db.transaction(() => {
-    db.prepare(`INSERT INTO tasks (id, title, notes, status, priority, all_day, start, end, due, repeat_json, color, gcal_event_id, gtask_id, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`)
-      .run(id, title, notes, status, priority, allDay ? 1 : 0, start, end, due, repeat ? JSON.stringify(repeat) : null, color, null, null, now, now);
-    for (const name of labels) {
-      const lid = upsertLabelIdByName(name);
-      db.prepare('INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)').run(id, lid);
-    }
-    for (const st of subtasks) {
-      db.prepare('INSERT INTO subtasks (id, task_id, title, done) VALUES (?, ?, ?, ?)')
-        .run(randomUUID(), id, st.title, st.done ? 1 : 0);
-    }
-  });
-  tx();
-  const oauth = getOAuthClientWithTokens();
+  const { data: task, error: taskError } = await supabase
+    .from('tasks')
+    .insert({
+      title, notes, status, priority, all_day: allDay, start, end, due,
+      repeat_json: repeat, color
+    })
+    .select('id')
+    .single();
+
+  if (taskError) {
+    console.error('Error creating task:', taskError);
+    return res.status(500).json({ error: 'Failed to create task' });
+  }
+
+  if (labels.length > 0) {
+    const labelIds = await Promise.all(labels.map(name => upsertLabelIdByName(name)));
+    const taskLabels = labelIds.map(label_id => ({ task_id: task.id, label_id }));
+    await supabase.from('task_labels').insert(taskLabels);
+  }
+
+  if (subtasks.length > 0) {
+    const subtaskData = subtasks.map(st => ({ task_id: task.id, title: st.title, done: st.done }));
+    await supabase.from('subtasks').insert(subtaskData);
+  }
+
+  const oauth = await getOAuthClientWithTokens();
   let gcalId = null;
   let gtaskId = null;
   if (oauth) {
     if (start && end) {
-      try { gcalId = await ensureEventForTask({ id, title, notes, start, end, repeat, gcalEventId: null }, oauth); } catch {}
+      try { gcalId = await ensureEventForTask({ id: task.id, title, notes, start, end, repeat, gcalEventId: null }, oauth); } catch {}
     }
-    try { gtaskId = await ensureTaskOnGoogle({ id, title, notes, due, status, gtaskId: null }, oauth); } catch {}
+    try { gtaskId = await ensureTaskOnGoogle({ id: task.id, title, notes, due, status, gtaskId: null }, oauth); } catch {}
   }
+
   if (gcalId || gtaskId) {
-    db.prepare('UPDATE tasks SET gcal_event_id=COALESCE(?, gcal_event_id), gtask_id=COALESCE(?, gtask_id) WHERE id=?')
-      .run(gcalId, gtaskId, id);
+    await supabase.from('tasks').update({ gcal_event_id: gcalId, gtask_id: gtaskId }).eq('id', task.id);
   }
-  res.json({ id });
+
+  res.json({ id: task.id });
 });
 
 app.put('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
-  const existing = db.prepare('SELECT * FROM tasks WHERE id = ?').get(id);
+  const { data: existing } = await supabase.from('tasks').select().eq('id', id).single();
   if (!existing) return res.status(404).json({ error: 'Not found' });
-  const now = new Date().toISOString();
+
   const {
     title = existing.title, notes = existing.notes, status = existing.status,
-    priority = existing.priority, allDay = !!existing.all_day,
+    priority = existing.priority, allDay = existing.all_day,
     start = existing.start, end = existing.end, due = existing.due,
-    repeat = existing.repeat_json ? JSON.parse(existing.repeat_json) : null,
-    color = existing.color, labels = [], subtasks = []
+    repeat = existing.repeat_json, color = existing.color, labels = [], subtasks = []
   } = req.body || {};
-  const tx = db.transaction(() => {
-    db.prepare(`UPDATE tasks SET title=?, notes=?, status=?, priority=?, all_day=?, start=?, end=?, due=?, repeat_json=?, color=?, updated_at=? WHERE id=?`)
-      .run(title, notes, status, priority, allDay ? 1 : 0, start, end, due, repeat ? JSON.stringify(repeat) : null, color, now, id);
-    db.prepare('DELETE FROM task_labels WHERE task_id=?').run(id);
-    for (const name of labels) {
-      const lid = upsertLabelIdByName(name);
-      db.prepare('INSERT INTO task_labels (task_id, label_id) VALUES (?, ?)').run(id, lid);
-    }
-    db.prepare('DELETE FROM subtasks WHERE task_id=?').run(id);
-    for (const st of subtasks) {
-      db.prepare('INSERT INTO subtasks (id, task_id, title, done) VALUES (?, ?, ?, ?)')
-        .run(st.id || randomUUID(), id, st.title, st.done ? 1 : 0);
-    }
-  });
-  tx();
-  const oauth = getOAuthClientWithTokens();
+
+  const { error: updateError } = await supabase
+    .from('tasks')
+    .update({
+      title, notes, status, priority, all_day: allDay, start, end, due,
+      repeat_json: repeat, color, updated_at: new Date().toISOString()
+    })
+    .eq('id', id);
+
+  if (updateError) {
+    console.error('Error updating task:', updateError);
+    return res.status(500).json({ error: 'Failed to update task' });
+  }
+
+  await supabase.from('task_labels').delete().eq('task_id', id);
+  if (labels.length > 0) {
+    const labelIds = await Promise.all(labels.map(name => upsertLabelIdByName(name)));
+    const taskLabels = labelIds.map(label_id => ({ task_id: id, label_id }));
+    await supabase.from('task_labels').insert(taskLabels);
+  }
+
+  await supabase.from('subtasks').delete().eq('task_id', id);
+  if (subtasks.length > 0) {
+    const subtaskData = subtasks.map(st => ({ task_id: id, title: st.title, done: st.done }));
+    await supabase.from('subtasks').insert(subtaskData);
+  }
+
+  const oauth = await getOAuthClientWithTokens();
   let gcalId = existing.gcal_event_id || null;
   let gtaskId = existing.gtask_id || null;
   if (oauth) {
@@ -473,46 +459,85 @@ app.put('/api/tasks/:id', async (req, res) => {
       try { gcalId = await ensureEventForTask({ id, title, notes, start, end, repeat, gcalEventId: gcalId }, oauth); } catch {}
     }
     try { gtaskId = await ensureTaskOnGoogle({ id, title, notes, due, status, gtaskId }, oauth); } catch {}
+    
+    // Sync task completion status with Google Calendar event
+    if (gcalId && status !== existing.status) {
+      try {
+        const calendar = google.calendar({ version: 'v3', auth: oauth });
+        const eventStatus = status === 'completed' ? 'cancelled' : 'confirmed';
+        await calendar.events.patch({
+          calendarId: 'primary',
+          eventId: gcalId,
+          requestBody: { status: eventStatus }
+        });
+      } catch (err) {
+        console.error('Failed to sync task status to calendar:', err.message);
+      }
+    }
   }
+
   if ((gcalId && gcalId !== existing.gcal_event_id) || (gtaskId && gtaskId !== existing.gtask_id)) {
-    db.prepare('UPDATE tasks SET gcal_event_id=COALESCE(?, gcal_event_id), gtask_id=COALESCE(?, gtask_id) WHERE id=?')
-      .run(gcalId, gtaskId, id);
+    await supabase.from('tasks').update({ gcal_event_id: gcalId, gtask_id: gtaskId }).eq('id', id);
   }
+
   res.json({ ok: true });
 });
 
 app.delete('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
-  const existing = db.prepare('SELECT gcal_event_id FROM tasks WHERE id = ?').get(id);
-  db.prepare('DELETE FROM subtasks WHERE task_id=?').run(id);
-  db.prepare('DELETE FROM task_labels WHERE task_id=?').run(id);
-  db.prepare('DELETE FROM tasks WHERE id=?').run(id);
-  const oauth = getOAuthClientWithTokens();
+  const { data: existing } = await supabase.from('tasks').select('gcal_event_id').eq('id', id).single();
+
+  await supabase.from('subtasks').delete().eq('task_id', id);
+  await supabase.from('task_labels').delete().eq('task_id', id);
+  const { error } = await supabase.from('tasks').delete().eq('id', id);
+
+  if (error) {
+    console.error('Error deleting task:', error);
+    return res.status(500).json({ error: 'Failed to delete task' });
+  }
+
+  const oauth = await getOAuthClientWithTokens();
   if (oauth && existing?.gcal_event_id) {
     try { await google.calendar({ version: 'v3', auth: oauth }).events.delete({ calendarId: 'primary', eventId: existing.gcal_event_id }); } catch {}
   }
   res.json({ ok: true });
 });
 
-app.get('/api/tasks/board', (req, res) => {
-  const rows = db.prepare('SELECT status, COUNT(*) as c FROM tasks GROUP BY status').all();
+app.get('/api/tasks/board', async (req, res) => {
+  const { data, error } = await supabase.from('tasks').select('status');
+  if (error) {
+    console.error('Error fetching task board data:', error);
+    return res.status(500).json({ error: 'Failed to fetch task board data' });
+  }
+  const counts = data.reduce((acc, { status }) => {
+    acc[status] = (acc[status] || 0) + 1;
+    return acc;
+  }, {});
+  const rows = Object.entries(counts).map(([status, c]) => ({ status, c }));
   res.json(rows);
 });
 
-app.get('/api/tasks/agenda', (req, res) => {
+app.get('/api/tasks/agenda', async (req, res) => {
   const range = String(req.query.range || 'today');
   const today = new Date();
-  today.setHours(0,0,0,0);
+  today.setHours(0, 0, 0, 0);
   const start = new Date(today);
   const end = new Date(today);
   if (range === 'week') end.setDate(start.getDate() + 7);
+
+  let query = supabase.from('tasks');
   if (range === 'overdue') {
-    const items = db.prepare('SELECT * FROM tasks WHERE due IS NOT NULL AND due < ? ORDER BY due ASC').all(today.toISOString());
-    return res.json(items);
+    query = query.select('*').not('due', 'is', null).lt('due', today.toISOString()).order('due', { ascending: true });
+  } else {
+    query = query.select('*').or(`and(start.gte.${start.toISOString()},start.lte.${end.toISOString()}),and(due.gte.${start.toISOString()},due.lte.${end.toISOString()})`).order('start', { nullsFirst: true }).order('due', { nullsFirst: true });
   }
-  const items = db.prepare('SELECT * FROM tasks WHERE (start BETWEEN ? AND ?) OR (due BETWEEN ? AND ?) ORDER BY COALESCE(start, due) ASC')
-    .all(start.toISOString(), end.toISOString(), start.toISOString(), end.toISOString());
-  res.json(items);
+
+  const { data, error } = await query;
+  if (error) {
+    console.error('Error fetching agenda items:', error);
+    return res.status(500).json({ error: 'Failed to fetch agenda items' });
+  }
+  res.json(data);
 });
 
 // ===== Google Calendar OAuth & Events =====
@@ -558,8 +583,25 @@ app.delete('/api/calendar/events/:id', withOAuth2(async (req, res, oauth) => {
   res.json({ ok: true });
 }));
 
-app.get('/api/calendar/disconnect', (req, res) => {
-  db.prepare('DELETE FROM settings WHERE key = ?').run('gcal_tokens');
+app.put('/api/calendar/events/:id/toggle', withOAuth2(async (req, res, oauth) => {
+  const calendar = google.calendar({ version: 'v3', auth: oauth });
+  const { currentStatus } = req.body;
+  const isCancelled = currentStatus === 'cancelled' || currentStatus === 'completed';
+  
+  // Toggle: if currently cancelled/completed, restore to confirmed; otherwise mark as cancelled
+  const newStatus = isCancelled ? 'confirmed' : 'cancelled';
+  
+  const updated = await calendar.events.patch({
+    calendarId: 'primary',
+    eventId: req.params.id,
+    requestBody: { status: newStatus }
+  });
+  
+  res.json(updated.data);
+}));
+
+app.get('/api/calendar/disconnect', async (req, res) => {
+  await supabase.from('settings').delete().eq('key', 'gcal_tokens');
   res.json({ ok: true });
 });
 
@@ -573,229 +615,269 @@ app.get('/api/google-tasks', withOAuth2(async (req, res, oauth) => {
   res.json(r.data.items || []);
 }));
 
-app.delete('/api/transactions/:id', (req, res) => {
-  const { id } = req.params;
-  const row = db.prepare('SELECT description FROM transactions WHERE id=?').get(id);
-  db.prepare('DELETE FROM transactions WHERE id=?').run(id);
-  addActivity('DELETE', `Deleted transaction: "${row?.description || 'Unknown'}".`);
-  res.json({ ok: true });
-});
-
-app.post('/api/transactions/bulk', (req, res) => {
-  const items = Array.isArray(req.body) ? req.body : [];
-  const insertTx = db.prepare(
-    'INSERT INTO transactions (id, description, amount, date, type, category, quantity, recurring_transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)'
-  );
-  const insertJunction = db.prepare(
-    'INSERT INTO transaction_labels (transaction_id, label_id) VALUES (?, ?)'
-  );
-  const tx = db.transaction(() => {
-    for (const item of items) {
-      const id = randomUUID();
-      insertTx.run(id, item.description, item.amount, item.date, item.type, item.category, item.quantity ?? 1, item.recurringTransactionId ?? null);
-      const labels = item.labels || [];
-      for (const name of labels) {
-        const lid = upsertLabelIdByName(name);
-        insertJunction.run(id, lid);
-      }
-    }
+app.put('/api/google-tasks/:id/toggle', withOAuth2(async (req, res, oauth) => {
+  const tasksApi = google.tasks({ version: 'v1', auth: oauth });
+  const { currentStatus } = req.body;
+  
+  // Google Tasks status: 'needsAction' or 'completed'
+  const newStatus = currentStatus === 'completed' ? 'needsAction' : 'completed';
+  
+  const updated = await tasksApi.tasks.patch({
+    tasklist: '@default',
+    task: req.params.id,
+    requestBody: { status: newStatus, id: req.params.id }
   });
-  tx();
-  res.json({ ok: true });
+  
+  res.json(updated.data);
+}));
+
+app.get('/api/budgets', async (req, res) => {
+  const { data, error } = await supabase.from('budgets').select('*').order('category');
+  if (error) return res.status(500).json({ error: 'Failed to fetch budgets' });
+  res.json(data);
 });
 
-app.get('/api/budgets', (req, res) => {
-  const rows = db.prepare('SELECT * FROM budgets ORDER BY category').all();
-  res.json(rows.map(r => ({ ...r, amount: Number(r.amount) })));
-});
-
-app.post('/api/budgets/category', (req, res) => {
+app.post('/api/budgets/category', async (req, res) => {
   const { category, amount, month, year } = req.body || {};
-  const id = randomUUID();
-  const tx = db.transaction(() => {
-    db.prepare('INSERT INTO budgets (id, category, amount, month, year) VALUES (?, ?, ?, ?, ?)')
-      .run(id, category, amount, month, year);
-  });
-  try {
-    tx();
-  } catch (e) {
-    return res.status(400).json({ error: String(e) });
+  const { data, error } = await supabase.from('budgets').insert({ category, amount, month, year }).select().single();
+  if (error) {
+    console.error('Error creating budget:', error);
+    return res.status(400).json({ error: 'Failed to create budget' });
   }
-  addActivity('CREATE', `Set budget for ${category} to $${Number(amount).toFixed(2)}.`);
-  res.json({ id, category, amount, month, year });
+  await addActivity('CREATE', `Set budget for ${category} to $${Number(amount).toFixed(2)}.`);
+  res.json(data);
 });
 
-app.post('/api/budgets/overall', (req, res) => {
+app.post('/api/budgets/overall', async (req, res) => {
   const { amount, month, year } = req.body || {};
-  const sel = db.prepare('SELECT id FROM budgets WHERE category=? AND month=? AND year=?')
-    .get(OVERALL_BUDGET_CATEGORY, month, year);
-  if (sel) {
-    db.prepare('UPDATE budgets SET amount=? WHERE id=?').run(amount, sel.id);
-    addActivity('UPDATE', `Updated overall budget for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
-  } else {
-    const id = randomUUID();
-    db.prepare('INSERT INTO budgets (id, category, amount, month, year) VALUES (?, ?, ?, ?, ?)')
-      .run(id, OVERALL_BUDGET_CATEGORY, amount, month, year);
-    addActivity('CREATE', `Set overall budget for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
+  const { data, error } = await supabase.from('budgets').upsert({ category: OVERALL_BUDGET_CATEGORY, amount, month, year }, { onConflict: 'category,month,year' }).select().single();
+
+  if (error) {
+    console.error('Error upserting overall budget:', error);
+    return res.status(500).json({ error: 'Failed to set overall budget' });
   }
-  const out = db.prepare('SELECT * FROM budgets WHERE category=? AND month=? AND year=?')
-    .get(OVERALL_BUDGET_CATEGORY, month, year);
-  res.json(out);
+
+  await addActivity('UPDATE', `Updated overall budget for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
+  res.json(data);
 });
 
-app.get('/api/categories', (req, res) => {
-  const rows = db.prepare('SELECT * FROM categories ORDER BY name').all();
-  res.json(rows.map(r => ({ ...r, isDefault: !!r.isDefault })));
+app.get('/api/categories', async (req, res) => {
+  const { data, error } = await supabase.from('categories').select('*').order('name');
+  if (error) return res.status(500).json({ error: 'Failed to fetch categories' });
+  res.json(data);
 });
 
-app.post('/api/categories', (req, res) => {
+app.post('/api/categories', async (req, res) => {
   const { name, type } = req.body || {};
-  const id = randomUUID();
-  db.prepare('INSERT INTO categories (id, name, type, isDefault) VALUES (?, ?, ?, 0)')
-    .run(id, name, type);
-  addActivity('CREATE', `Created new ${String(type).toLowerCase()} category: "${name}".`);
-  res.json({ id, name, type, isDefault: false });
+  const { data, error } = await supabase.from('categories').insert({ name, type }).select().single();
+  if (error) {
+    console.error('Error creating category:', error);
+    return res.status(500).json({ error: 'Failed to create category' });
+  }
+  await addActivity('CREATE', `Created new ${String(type).toLowerCase()} category: "${name}".`);
+  res.json(data);
 });
 
-app.put('/api/categories/:id', (req, res) => {
+app.put('/api/categories/:id', async (req, res) => {
   const { id } = req.params;
   const { newName, oldName } = req.body || {};
-  const tx = db.transaction(() => {
-    db.prepare('UPDATE categories SET name=? WHERE id=?').run(newName, id);
-    db.prepare('UPDATE transactions SET category=? WHERE category=?').run(newName, oldName);
-    db.prepare('UPDATE budgets SET category=? WHERE category=?').run(newName, oldName);
-  });
-  tx();
-  addActivity('UPDATE', `Updated category "${oldName}" to "${newName}".`);
+
+  const { error: catErr } = await supabase.from('categories').update({ name: newName }).eq('id', id);
+  if (catErr) return res.status(500).json({ error: 'Failed to update category name' });
+
+  const { error: txErr } = await supabase.from('transactions').update({ category: newName }).eq('category', oldName);
+  if (txErr) console.error('Failed to update transactions category');
+
+  const { error: budErr } = await supabase.from('budgets').update({ category: newName }).eq('category', oldName);
+  if (budErr) console.error('Failed to update budgets category');
+
+  await addActivity('UPDATE', `Updated category "${oldName}" to "${newName}".`);
   res.json({ ok: true });
 });
 
-app.delete('/api/categories/:id', (req, res) => {
+app.delete('/api/categories/:id', async (req, res) => {
   const { id } = req.params;
-  const row = db.prepare('SELECT name FROM categories WHERE id=?').get(id);
-  db.prepare('DELETE FROM categories WHERE id=?').run(id);
-  addActivity('DELETE', `Deleted category "${row?.name || 'Unknown'}".`);
-  res.json({ ok: true });
-});
+  const { data: category, error: fetchError } = await supabase.from('categories').select('name').eq('id', id).single();
+  if (fetchError) console.error('Could not fetch category for activity log');
 
-app.get('/api/recurring', (req, res) => {
-  const rows = db.prepare(`
-    SELECT r.id, r.description, r.amount, r.type, r.category, r.start_date as startDate, r.frequency, r.day_of_month as dayOfMonth,
-           GROUP_CONCAT(l.name) as labels
-    FROM recurring_transactions r
-    LEFT JOIN recurring_transaction_labels rtl ON r.id = rtl.recurring_transaction_id
-    LEFT JOIN labels l ON rtl.label_id = l.id
-    GROUP BY r.id
-    ORDER BY r.start_date DESC
-  `).all();
-  const out = rows.map(r => ({ ...r, amount: Number(r.amount), labels: r.labels ? r.labels.split(',') : [] }));
-  res.json(out);
-});
-
-app.post('/api/recurring', (req, res) => {
-  const { description, amount, type, category, startDate, frequency = 'monthly', dayOfMonth, labels = [] } = req.body || {};
-  const id = randomUUID();
-  const tx = db.transaction(() => {
-    db.prepare('INSERT INTO recurring_transactions (id, description, amount, type, category, start_date, frequency, day_of_month) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-      .run(id, description, amount, type, category, startDate, frequency, dayOfMonth);
-    for (const name of labels) {
-      const lid = upsertLabelIdByName(name);
-      db.prepare('INSERT INTO recurring_transaction_labels (recurring_transaction_id, label_id) VALUES (?, ?)')
-        .run(id, lid);
-    }
-  });
-  tx();
-  addActivity('CREATE', `Created recurring transaction: "${description}".`);
-  res.json({ id, description, amount, type, category, startDate, frequency, dayOfMonth, labels });
-});
-
-app.delete('/api/recurring/:id', (req, res) => {
-  const { id } = req.params;
-  const row = db.prepare('SELECT description FROM recurring_transactions WHERE id=?').get(id);
-  db.prepare('DELETE FROM recurring_transactions WHERE id=?').run(id);
-  addActivity('DELETE', `Deleted recurring transaction: "${row?.description || 'Unknown'}".`);
-  res.json({ ok: true });
-});
-
-app.post('/api/recurring/generate-due', (req, res) => {
-  const recurring = db.prepare(`
-    SELECT r.id, r.description, r.amount, r.type, r.category, r.start_date as startDate, r.day_of_month as dayOfMonth
-    FROM recurring_transactions r
-  `).all();
-  const today = new Date();
-  today.setUTCHours(0,0,0,0);
-  let generated = 0;
-  const tx = db.transaction(() => {
-    for (const r of recurring) {
-      const last = db.prepare('SELECT MAX(date) as d FROM transactions WHERE recurring_transaction_id=?').get(r.id)?.d || null;
-      const rLabelRows = db.prepare('SELECT l.id as labelId FROM recurring_transaction_labels rtl JOIN labels l ON rtl.label_id = l.id WHERE rtl.recurring_transaction_id = ?').all(r.id);
-      let cursor = new Date(last || r.startDate);
-      if (last) cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-      while (cursor <= today) {
-        const year = cursor.getUTCFullYear();
-        const month = cursor.getUTCMonth();
-        const dim = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-        const day = Math.min(r.dayOfMonth, dim);
-        const genDate = new Date(Date.UTC(year, month, day));
-        if (genDate <= today && (!last || genDate > new Date(last))) {
-          const id = randomUUID();
-          db.prepare('INSERT INTO transactions (id, description, amount, date, type, category, quantity, recurring_transaction_id) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
-            .run(id, r.description, r.amount, genDate.toISOString().split('T')[0], r.type, r.category, 1, r.id);
-          for (const row of rLabelRows) {
-            db.prepare('INSERT INTO transaction_labels (transaction_id, label_id) VALUES (?, ?)')
-              .run(id, row.labelId);
-          }
-          generated++;
-        }
-        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
-      }
-    }
-  });
-  tx();
-  res.json({ generated });
-});
-
-app.get('/api/savings', (req, res) => {
-  const rows = db.prepare('SELECT * FROM savings ORDER BY year, month').all();
-  res.json(rows.map(r => ({ ...r, amount: Number(r.amount) })));
-});
-
-app.post('/api/savings/upsert', (req, res) => {
-  const { amount, month, year } = req.body || {};
-  const sel = db.prepare('SELECT id FROM savings WHERE month=? AND year=?').get(month, year);
-  if (sel) {
-    db.prepare('UPDATE savings SET amount=? WHERE id=?').run(amount, sel.id);
-    addActivity('UPDATE', `Updated savings for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
-  } else {
-    const id = randomUUID();
-    db.prepare('INSERT INTO savings (id, amount, month, year) VALUES (?, ?, ?, ?)')
-      .run(id, amount, month, year);
-    addActivity('CREATE', `Set savings for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
+  const { error } = await supabase.from('categories').delete().eq('id', id);
+  if (error) {
+    console.error('Error deleting category:', error);
+    return res.status(500).json({ error: 'Failed to delete category' });
   }
-  const out = db.prepare('SELECT * FROM savings WHERE month=? AND year=?').get(month, year);
+  await addActivity('DELETE', `Deleted category "${category?.name || 'Unknown'}".`);
+  res.json({ ok: true });
+});
+
+app.get('/api/recurring', async (req, res) => {
+  const { data, error } = await supabase
+    .from('recurring_transactions')
+    .select(`
+      id, description, amount, type, category, start_date, frequency, day_of_month,
+      labels:recurring_transaction_labels ( label:labels (name) )
+    `)
+    .order('start_date', { ascending: false });
+
+  if (error) return res.status(500).json({ error: 'Failed to fetch recurring transactions' });
+
+  const out = data.map(r => ({
+    id: r.id,
+    description: r.description,
+    amount: r.amount,
+    type: r.type,
+    category: r.category,
+    startDate: r.start_date,
+    frequency: r.frequency,
+    dayOfMonth: r.day_of_month,
+    labels: r.labels.map(l => l.label.name)
+  }));
   res.json(out);
 });
 
-app.get('/api/activity', (req, res) => {
-  const rows = db.prepare('SELECT id, timestamp, action, description FROM activity_log ORDER BY timestamp DESC').all();
-  res.json(rows);
+app.post('/api/recurring', async (req, res) => {
+  const { description, amount, type, category, startDate, frequency = 'monthly', dayOfMonth, labels = [] } = req.body || {};
+  const { data: recurring, error } = await supabase
+    .from('recurring_transactions')
+    .insert({ description, amount, type, category, start_date: startDate, frequency, day_of_month: dayOfMonth })
+    .select('id')
+    .single();
+
+  if (error) {
+    console.error('Error creating recurring tx:', error);
+    return res.status(500).json({ error: 'Failed to create recurring transaction' });
+  }
+
+  if (labels.length > 0) {
+    const labelIds = await Promise.all(labels.map(name => upsertLabelIdByName(name)));
+    const recurringLabels = labelIds.map(label_id => ({ recurring_transaction_id: recurring.id, label_id }));
+    await supabase.from('recurring_transaction_labels').insert(recurringLabels);
+  }
+
+  await addActivity('CREATE', `Created recurring transaction: "${description}".`);
+  res.json({ id: recurring.id, description, amount, type, category, startDate, frequency, dayOfMonth, labels });
 });
 
-app.get('/api/settings', (req, res) => {
-  const theme = db.prepare('SELECT value FROM settings WHERE key = ?').get('theme')?.value || 'dark-blue';
-  const color = db.prepare('SELECT value FROM settings WHERE key = ?').get('customThemeColor')?.value || '#5e258a';
+app.delete('/api/recurring/:id', async (req, res) => {
+  const { id } = req.params;
+  const { data: recurring, error: fetchError } = await supabase.from('recurring_transactions').select('description').eq('id', id).single();
+  if (fetchError) console.error('Could not fetch recurring tx for activity log');
+
+  await supabase.from('recurring_transaction_labels').delete().eq('recurring_transaction_id', id);
+  const { error } = await supabase.from('recurring_transactions').delete().eq('id', id);
+
+  if (error) {
+    console.error('Error deleting recurring tx:', error);
+    return res.status(500).json({ error: 'Failed to delete recurring transaction' });
+  }
+  await addActivity('DELETE', `Deleted recurring transaction: "${recurring?.description || 'Unknown'}".`);
+  res.json({ ok: true });
+});
+
+app.post('/api/recurring/generate-due', async (req, res) => {
+  const { data: recurring, error: fetchErr } = await supabase
+    .from('recurring_transactions')
+    .select('*, labels:recurring_transaction_labels(label:labels(id))');
+
+  if (fetchErr) {
+    console.error('Error fetching recurring txs for generation:', fetchErr);
+    return res.status(500).json({ error: 'Could not fetch recurring transactions' });
+  }
+
+  const today = new Date();
+  today.setUTCHours(0, 0, 0, 0);
+  let generatedCount = 0;
+  const newTransactions = [];
+  const newTransactionLabels = [];
+
+  for (const r of recurring) {
+    const { data: lastTx } = await supabase
+      .from('transactions')
+      .select('date')
+      .eq('recurring_transaction_id', r.id)
+      .order('date', { ascending: false })
+      .limit(1)
+      .single();
+
+    let cursor = new Date((lastTx?.date) || r.start_date);
+    if (lastTx) cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+
+    while (cursor <= today) {
+      const year = cursor.getUTCFullYear();
+      const month = cursor.getUTCMonth();
+      const dim = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
+      const day = Math.min(r.day_of_month, dim);
+      const genDate = new Date(Date.UTC(year, month, day));
+
+      if (genDate <= today && (!lastTx || genDate > new Date(lastTx.date))) {
+        const newTxId = randomUUID();
+        newTransactions.push({
+          id: newTxId,
+          description: r.description,
+          amount: r.amount,
+          date: genDate.toISOString().split('T')[0],
+          type: r.type,
+          category: r.category,
+          quantity: 1,
+          recurring_transaction_id: r.id,
+        });
+        if (r.labels.length > 0) {
+          r.labels.forEach(l => {
+            newTransactionLabels.push({ transaction_id: newTxId, label_id: l.label.id });
+          });
+        }
+        generatedCount++;
+      }
+      cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    }
+  }
+
+  if (newTransactions.length > 0) {
+    const { error: txErr } = await supabase.from('transactions').insert(newTransactions);
+    if (txErr) console.error('Error generating transactions:', txErr);
+  }
+  if (newTransactionLabels.length > 0) {
+    const { error: labelErr } = await supabase.from('transaction_labels').insert(newTransactionLabels);
+    if (labelErr) console.error('Error generating transaction labels:', labelErr);
+  }
+
+  res.json({ generated: generatedCount });
+});
+
+app.get('/api/savings', async (req, res) => {
+  const { data, error } = await supabase.from('savings').select('*').order('year').order('month');
+  if (error) return res.status(500).json({ error: 'Failed to fetch savings' });
+  res.json(data);
+});
+
+app.post('/api/savings/upsert', async (req, res) => {
+  const { amount, month, year } = req.body || {};
+  const { data, error } = await supabase.from('savings').upsert({ amount, month, year }, { onConflict: 'month,year' }).select().single();
+
+  if (error) {
+    console.error('Error upserting savings:', error);
+    return res.status(500).json({ error: 'Failed to upsert savings' });
+  }
+
+  await addActivity('UPDATE', `Updated savings for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
+  res.json(data);
+});
+
+app.get('/api/activity', async (req, res) => {
+  const { data, error } = await supabase.from('activity_log').select('id, timestamp, action, description').order('timestamp', { ascending: false });
+  if (error) return res.status(500).json({ error: 'Failed to fetch activity' });
+  res.json(data);
+});
+
+app.get('/api/settings', async (req, res) => {
+  const theme = await getSetting('theme') || 'dark-blue';
+  const color = await getSetting('customThemeColor') || '#5e258a';
   res.json({ theme, customThemeColor: color });
 });
 
-app.post('/api/settings', (req, res) => {
+app.post('/api/settings', async (req, res) => {
   const { theme, customThemeColor } = req.body || {};
-  const tx = db.transaction(() => {
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
-      .run('theme', theme);
-    db.prepare('INSERT INTO settings (key, value) VALUES (?, ?) ON CONFLICT(key) DO UPDATE SET value=excluded.value')
-      .run('customThemeColor', customThemeColor);
-  });
-  tx();
+  await setSetting('theme', theme);
+  await setSetting('customThemeColor', customThemeColor);
   res.json({ ok: true });
 });
 

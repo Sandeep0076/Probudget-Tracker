@@ -136,10 +136,13 @@ const App: React.FC = () => {
       }
       const mappedTasks = tasks.map((t: any) => ({
         id: `gtask-${t.id}`,
+        gtaskId: t.id,
         title: t.title,
         start: t.due,
         end: t.due,
         allDay: true,
+        status: t.status,
+        isGtask: true,
       }));
       setCalendarEvents([...events, ...mappedTasks]);
     } catch (e) {
@@ -159,12 +162,14 @@ const App: React.FC = () => {
       }
       const mappedTasks = tasks.map((t: any) => ({
         id: `gtask-${t.id}`,
+        gtaskId: t.id,
         title: t.title,
         start: t.due,
         end: t.due,
         allDay: true,
+        status: t.status,
+        isGtask: true,
         gcalEventId: null,
-        gtaskId: t.id,
       }));
       setCalendarEvents([...events, ...mappedTasks]);
     } catch (e) {
@@ -357,16 +362,64 @@ const App: React.FC = () => {
     setIsTaskModalOpen(true);
   };
 
-  const handleSaveTask = async (payload: any) => {
-    await api.addTask(payload);
+  const handleSaveTask = async (payload: any, id?: string) => {
+    if (id) {
+      await api.updateTask(id, payload);
+    } else {
+      await api.addTask(payload);
+    }
     await loadTasks();
     await loadCalendarForWeek();
+    setPrefillTask(null); // Clear the prefill data after saving
   };
 
   const handleUpdateTask = async (id: string, patch: any) => {
     await api.updateTask(id, patch);
     await loadTasks();
     await loadCalendarForWeek();
+  };
+
+  const handleToggleEvent = async (event: any) => {
+    try {
+      if (event.isGtask) {
+        await api.toggleGoogleTask(event.gtaskId, event.status);
+      } else {
+        await api.toggleCalendarEvent(event.id, event.status || 'confirmed');
+      }
+      await loadCalendarForWeek();
+    } catch (err) {
+      console.error('Failed to toggle event', err);
+    }
+  };
+
+  const handleEditTask = (task: Task) => {
+    setPrefillTask({
+      title: task.title,
+      notes: task.notes,
+      priority: task.priority,
+      allDay: task.allDay,
+      start: task.start,
+      end: task.end,
+      due: task.due,
+      repeat: task.repeat,
+      color: task.color,
+      labels: task.labels,
+      subtasks: task.subtasks,
+      id: task.id
+    });
+    setIsTaskModalOpen(true);
+  };
+
+  const handleDeleteTask = async (taskId: string) => {
+    if (!confirm('Are you sure you want to delete this task?')) return;
+    try {
+      await api.deleteTask(taskId);
+      await loadTasks();
+      await loadCalendarForWeek();
+    } catch (err) {
+      console.error('Failed to delete task', err);
+      alert('Failed to delete task');
+    }
   };
 
   if (isLoading) {
@@ -451,13 +504,28 @@ const App: React.FC = () => {
           <PlannerHeader page={plannerPage} onNavigate={navigatePlanner} onNewTask={openNewTaskModal} />
           <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             {plannerPage === 'dashboard' && (
-              <PlannerDashboard tasks={tasks} events={calendarEvents} onRefresh={() => { loadTasks(); loadCalendarForWeek(); }} onToggleComplete={(t)=> handleUpdateTask(t.id, { status: t.status === 'completed' ? 'new' : 'completed' })} />
+              <PlannerDashboard
+                tasks={tasks}
+                events={calendarEvents}
+                onRefresh={() => { loadTasks(); loadCalendarForWeek(); }}
+                onToggleComplete={(t)=> handleUpdateTask(t.id, { status: t.status === 'completed' ? 'new' : 'completed' })}
+                onToggleEvent={handleToggleEvent}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteTask}
+              />
             )}
             {plannerPage === 'progress' && (
               <PlannerBoard tasks={tasks} onMove={(id, status)=> handleUpdateTask(id, { status })} />
             )}
             {plannerPage === 'calendar' && (
-              <PlannerCalendar tasks={tasks} externalEvents={calendarEvents} onCreateSlot={openNewTaskModalWithSlot} onDatesChange={handleCalendarDatesChange} />
+              <PlannerCalendar
+                tasks={tasks}
+                externalEvents={calendarEvents}
+                onCreateSlot={openNewTaskModalWithSlot}
+                onDatesChange={handleCalendarDatesChange}
+                onEditTask={handleEditTask}
+                onDeleteTask={handleDeleteTask}
+              />
             )}
             {plannerPage === 'backlog' && (
               <PlannerBacklog tasks={tasks} onPlanToday={(id)=> handleUpdateTask(id, { due: new Date().toISOString().split('T')[0] })} />
@@ -466,7 +534,10 @@ const App: React.FC = () => {
           <TaskModal
             isOpen={isTaskModalOpen}
             initial={prefillTask || undefined}
-            onClose={()=> setIsTaskModalOpen(false)}
+            onClose={()=> {
+              setIsTaskModalOpen(false);
+              setPrefillTask(null); // Clear prefill data when modal closes
+            }}
             onSave={handleSaveTask}
           />
         </>

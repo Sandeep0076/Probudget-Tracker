@@ -1,5 +1,6 @@
 import React from 'react';
 import { SettingsIcon } from '../icons/SettingsIcon';
+import { LogoIcon } from '../icons/LogoIcon';
 import { Page } from '../../App';
 
 export type PlannerPage = 'dashboard' | 'progress' | 'calendar' | 'backlog';
@@ -18,10 +19,10 @@ const Item: React.FC<{active:boolean;label:string;onClick:()=>void}> = ({
   <a
     href="#"
     onClick={(e)=>{e.preventDefault();onClick();}}
-    className={`px-4 py-2 rounded-t-md text-sm font-semibold transition-all border-b-2 ${
+    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${
           active
-            ? 'border-brand text-brand'
-            : 'border-transparent text-text-secondary hover:text-text-primary'
+            ? 'bg-surface shadow-inner text-text-primary'
+            : 'text-text-secondary hover:bg-surface/70 hover:text-text-primary'
         }`}
   >
     {label}
@@ -30,21 +31,27 @@ const Item: React.FC<{active:boolean;label:string;onClick:()=>void}> = ({
 
 const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTask }) => {
   return (
-    <header className="bg-surface border-b border-border-shadow sticky top-12 z-40">
+    <header className="bg-surface/80 backdrop-blur-xl border-b border-border-shadow shadow-neu-lg sticky top-12 z-40">
       <nav className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center justify-between h-14">
-          <div className="flex items-center gap-2">
-            <Item active={page==='dashboard'} label="Home/Dashboard" onClick={()=>onNavigate('dashboard')} />
+        <div className="flex items-center justify-between h-16">
+          <div className="flex items-center">
+            <div className="flex-shrink-0 flex items-center gap-2">
+              <LogoIcon className="h-8 w-8 text-text-primary" />
+              <span className="text-xl font-bold text-text-primary">ProBudget</span>
+            </div>
+            <div className="ml-10 flex items-baseline space-x-4">
+            <Item active={page==='dashboard'} label="Dashboard" onClick={()=>onNavigate('dashboard')} />
             <Item active={page==='progress'} label="Progressing Tasks" onClick={()=>onNavigate('progress')} />
             <Item active={page==='calendar'} label="Calendar" onClick={()=>onNavigate('calendar')} />
             <Item active={page==='backlog'} label="Backlogs" onClick={()=>onNavigate('backlog')} />
+            </div>
           </div>
           <div className="flex items-center gap-2">
             <button
               onClick={onNewTask}
-              className="px-3 py-2 text-sm font-medium rounded-md text-white bg-brand hover:bg-brand/90 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
+              className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md text-white bg-brand hover:bg-brand/90 transition-all transform hover:scale-105 shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
             >
-              New Task
+              <span>New Task</span>
             </button>
             <div className="h-6 w-px bg-border-shadow mx-2"></div>
             <button
