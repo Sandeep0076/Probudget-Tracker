@@ -1,6 +1,6 @@
 # ProBudget Tracker
 
-ProBudget Tracker is a modern budget tracking application with full persistence. All data (transactions, budgets, categories, savings, recurring items, settings, activity log) is stored in a SQLite database file located at the project root. The UI offers a sleek, customizable experience with AI-powered receipt scanning and comprehensive reporting features.
+ProBudget Tracker is a modern budget tracking application with full persistence. All data (transactions, budgets, categories, savings, recurring items, settings, activity log) is stored in a Supabase PostgreSQL database. The UI offers a sleek, customizable experience with AI-powered receipt scanning and comprehensive reporting features.
 
 ## ✨ Features
 
@@ -24,7 +24,7 @@ ProBudget Tracker is a modern budget tracking application with full persistence.
 - **Tailwind CSS:** A utility-first CSS framework for rapid UI development and custom designs.
 - **Recharts:** A composable charting library built on React components, used for financial reports.
 - **Node + Express:** Backend server that exposes REST APIs for all features.
-- **SQLite (better-sqlite3):** Fast embedded database used to persist data in `probudget.sqlite`.
+- **Supabase:** PostgreSQL database with real-time capabilities for data persistence.
 - **Google Gemini API:** Powers the AI receipt scanning and financial advisor chat features.
 
 ## 📂 Project Structure
@@ -61,7 +61,8 @@ The project is organized into frontend components, a simple backend server, and 
 ├── services/
 │   └── api.ts          # Frontend REST client talking to the backend
 ├── server/
-│   └── index.js        # Node/Express backend with SQLite (better-sqlite3)
+│   ├── index.js        # Node/Express backend with Supabase
+│   └── supabaseClient.js  # Supabase client configuration
 ├── utils/
 │   ├── file.ts
 │   ├── formatters.ts
@@ -71,7 +72,6 @@ The project is organized into frontend components, a simple backend server, and 
 ├── index.tsx
 ├── metadata.json
 ├── types.ts
-├── probudget.sqlite     # Created on first server start (persisted data)
 └── ...
 ```
 
@@ -79,7 +79,8 @@ The project is organized into frontend components, a simple backend server, and 
 
 - **`App.tsx`**: The root component that manages application state and orchestrates data flow via the REST API.
 - **`services/api.ts`**: Frontend API client. Wraps fetch calls to the backend for transactions, budgets, categories, savings, recurring items, settings, and activity log.
-- **`server/index.js`**: Express server. Hosts REST endpoints and persists data to `probudget.sqlite`. Initializes schema and seeds default categories on first run.
+- **`server/index.js`**: Express server. Hosts REST endpoints and persists data to Supabase PostgreSQL database.
+- **`server/supabaseClient.js`**: Supabase client configuration and initialization.
 - **`Header.tsx`**: The main navigation bar at the top of the page.
 - **`Dashboard.tsx`**: The main screen of the application, aggregating various components to provide a complete financial overview.
 - **`Budgets.tsx`**: The page for viewing and managing monthly budgets and savings goals.
@@ -108,13 +109,31 @@ The project is organized into frontend components, a simple backend server, and 
    npm install
    ```
 
-2. (Optional) Configure AI API key for receipt scanning by creating a `.env` file at the project root:
+2. Configure environment variables by creating a `.env` file at the project root:
 
    ```env
+   # Required: Supabase Configuration
+   SUPABASE_URL=https://your-project.supabase.co
+   SUPABASE_ANON_KEY=your_supabase_anon_key_here
+   
+   # Optional: AI Features
    GEMINI_API_KEY=your_google_gemini_api_key_here
+   
+   # Optional: Google Calendar Integration
+   GOOGLE_CLIENT_ID=your_google_client_id
+   GOOGLE_CLIENT_SECRET=your_google_client_secret
+   GOOGLE_REDIRECT_URI=http://localhost:4000/api/calendar/callback
    ```
 
-   Vite exposes `process.env.API_KEY` to the frontend from this variable.
+   **To get your Supabase credentials:**
+   1. Go to your [Supabase Dashboard](https://app.supabase.com)
+   2. Select your project
+   3. Go to Project Settings → API
+   4. Copy the `URL` and `anon/public` key
+
+3. Set up your Supabase database:
+   - The database schema is automatically created when you first run the application
+   - Default categories will be seeded on first use
 
 ### Development
 
@@ -125,7 +144,7 @@ The project is organized into frontend components, a simple backend server, and 
    ```
 
   This runs:
-  - Backend: http://localhost:4000 (Express + SQLite `probudget.sqlite`)
+  - Backend: http://localhost:4000 (Express + Supabase)
   - Frontend: http://localhost:3000 (Vite, proxies `/api` to backend)
 
 - Or run in two terminals:
@@ -135,7 +154,7 @@ The project is organized into frontend components, a simple backend server, and 
    npm run dev       # start frontend
    ```
 
-Visit http://localhost:3000 in your browser. Data will persist in `./probudget.sqlite`.
+Visit http://localhost:3000 in your browser. Data will persist in your Supabase database.
 
 ### Build & Preview
 
@@ -172,5 +191,4 @@ Note: The production build expects the backend to be running and reachable at th
 
 ## 🔒 Data Persistence
 
-- The application stores all data in `probudget.sqlite` at the project root.
-- The database is created automatically on first server start and seeded with default categories.
+\n## 🚀 Deployment (Render)\n\nYou can deploy the frontend and backend separately on Render.\n\n### 1. Backend (Web Service)\nCreate a Web Service pointing to this repository:\n\n- Build Command: `npm install`\n- Start Command: `npm start`\n- Environment Variables (add in dashboard – do NOT commit secrets):\n  - `SUPABASE_URL`\n  - `SUPABASE_ANON_KEY`\n  - `GEMINI_API_KEY` (optional, for AI features)\n  - `GOOGLE_CLIENT_ID` (optional, for Calendar/Tasks)\n  - `GOOGLE_CLIENT_SECRET`\n  - `GOOGLE_REDIRECT_URI` → `https://<your-backend>.onrender.com/api/calendar/callback`\n  - `ENCRYPTION_KEY` (optional, for secure token storage)\n\nThe server already listens on `process.env.PORT || 4000` so no changes needed for Render.\n\n### 2. Frontend (Static Site)\nCreate a Static Site pointing to the same repository:\n\n- Build Command: `npm install && npm run build`\n- Publish Directory: `dist`\n- Add any public (non-secret) Vite vars prefixed with `VITE_` if you expose them to the client.\n\n### 3. Automatic Deploys\nEnable auto-deploys on Git push for both services. Any commit to the tracked branch (e.g. `main`) will rebuild and redeploy.\n\n### 4. Local Development vs Production\nLocal:\n```bash\nnpm run dev:all\n```\nProduction:\nFrontend fetches `/api/*` from the backend domain. If they are on different domains, configure CORS on the backend (already enabled via `cors()` with default settings). For stricter settings, set `cors({ origin: 'https://<your-frontend>.onrender.com' })`.\n\n### 5. Infrastructure as Code (Optional)\nYou can use a `render.yaml` to define services. After pushing it, choose "Add Resource > Blueprint" in Render to provision from the file.\n\n### 6. Secret Rotation\nAll secrets currently in `.env` should be rotated since they were committed. Generate fresh:\n- Supabase anon key (regenerate if exposed)\n- Google OAuth Client Secret (create a new one in Google Cloud Console)\n- Gemini API Key (create a new key in Google AI Studio)\n\n### 7. Updating Redirect URI\nRemember to add `https://<your-backend>.onrender.com/api/calendar/callback` to your Google OAuth authorized redirect URIs.\n\n### 8. Troubleshooting\n| Symptom | Fix |\n|---------|-----|\n| 404 on API calls | Confirm backend service URL and that frontend points to correct base (same origin or full URL). |\n| OAuth failing | Check correct `GOOGLE_REDIRECT_URI` and that it matches Google Console. |\n| CORS errors | Ensure `cors()` is configured and origins match. |\n| Empty data | Ensure Supabase env vars are set in backend. |\n

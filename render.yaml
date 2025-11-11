@@ -1,0 +1,34 @@
+# Render infrastructure definition for ProBudget Tracker
+# See: https://render.com/docs/infrastructure-as-code
+
+services:
+  - type: web
+    name: probudget-backend
+    runtime: node
+    buildCommand: npm install
+    startCommand: npm start
+    autoDeploy: true
+    envVars:
+      - key: SUPABASE_URL
+        value: YOUR_SUPABASE_URL
+      - key: SUPABASE_ANON_KEY
+        value: YOUR_SUPABASE_ANON_KEY
+      - key: GEMINI_API_KEY
+        value: YOUR_GEMINI_API_KEY
+      - key: GOOGLE_CLIENT_ID
+        value: YOUR_GOOGLE_CLIENT_ID
+      - key: GOOGLE_CLIENT_SECRET
+        value: YOUR_GOOGLE_CLIENT_SECRET
+      - key: GOOGLE_REDIRECT_URI
+        value: https://probudget-backend.onrender.com/api/calendar/callback
+      - key: ENCRYPTION_KEY
+        value: CHANGE_ME_SECURE_KEY
+
+# NOTE: Static site blueprint validation may vary; if unsupported here, create the
+# frontend Static Site manually in the Render dashboard with:
+# Build Command: npm install && npm run build
+# Publish Directory: dist
+
+# After creating the services from this file (via Render Dashboard or CLI),
+# set the environment variable values in the Render dashboard.
+# For production GOOGLE_REDIRECT_URI use: https://probudget-backend.onrender.com/api/calendar/callback
