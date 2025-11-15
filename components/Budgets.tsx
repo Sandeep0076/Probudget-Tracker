@@ -1,6 +1,7 @@
 import React, { useState, useMemo } from 'react';
 import { Budget, Transaction, TransactionType, Category, Saving } from '../types';
 import AddBudgetModal from './AddBudgetModal';
+import EditBudgetModal from './EditBudgetModal';
 import BudgetCard from './BudgetCard';
 import OverallBudgetCard from './OverallBudgetCard';
 import OverallBudgetModal from './OverallBudgetModal';
@@ -17,13 +18,15 @@ interface BudgetsProps {
     savings: Saving[];
     onSetOverallBudget: (budgetData: { amount: number; month: number; year: number; }) => void;
     onAddCategoryBudget: (budget: Omit<Budget, 'id'>) => void;
+    onEditCategoryBudget: (budgetId: string, amount: number) => void;
     onSetSaving: (savingData: { amount: number; month: number; year: number; }) => void;
 }
 
-const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, transactions, categories, savings, onSetOverallBudget, onAddCategoryBudget, onSetSaving }) => {
+const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, transactions, categories, savings, onSetOverallBudget, onAddCategoryBudget, onEditCategoryBudget, onSetSaving }) => {
     const [isCategoryModalOpen, setIsCategoryModalOpen] = useState(false);
     const [isOverallModalOpen, setIsOverallModalOpen] = useState(false);
     const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
+    const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
     
     const today = new Date();
     const currentMonth = today.getMonth();
@@ -128,10 +131,11 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
             {monthlyCategoryBudgets.length > 0 ? (
                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {monthlyCategoryBudgets.map(budget => (
-                        <BudgetCard 
-                            key={budget.id} 
-                            budget={budget} 
+                        <BudgetCard
+                            key={budget.id}
+                            budget={budget}
                             spentAmount={spendingByCategory[budget.category] || 0}
+                            onEdit={() => setEditingBudget(budget)}
                         />
                     ))}
                 </div>
@@ -164,6 +168,13 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
                     currentAmount={selectedSaving?.amount}
                     month={selectedMonth}
                     year={selectedYear}
+                />
+            )}
+            {editingBudget && (
+                <EditBudgetModal
+                    budget={editingBudget}
+                    onClose={() => setEditingBudget(null)}
+                    onSave={onEditCategoryBudget}
                 />
             )}
         </div>

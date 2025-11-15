@@ -20,6 +20,15 @@ app.use(cors());
 app.use(express.json({ limit: '5mb' }));
 
 
+// Helper functions for amount conversion
+function toEuros(cents) {
+  return cents / 100;
+}
+
+function toCents(euros) {
+  return Math.round(euros * 100);
+}
+
 async function addActivity(action, description) {
   await supabase.from('activity_log').insert({ action, description });
 }
@@ -192,6 +201,7 @@ app.get('/api/transactions', async (req, res) => {
 
   const out = data.map(t => ({
     ...t,
+    amount: toEuros(t.amount),
     labels: t.labels.map(l => l.label.name)
   }));
 
@@ -206,7 +216,7 @@ app.post('/api/transactions', async (req, res) => {
 
   const { data: transaction, error: txError } = await supabase
     .from('transactions')
-    .insert({ description, amount, date, type, category, quantity, recurring_transaction_id: recurringTransactionId })
+    .insert({ description, amount: toCents(amount), date, type, category, quantity, recurring_transaction_id: recurringTransactionId })
     .select('id')
     .single();
 
@@ -237,7 +247,7 @@ app.put('/api/transactions/:id', async (req, res) => {
 
   const { error: updateError } = await supabase
     .from('transactions')
-    .update({ description, amount, date, type, category, quantity })
+    .update({ description, amount: toCents(amount), date, type, category, quantity })
     .eq('id', id);
 
   if (updateError) {
@@ -299,11 +309,11 @@ app.post('/api/transactions/bulk', async (req, res) => {
 
   const transactions = items.map(item => ({
     description: item.description,
-    amount: item.amount,
+    amount: toCents(item.amount),
     date: item.date,
     type: item.type,
     category: item.category,
-    quantity: item.quantity ?? 1,
+    quantity: Math.round(item.quantity ?? 1),
     recurring_transaction_id: item.recurringTransactionId ?? null
   }));
 
@@ -634,23 +644,41 @@ app.put('/api/google-tasks/:id/toggle', withOAuth2(async (req, res, oauth) => {
 app.get('/api/budgets', async (req, res) => {
   const { data, error } = await supabase.from('budgets').select('*').order('category');
   if (error) return res.status(500).json({ error: 'Failed to fetch budgets' });
-  res.json(data);
+  const out = data.map(b => ({ ...b, amount: toEuros(b.amount) }));
+  res.json(out);
 });
 
 app.post('/api/budgets/category', async (req, res) => {
   const { category, amount, month, year } = req.body || {};
-  const { data, error } = await supabase.from('budgets').insert({ category, amount, month, year }).select().single();
+  const { data, error } = await supabase.from('budgets').insert({ category, amount: toCents(amount), month, year }).select().single();
   if (error) {
     console.error('Error creating budget:', error);
     return res.status(400).json({ error: 'Failed to create budget' });
   }
   await addActivity('CREATE', `Set budget for ${category} to $${Number(amount).toFixed(2)}.`);
-  res.json(data);
+  res.json({ ...data, amount: toEuros(data.amount) });
+});
+
+app.put('/api/budgets/:id', async (req, res) => {
+  const { id } = req.params;
+  const { amount } = req.body || {};
+  
+  const { data: budget, error: fetchError } = await supabase.from('budgets').select('category').eq('id', id).single();
+  if (fetchError) return res.status(404).json({ error: 'Budget not found' });
+
+  const { error } = await supabase.from('budgets').update({ amount: toCents(amount) }).eq('id', id);
+  if (error) {
+    console.error('Error updating budget:', error);
+    return res.status(500).json({ error: 'Failed to update budget' });
+  }
+
+  await addActivity('UPDATE', `Updated budget for ${budget.category} to $${Number(amount).toFixed(2)}.`);
+  res.json({ ok: true });
 });
 
 app.post('/api/budgets/overall', async (req, res) => {
   const { amount, month, year } = req.body || {};
-  const { data, error } = await supabase.from('budgets').upsert({ category: OVERALL_BUDGET_CATEGORY, amount, month, year }, { onConflict: 'category,month,year' }).select().single();
+  const { data, error } = await supabase.from('budgets').upsert({ category: OVERALL_BUDGET_CATEGORY, amount: toCents(amount), month, year }, { onConflict: 'category,month,year' }).select().single();
 
   if (error) {
     console.error('Error upserting overall budget:', error);
@@ -658,7 +686,7 @@ app.post('/api/budgets/overall', async (req, res) => {
   }
 
   await addActivity('UPDATE', `Updated overall budget for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
-  res.json(data);
+  res.json({ ...data, amount: toEuros(data.amount) });
 });
 
 app.get('/api/categories', async (req, res) => {
@@ -723,7 +751,7 @@ app.get('/api/recurring', async (req, res) => {
   const out = data.map(r => ({
     id: r.id,
     description: r.description,
-    amount: r.amount,
+    amount: toEuros(r.amount),
     type: r.type,
     category: r.category,
     startDate: r.start_date,
@@ -738,7 +766,7 @@ app.post('/api/recurring', async (req, res) => {
   const { description, amount, type, category, startDate, frequency = 'monthly', dayOfMonth, labels = [] } = req.body || {};
   const { data: recurring, error } = await supabase
     .from('recurring_transactions')
-    .insert({ description, amount, type, category, start_date: startDate, frequency, day_of_month: dayOfMonth })
+    .insert({ description, amount: toCents(amount), type, category, start_date: startDate, frequency, day_of_month: dayOfMonth })
     .select('id')
     .single();
 
@@ -813,7 +841,7 @@ app.post('/api/recurring/generate-due', async (req, res) => {
         newTransactions.push({
           id: newTxId,
           description: r.description,
-          amount: r.amount,
+          amount: r.amount, // Already in cents in DB
           date: genDate.toISOString().split('T')[0],
           type: r.type,
           category: r.category,
@@ -846,12 +874,13 @@ app.post('/api/recurring/generate-due', async (req, res) => {
 app.get('/api/savings', async (req, res) => {
   const { data, error } = await supabase.from('savings').select('*').order('year').order('month');
   if (error) return res.status(500).json({ error: 'Failed to fetch savings' });
-  res.json(data);
+  const out = data.map(s => ({ ...s, amount: toEuros(s.amount) }));
+  res.json(out);
 });
 
 app.post('/api/savings/upsert', async (req, res) => {
   const { amount, month, year } = req.body || {};
-  const { data, error } = await supabase.from('savings').upsert({ amount, month, year }, { onConflict: 'month,year' }).select().single();
+  const { data, error } = await supabase.from('savings').upsert({ amount: toCents(amount), month, year }, { onConflict: 'month,year' }).select().single();
 
   if (error) {
     console.error('Error upserting savings:', error);
@@ -859,7 +888,7 @@ app.post('/api/savings/upsert', async (req, res) => {
   }
 
   await addActivity('UPDATE', `Updated savings for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
-  res.json(data);
+  res.json({ ...data, amount: toEuros(data.amount) });
 });
 
 app.get('/api/activity', async (req, res) => {

@@ -128,7 +128,16 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
       </div>
       
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-      <div className="space-y-4 lg:col-span-1">
+      {/* Today section - appears first on mobile/tablet, second on desktop */}
+      <div className="space-y-4 lg:col-span-1 lg:order-2">
+        <Section title="Today">
+          {today.length===0 && todayEvents.length===0 && <div className="text-sm text-gray-600">No tasks for today.</div>}
+          {todayEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
+          {today.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} />)}
+        </Section>
+      </div>
+      {/* Upcoming Calendar - appears second on mobile/tablet, first on desktop */}
+      <div className="space-y-4 lg:col-span-1 lg:order-1">
         <div className="relative bg-white backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 border border-white/40">
           <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
           <div className="relative flex items-center justify-between">
@@ -168,14 +177,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
           </div>
         </div>
       </div>
-      <div className="space-y-4 lg:col-span-1">
-        <Section title="Today">
-          {today.length===0 && todayEvents.length===0 && <div className="text-sm text-gray-600">No tasks for today.</div>}
-          {todayEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
-          {today.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} />)}
-        </Section>
-      </div>
-      <div className="space-y-4 lg:col-span-1">
+      {/* Overdue and Tomorrow - appears third on mobile/tablet, third on desktop */}
+      <div className="space-y-4 lg:col-span-1 lg:order-3">
         <Section title="Overdue">
           {overdue.length===0 && <div className="text-sm text-gray-600">All clear.</div>}
           {overdue.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} />)}
@@ -186,7 +189,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
           {tomorrow.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} />)}
         </Section>
       </div>
-      <div className="lg:col-span-3">
+      {/* Someday section - always appears at the bottom */}
+      <div className="lg:col-span-3 order-last">
         <Section title="Someday">
           {someday.length===0 && <div className="text-sm text-gray-600">No backlog items.</div>}
           {someday.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} />)}

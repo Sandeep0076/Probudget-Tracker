@@ -21,6 +21,10 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overall
   const monthlyExpenses = transactions
     .filter(t => t.type === TransactionType.EXPENSE && new Date(t.date).getMonth() === currentMonth && new Date(t.date).getFullYear() === currentYear)
     .reduce((sum, t) => sum + t.amount, 0);
+  
+  console.log('[Dashboard] Monthly expenses (raw from DB):', monthlyExpenses);
+  console.log('[Dashboard] Overall budget (raw from DB):', overallBudget?.amount);
+  console.log('[Dashboard] Sample transaction amounts:', transactions.slice(0, 3).map(t => ({ desc: t.description, amount: t.amount })));
 
   return (
     <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8">
