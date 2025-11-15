@@ -51,8 +51,8 @@ export const addOrUpdateSaving = (s: { amount: number; month: number; year: numb
 export const getActivityLog = () => get<ActivityLog[]>('/api/activity');
 
 // Settings
-export const getSettings = () => get<{ theme: string; customThemeColor: string; username: string }>(`/api/settings`);
-export const setSettings = (theme: string, customThemeColor: string, username: string) => post<{ ok: boolean }>(`/api/settings`, { theme, customThemeColor, username });
+export const getSettings = () => get<{ theme: string; customThemeColor: string; username: string; password: string }>(`/api/settings`);
+export const setSettings = (theme: string, customThemeColor: string, username: string, password: string) => post<{ ok: boolean }>(`/api/settings`, { theme, customThemeColor, username, password });
 
 // Planner: Tasks
 export const getTasks = () => get<Task[]>('/api/tasks');
