@@ -10,6 +10,7 @@ import ReportsPage from './components/ReportsPage';
 import ReceiptConfirmationPage from './components/ReceiptConfirmationPage';
 import SettingsPage from './components/SettingsPage';
 import EditTransactionModal from './components/EditTransactionModal';
+import LoginPage from './components/LoginPage';
 import { Transaction, TransactionType, Budget, Category, RecurringTransaction, TransactionFormData, Saving, ActivityLog, Task } from './types';
 import * as api from './services/api';
 import { applyCustomTheme } from './utils/theme';
@@ -26,6 +27,7 @@ export type Theme = 'dark-blue' | 'light' | 'dark' | 'custom';
 
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
   
   const [section, setSection] = useState<'budget' | 'planner'>('budget');
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
@@ -89,23 +91,39 @@ const App: React.FC = () => {
   useEffect(() => {
     const bootstrap = async () => {
       try {
+        console.log('[App] Starting bootstrap process...');
         const settings = await api.getSettings();
         setTheme((['dark-blue','light','dark','custom'] as Theme[]).includes(settings.theme as Theme) ? settings.theme as Theme : 'dark-blue');
         setCustomThemeColor(settings.customThemeColor || '#5e258a');
         setUsername(settings.username || 'Mr and Mrs Pathania');
         setPassword(settings.password || '');
-        await api.generateDueRecurringTransactions();
-        await loadData();
-        await loadTasks();
-        await loadCalendarForWeek();
+        console.log('[App] Settings loaded, theme:', settings.theme);
       } catch (e) {
-        console.error('Failed to initialize application:', e);
+        console.error('[App] Failed to load settings:', e);
       } finally {
         setIsLoading(false);
       }
     };
     bootstrap();
   }, []);
+
+  useEffect(() => {
+    if (isAuthenticated) {
+      const loadAppData = async () => {
+        try {
+          console.log('[App] Loading application data after authentication...');
+          await api.generateDueRecurringTransactions();
+          await loadData();
+          await loadTasks();
+          await loadCalendarForWeek();
+          console.log('[App] Application data loaded successfully');
+        } catch (e) {
+          console.error('[App] Failed to load application data:', e);
+        }
+      };
+      loadAppData();
+    }
+  }, [isAuthenticated]);
 
   const loadData = async () => {
     const [transactionsData, budgetsData, categoriesData, savingsData, logsData, recurringData] = await Promise.all([
@@ -440,6 +458,12 @@ const App: React.FC = () => {
     }
   };
 
+  const handleLoginSuccess = (loggedInUsername: string) => {
+    console.log('[App] Login successful for user:', loggedInUsername);
+    setUsername(loggedInUsername);
+    setIsAuthenticated(true);
+  };
+
   if (isLoading) {
     return (
       <div className="min-h-screen font-sans bg-transparent text-text-primary flex items-center justify-center">
@@ -447,8 +471,13 @@ const App: React.FC = () => {
       </div>
     );
   }
+
+  if (!isAuthenticated) {
+    console.log('[App] User not authenticated, showing login page');
+    return <LoginPage onLoginSuccess={handleLoginSuccess} />;
+  }
   
-  // No explicit DB error page needed now; API errors will show in console and flows
+  console.log('[App] User authenticated, rendering main app');
 
   const renderPage = () => {
     switch (currentPage) {

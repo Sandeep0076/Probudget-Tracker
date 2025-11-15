@@ -899,6 +899,108 @@ app.get('/api/activity', async (req, res) => {
   res.json(data);
 });
 
+// ===== Authentication =====
+app.post('/api/auth/login', async (req, res) => {
+  try {
+    const { username, password } = req.body || {};
+    console.log('Login attempt for username:', username);
+    
+    if (!username || !password) {
+      console.log('Login failed: Missing credentials');
+      return res.status(400).json({ error: 'Username and password are required' });
+    }
+    
+    // Get user from database
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, username, password')
+      .eq('username', username)
+      .single();
+    
+    if (error || !user) {
+      console.log('Login failed: User not found');
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+    
+    // Check password (in production, you should use bcrypt)
+    if (user.password !== password) {
+      console.log('Login failed: Invalid password');
+      return res.status(401).json({ error: 'Invalid username or password' });
+    }
+    
+    console.log('Login successful for user:', username);
+    res.json({ success: true, username: user.username });
+  } catch (error) {
+    console.error('Login error:', error);
+    res.status(500).json({ error: 'Login failed' });
+  }
+});
+
+app.post('/api/auth/verify-security-question', async (req, res) => {
+  try {
+    const { username, answer } = req.body || {};
+    console.log('Security question verification for username:', username);
+    
+    if (!username || !answer) {
+      console.log('Verification failed: Missing data');
+      return res.status(400).json({ error: 'Username and answer are required' });
+    }
+    
+    // Get user with security question/answer
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('id, username, security_question, security_answer')
+      .eq('username', username)
+      .single();
+    
+    if (error || !user) {
+      console.log('Verification failed: User not found');
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check answer (case-insensitive)
+    if (user.security_answer.toLowerCase() !== answer.toLowerCase()) {
+      console.log('Verification failed: Incorrect answer');
+      return res.status(401).json({ error: 'Incorrect answer' });
+    }
+    
+    console.log('Security question verified for user:', username);
+    res.json({ success: true, securityQuestion: user.security_question });
+  } catch (error) {
+    console.error('Security verification error:', error);
+    res.status(500).json({ error: 'Verification failed' });
+  }
+});
+
+app.post('/api/auth/reset-password', async (req, res) => {
+  try {
+    const { username, newPassword } = req.body || {};
+    console.log('Password reset attempt for username:', username);
+    
+    if (!username || !newPassword) {
+      console.log('Reset failed: Missing data');
+      return res.status(400).json({ error: 'Username and new password are required' });
+    }
+    
+    // Update password
+    const { error } = await supabase
+      .from('users')
+      .update({ password: newPassword })
+      .eq('username', username);
+    
+    if (error) {
+      console.error('Password reset error:', error);
+      return res.status(500).json({ error: 'Failed to reset password' });
+    }
+    
+    console.log('Password reset successful for user:', username);
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Password reset error:', error);
+    res.status(500).json({ error: 'Password reset failed' });
+  }
+});
+
 app.get('/api/settings', async (req, res) => {
   const theme = await getSetting('theme') || 'dark-blue';
   const color = await getSetting('customThemeColor') || '#5e258a';

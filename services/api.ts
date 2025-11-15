@@ -68,3 +68,8 @@ export const listGoogleTasks = () => get<any[]>(`/api/google-tasks`);
 export const toggleGoogleTask = (taskId: string, currentStatus: string) => put<any>(`/api/google-tasks/${taskId}/toggle`, { currentStatus });
 export const disconnectCalendar = () => get<{ ok: boolean }>(`/api/calendar/disconnect`);
 export const toggleCalendarEvent = (eventId: string, currentStatus: string) => put<any>(`/api/calendar/events/${eventId}/toggle`, { currentStatus });
+
+// Authentication
+export const login = (username: string, password: string) => post<{ success: boolean; username: string }>('/api/auth/login', { username, password });
+export const verifySecurityQuestion = (username: string, answer: string) => post<{ success: boolean; securityQuestion: string }>('/api/auth/verify-security-question', { username, answer });
+export const resetPassword = (username: string, newPassword: string) => post<{ success: boolean }>('/api/auth/reset-password', { username, newPassword });
