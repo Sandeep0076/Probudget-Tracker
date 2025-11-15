@@ -75,7 +75,7 @@ const ExpenseChart: React.FC<{transactions: Transaction[], className?: string}> 
   }];
   
   return (
-    <div className={`bg-white p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 h-full flex flex-col justify-between ${className || ''}`}>
+    <div className={`bg-card-bg backdrop-blur-xl p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 h-full flex flex-col justify-between ${className || ''}`}>
       <div>
         <h3 className="text-lg font-semibold text-text-primary mb-1">Monthly Expense Breakdown</h3>
         <p className="text-2xl font-bold text-text-primary">{formatCurrency(totalMonthlyExpenses)}</p>

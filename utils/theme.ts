@@ -93,12 +93,16 @@ export const applyCustomTheme = (baseColor: string) => {
   const labelBgLightnessPercent = Math.round(labelBgLightness * 100);
   const labelBorderLightnessPercent = Math.round(labelBorderLightness * 100);
 
+  const buttonBgLightness = l > 0.5 ? Math.max(0.15, l - 0.35) : Math.min(0.35, l + 0.15);
+  const buttonText = l > 0.5 ? '#1e293b' : '#f8fafc';
+
   const theme = {
     '--color-background-start': hslToHex(h, s, Math.max(0, l - 0.1)),
     '--color-background-end': hslToHex((h + 20) % 360, s, Math.max(0, l - 0.2)),
     '--color-surface': `hsla(${h}, ${Math.round(s * 80)}%, ${Math.round(Math.max(0, l - 0.05) * 100)}%, 0.4)`,
     '--color-surface-white': 'rgba(255, 255, 255, 0.95)',
     '--color-surface-light': 'rgba(255, 255, 255, 0.85)',
+    '--color-card-bg': `hsla(${h}, ${Math.round(s * 60)}%, ${Math.round((l + 0.1) * 100)}%, 0.2)`,
     '--color-text-primary': hslToHex(h, Math.min(1, s * 0.2), 0.95),
     '--color-text-secondary': hslToHex(h, Math.min(1, s * 0.15), 0.85),
     '--color-text-muted': hslToHex(h, Math.min(1, s * 0.1), 0.65),
@@ -116,6 +120,11 @@ export const applyCustomTheme = (baseColor: string) => {
     '--color-label-border': `hsla(${h}, ${saturationPercent}%, ${labelBorderLightnessPercent}%, 0.6)`,
     '--color-label-text': labelText,
     '--color-label-text-muted': labelTextMuted,
+    '--color-button-primary': `hsla(${h}, ${Math.round(s * 50)}%, ${Math.round(buttonBgLightness * 100)}%, 0.35)`,
+    '--color-button-text': buttonText,
+    '--color-modal-bg': `hsla(${h}, ${Math.round(s * 80)}%, ${Math.round(Math.max(0, l - 0.05) * 100)}%, 0.98)`,
+    '--color-input-bg': 'rgba(255, 255, 255, 0.1)',
+    '--color-input-border': `hsla(${(h + 180) % 360}, 100%, 70%, 0.2)`,
   };
 
   for (const [key, value] of Object.entries(theme)) {
