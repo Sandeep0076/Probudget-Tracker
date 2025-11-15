@@ -16,7 +16,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ activityLogs }) => {
 
     return (
         <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8">
-            <h1 className="text-2xl font-bold text-text-primary mb-8">Settings</h1>
+            <h1 className="text-2xl font-bold text-text-primary mb-8">Activity Log</h1>
             <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
                 {/* Activity Log */}
                 <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">

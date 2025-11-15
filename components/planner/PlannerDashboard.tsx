@@ -10,6 +10,7 @@ interface PlannerDashboardProps {
   onToggleEvent: (event: any) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
+  username: string;
 }
 
 const Section: React.FC<{ title: string; children: React.ReactNode }>=({title,children})=> (
@@ -65,7 +66,7 @@ const EventRow: React.FC<{ event: any; onToggle: () => void }>=({event, onToggle
   );
 };
 
-const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRefresh, onToggleComplete, onToggleEvent, onEditTask, onDeleteTask }) => {
+const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRefresh, onToggleComplete, onToggleEvent, onEditTask, onDeleteTask, username }) => {
   const now = new Date();
   const todayKey = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const tomorrowDate = new Date(now);
@@ -122,7 +123,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
   return (
     <>
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">Welcome back Mr and Mrs Pathania.</h1>
+        <h1 className="text-2xl font-bold text-text-primary">Welcome back {username}.</h1>
         <p className="text-text-secondary">Here's your task overview and schedule.</p>
       </div>
       
