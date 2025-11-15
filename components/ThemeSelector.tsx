@@ -9,6 +9,8 @@ interface ThemeSelectorProps {
   onCustomColorChange: (color: string) => void;
   username: string;
   onUsernameChange: (username: string) => void;
+  password: string;
+  onPasswordChange: (password: string) => void;
 }
 
 const ThemeSelector: React.FC<ThemeSelectorProps> = ({
@@ -17,12 +19,17 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   customThemeColor,
   onCustomColorChange,
   username,
-  onUsernameChange
+  onUsernameChange,
+  password,
+  onPasswordChange
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [localUsername, setLocalUsername] = useState(username);
+  const [localPassword, setLocalPassword] = useState(password);
   const [showSaved, setShowSaved] = useState(false);
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [passwordSaveTimeout, setPasswordSaveTimeout] = useState<NodeJS.Timeout | null>(null);
+  const [showPasswordSaved, setShowPasswordSaved] = useState(false);
   
   const themes: { id: Theme, name: string, bg: string }[] = [
     { id: 'dark-blue', name: 'Blue', bg: 'bg-gradient-to-br from-[#2563eb] to-[#1e3a8a]' },
@@ -65,9 +72,29 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
     setSaveTimeout(timeout);
   };
 
+  const handlePasswordChange = (value: string) => {
+    setLocalPassword(value);
+    
+    if (passwordSaveTimeout) {
+      clearTimeout(passwordSaveTimeout);
+    }
+    
+    const timeout = setTimeout(() => {
+      onPasswordChange(value);
+      setShowPasswordSaved(true);
+      setTimeout(() => setShowPasswordSaved(false), 2000);
+    }, 500);
+    
+    setPasswordSaveTimeout(timeout);
+  };
+
   React.useEffect(() => {
     setLocalUsername(username);
   }, [username]);
+
+  React.useEffect(() => {
+    setLocalPassword(password);
+  }, [password]);
 
   return (
     <>
@@ -84,7 +111,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
           <div className="p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow max-w-2xl w-full mx-4" style={{ backgroundColor: getModalBg() }} onClick={(e) => e.stopPropagation()}>
             <h2 className="text-xl font-semibold mb-4" style={{ color: getTextColor() }}>Settings</h2>
             
-            <div className="mb-6">
+            <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium" style={{ color: getTextColor() }}>Username</label>
                 {showSaved && (
@@ -97,6 +124,22 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                 onChange={(e) => handleUsernameChange(e.target.value)}
                 className="w-full px-3 py-2 rounded-lg bg-surface border border-border-shadow text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
                 placeholder="Enter your username"
+              />
+            </div>
+
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium" style={{ color: getTextColor() }}>Password</label>
+                {showPasswordSaved && (
+                  <span className="text-xs text-green-500 font-medium animate-pulse">✓ Saved</span>
+                )}
+              </div>
+              <input
+                type="password"
+                value={localPassword}
+                onChange={(e) => handlePasswordChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-surface border border-border-shadow text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                placeholder="Enter your password"
               />
             </div>
 

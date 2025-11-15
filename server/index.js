@@ -49,7 +49,9 @@ async function getSetting(key) {
 }
 
 async function setSetting(key, value) {
-    await supabase.from('settings').upsert({ key, value });
+    const { data, error } = await supabase.from('settings').upsert({ key, value }, { onConflict: 'key' });
+    if (error) throw error;
+    return data;
 }
 
 function encryptJSON(obj) {
@@ -900,18 +902,71 @@ app.get('/api/activity', async (req, res) => {
 app.get('/api/settings', async (req, res) => {
   const theme = await getSetting('theme') || 'dark-blue';
   const color = await getSetting('customThemeColor') || '#5e258a';
-  const username = await getSetting('username') || 'Mr and Mrs Pathania';
-  res.json({ theme, customThemeColor: color, username });
+  
+  // Get user data from users table
+  const { data: user, error } = await supabase
+    .from('users')
+    .select('username, password')
+    .limit(1)
+    .single();
+  
+  const username = user?.username || 'Mr and Mrs Pathania';
+  const password = user?.password || '';
+  
+  res.json({ theme, customThemeColor: color, username, password });
 });
 
 app.post('/api/settings', async (req, res) => {
-  const { theme, customThemeColor, username } = req.body || {};
-  await setSetting('theme', theme);
-  await setSetting('customThemeColor', customThemeColor);
-  if (username !== undefined) {
-    await setSetting('username', username);
+  try {
+    const { theme, customThemeColor, username, password } = req.body || {};
+    
+    // Update theme settings
+    if (theme !== undefined) {
+      await setSetting('theme', theme);
+    }
+    if (customThemeColor !== undefined) {
+      await setSetting('customThemeColor', customThemeColor);
+    }
+    
+    // Update user data in users table
+    if (username !== undefined || password !== undefined) {
+      // Check if user exists
+      const { data: existingUser } = await supabase
+        .from('users')
+        .select('id')
+        .limit(1)
+        .single();
+      
+      if (existingUser) {
+        // Update existing user
+        const updateData = {};
+        if (username !== undefined) updateData.username = username;
+        if (password !== undefined) updateData.password = password;
+        
+        const { error } = await supabase
+          .from('users')
+          .update(updateData)
+          .eq('id', existingUser.id);
+        
+        if (error) throw error;
+      } else {
+        // Insert new user
+        const { error } = await supabase
+          .from('users')
+          .insert({
+            username: username || 'Mr and Mrs Pathania',
+            password: password || ''
+          });
+        
+        if (error) throw error;
+      }
+    }
+    
+    res.json({ ok: true });
+  } catch (error) {
+    console.error('Error saving settings:', error);
+    res.status(500).json({ error: error.message });
   }
-  res.json({ ok: true });
 });
 
 app.listen(PORT, () => {

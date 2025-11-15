@@ -50,6 +50,7 @@ const App: React.FC = () => {
   const [theme, setTheme] = useState<Theme>('dark-blue');
   const [customThemeColor, setCustomThemeColor] = useState<string>('#5e258a');
   const [username, setUsername] = useState<string>('Mr and Mrs Pathania');
+  const [password, setPassword] = useState<string>('');
 
   useEffect(() => {
     // Clear any inline styles first, then set the class name or apply new styles.
@@ -66,18 +67,23 @@ const App: React.FC = () => {
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
-    api.setSettings(newTheme, customThemeColor, username).catch(console.error);
+    api.setSettings(newTheme, customThemeColor, username, password).catch(console.error);
   };
 
   const handleCustomThemeChange = (color: string) => {
     setTheme('custom');
     setCustomThemeColor(color);
-    api.setSettings('custom', color, username).catch(console.error);
+    api.setSettings('custom', color, username, password).catch(console.error);
   };
 
   const handleUsernameChange = (newUsername: string) => {
     setUsername(newUsername);
-    api.setSettings(theme, customThemeColor, newUsername).catch(console.error);
+    api.setSettings(theme, customThemeColor, newUsername, password).catch(console.error);
+  };
+
+  const handlePasswordChange = (newPassword: string) => {
+    setPassword(newPassword);
+    api.setSettings(theme, customThemeColor, username, newPassword).catch(console.error);
   };
 
   useEffect(() => {
@@ -87,6 +93,7 @@ const App: React.FC = () => {
         setTheme((['dark-blue','light','dark','custom'] as Theme[]).includes(settings.theme as Theme) ? settings.theme as Theme : 'dark-blue');
         setCustomThemeColor(settings.customThemeColor || '#5e258a');
         setUsername(settings.username || 'Mr and Mrs Pathania');
+        setPassword(settings.password || '');
         await api.generateDueRecurringTransactions();
         await loadData();
         await loadTasks();
@@ -493,6 +500,8 @@ const App: React.FC = () => {
         onCustomColorChange={handleCustomThemeChange}
         username={username}
         onUsernameChange={handleUsernameChange}
+        password={password}
+        onPasswordChange={handlePasswordChange}
       />
       {section === 'budget' ? (
         <>
