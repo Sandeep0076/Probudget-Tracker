@@ -38,6 +38,7 @@ const App: React.FC = () => {
   const [categories, setCategories] = useState<Category[]>([]);
   const [savings, setSavings] = useState<Saving[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
+  const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -93,12 +94,13 @@ const App: React.FC = () => {
   }, []);
 
   const loadData = async () => {
-    const [transactionsData, budgetsData, categoriesData, savingsData, logsData] = await Promise.all([
+    const [transactionsData, budgetsData, categoriesData, savingsData, logsData, recurringData] = await Promise.all([
       api.getTransactions(),
       api.getBudgets(),
       api.getCategories(),
       api.getSavings(),
       api.getActivityLog(),
+      api.getRecurringTransactions(),
     ]);
 
     const overall = budgetsData.find(b => b.category === api.OVERALL_BUDGET_CATEGORY) || null;
@@ -110,6 +112,7 @@ const App: React.FC = () => {
     setCategories(categoriesData);
     setSavings(savingsData);
     setActivityLogs(logsData);
+    setRecurringTransactions(recurringData);
   };
 
   const loadTasks = async () => {
@@ -448,7 +451,7 @@ const App: React.FC = () => {
       case 'budgets':
         return <Budgets overallBudget={overallBudget} categoryBudgets={categoryBudgets} transactions={transactions} onSetOverallBudget={handleSetOverallBudget} onAddCategoryBudget={handleAddCategoryBudget} onEditCategoryBudget={handleEditCategoryBudget} categories={categories} savings={savings} onSetSaving={handleSetSaving} />;
       case 'transactions':
-        return <TransactionsPage transactions={transactions} categories={categories} onAddTransactionClick={handleAddTransactionClick} onEditTransaction={handleEditTransactionClick} onDeleteTransaction={handleDeleteTransaction} />;
+        return <TransactionsPage transactions={transactions} recurringTransactions={recurringTransactions} categories={categories} onAddTransactionClick={handleAddTransactionClick} onEditTransaction={handleEditTransactionClick} onDeleteTransaction={handleDeleteTransaction} />;
       case 'categories':
         return <CategoriesPage categories={categories} transactions={transactions} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />;
       case 'reports':

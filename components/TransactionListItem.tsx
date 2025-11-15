@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from 'react';
 import { Transaction, TransactionType } from '../types';
-import { GroceriesIcon, IncomeSalaryIcon, TransportIcon, UtilitiesIcon, EntertainmentIcon, HealthIcon } from './icons/CategoryIcons';
+import { GroceriesIcon, IncomeSalaryIcon, TransportIcon, UtilitiesIcon, EntertainmentIcon, HealthIcon, RentIcon } from './icons/CategoryIcons';
+import { ShoppingIcon, FoodIcon, TravelIcon, HomeIcon, CarIcon, PetsIcon, GiftsIcon, EducationIcon, FitnessIcon, OtherIcon } from './icons/NewCategoryIcons';
 import { RecurringIcon } from './icons/RecurringIcon';
 import { DotsVerticalIcon } from './icons/DotsVerticalIcon';
 import { formatCurrency } from '../utils/formatters';
@@ -15,9 +16,23 @@ const categoryIcons: { [key:string]: React.ReactNode } = {
     'Transport': <TransportIcon />,
     'Entertainment': <EntertainmentIcon />,
     'Health': <HealthIcon />,
-    'Other': <div className="w-10 h-10 rounded-full bg-surface flex items-center justify-center text-text-muted text-xs font-mono">...</div>,
-    'Default': <div className="w-10 h-10 rounded-full bg-surface"></div>
+    'Rent': <RentIcon />,
+    'House Rent': <RentIcon />,
+    'Shopping': <ShoppingIcon />,
+    'Food': <FoodIcon />,
+    'Travel': <TravelIcon />,
+    'Home': <HomeIcon />,
+    'Car': <CarIcon />,
+    'Pets': <PetsIcon />,
+    'Gifts': <GiftsIcon />,
+    'Education': <EducationIcon />,
+    'Fitness': <FitnessIcon />,
+    'Other': <OtherIcon />
 }
+
+const getCategoryIcon = (category: string) => {
+    return categoryIcons[category] || <OtherIcon />;
+};
 
 interface TransactionListItemProps {
     transaction: Transaction;
@@ -79,7 +94,7 @@ const TransactionListItem: React.FC<TransactionListItemProps> = ({ transaction, 
         <li className="flex items-center justify-between py-4 border-b border-border-shadow last:border-b-0">
             <div className="flex items-center">
                 <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-surface shadow-inner text-accent">
-                    {categoryIcons[transaction.category] || categoryIcons['Default']}
+                    {getCategoryIcon(transaction.category)}
                 </div>
                 <div className="ml-4">
                     <div className="flex items-center gap-2">

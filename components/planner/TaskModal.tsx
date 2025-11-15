@@ -190,8 +190,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="custom-styled px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-colors shadow-neu-xs">Cancel</button>
-          <button disabled={saving || !title.trim()} onClick={handleSave} className="custom-styled px-4 py-2 rounded-md bg-button-primary text-button-text hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-colors shadow-neu-sm">Save</button>
+          <button onClick={onClose} className="custom-styled px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-all shadow-neu-xs">Cancel</button>
+          <button disabled={saving || !title.trim()} onClick={handleSave} className="custom-styled px-4 py-2 rounded-md bg-button-primary text-button-text hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-neu-sm">Save</button>
         </div>
       </div>
     </div>
