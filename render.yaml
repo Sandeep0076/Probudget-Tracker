@@ -41,8 +41,6 @@ services:
     envVars:
       - key: VITE_API_BASE_URL
         value: https://probudget-backend.onrender.com
-      - key: NODE_ENV
-        value: production
 
 # Instructions:
 # 1. Update all environment variables with your actual values in the Render dashboard
