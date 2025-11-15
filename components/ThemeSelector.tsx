@@ -7,15 +7,22 @@ interface ThemeSelectorProps {
   onThemeChange: (theme: Theme) => void;
   customThemeColor: string;
   onCustomColorChange: (color: string) => void;
+  username: string;
+  onUsernameChange: (username: string) => void;
 }
 
-const ThemeSelector: React.FC<ThemeSelectorProps> = ({ 
-  currentTheme, 
-  onThemeChange, 
-  customThemeColor, 
-  onCustomColorChange 
+const ThemeSelector: React.FC<ThemeSelectorProps> = ({
+  currentTheme,
+  onThemeChange,
+  customThemeColor,
+  onCustomColorChange,
+  username,
+  onUsernameChange
 }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
+  const [localUsername, setLocalUsername] = useState(username);
+  const [showSaved, setShowSaved] = useState(false);
+  const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   
   const themes: { id: Theme, name: string, bg: string }[] = [
     { id: 'dark-blue', name: 'Blue', bg: 'bg-gradient-to-br from-[#2563eb] to-[#1e3a8a]' },
@@ -42,6 +49,26 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
     return currentTheme === 'light' ? '#1e293b' : '#f8fafc';
   };
 
+  const handleUsernameChange = (value: string) => {
+    setLocalUsername(value);
+    
+    if (saveTimeout) {
+      clearTimeout(saveTimeout);
+    }
+    
+    const timeout = setTimeout(() => {
+      onUsernameChange(value);
+      setShowSaved(true);
+      setTimeout(() => setShowSaved(false), 2000);
+    }, 500);
+    
+    setSaveTimeout(timeout);
+  };
+
+  React.useEffect(() => {
+    setLocalUsername(username);
+  }, [username]);
+
   return (
     <>
       <button
@@ -55,7 +82,25 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-24 z-50" onClick={() => setIsModalOpen(false)}>
           <div className="p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow max-w-2xl w-full mx-4" style={{ backgroundColor: getModalBg() }} onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-semibold mb-4" style={{ color: getTextColor() }}>Theme</h2>
+            <h2 className="text-xl font-semibold mb-4" style={{ color: getTextColor() }}>Settings</h2>
+            
+            <div className="mb-6">
+              <div className="flex items-center justify-between mb-2">
+                <label className="block text-sm font-medium" style={{ color: getTextColor() }}>Username</label>
+                {showSaved && (
+                  <span className="text-xs text-green-500 font-medium animate-pulse">✓ Saved</span>
+                )}
+              </div>
+              <input
+                type="text"
+                value={localUsername}
+                onChange={(e) => handleUsernameChange(e.target.value)}
+                className="w-full px-3 py-2 rounded-lg bg-surface border border-border-shadow text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                placeholder="Enter your username"
+              />
+            </div>
+
+            <h3 className="text-lg font-semibold mb-3" style={{ color: getTextColor() }}>Theme</h3>
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
               {themes.map(theme => (
                 <button

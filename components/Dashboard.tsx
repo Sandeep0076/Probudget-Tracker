@@ -12,9 +12,10 @@ interface DashboardProps {
   overallBudget: Budget | null;
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (transactionId: string) => Promise<void>;
+  username: string;
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overallBudget, onEditTransaction, onDeleteTransaction }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overallBudget, onEditTransaction, onDeleteTransaction, username }) => {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
@@ -29,7 +30,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overall
   return (
     <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8">
       <div className="mb-6">
-        <h1 className="text-2xl font-bold text-text-primary">Welcome back Mr and Mrs Pathania.</h1>
+        <h1 className="text-2xl font-bold text-text-primary">Welcome back {username}.</h1>
         <p className="text-text-secondary">Here's your financial overview for this month.</p>
       </div>
 

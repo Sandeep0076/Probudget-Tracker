@@ -49,6 +49,7 @@ const App: React.FC = () => {
 
   const [theme, setTheme] = useState<Theme>('dark-blue');
   const [customThemeColor, setCustomThemeColor] = useState<string>('#5e258a');
+  const [username, setUsername] = useState<string>('Mr and Mrs Pathania');
 
   useEffect(() => {
     // Clear any inline styles first, then set the class name or apply new styles.
@@ -65,13 +66,18 @@ const App: React.FC = () => {
 
   const handleThemeChange = (newTheme: Theme) => {
     setTheme(newTheme);
-    api.setSettings(newTheme, customThemeColor).catch(console.error);
+    api.setSettings(newTheme, customThemeColor, username).catch(console.error);
   };
 
   const handleCustomThemeChange = (color: string) => {
     setTheme('custom');
     setCustomThemeColor(color);
-    api.setSettings('custom', color).catch(console.error);
+    api.setSettings('custom', color, username).catch(console.error);
+  };
+
+  const handleUsernameChange = (newUsername: string) => {
+    setUsername(newUsername);
+    api.setSettings(theme, customThemeColor, newUsername).catch(console.error);
   };
 
   useEffect(() => {
@@ -80,6 +86,7 @@ const App: React.FC = () => {
         const settings = await api.getSettings();
         setTheme((['dark-blue','light','dark','custom'] as Theme[]).includes(settings.theme as Theme) ? settings.theme as Theme : 'dark-blue');
         setCustomThemeColor(settings.customThemeColor || '#5e258a');
+        setUsername(settings.username || 'Mr and Mrs Pathania');
         await api.generateDueRecurringTransactions();
         await loadData();
         await loadTasks();
@@ -439,12 +446,13 @@ const App: React.FC = () => {
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
-        return <Dashboard 
-            transactions={transactions} 
-            onNavigate={navigate} 
-            overallBudget={overallBudget} 
+        return <Dashboard
+            transactions={transactions}
+            onNavigate={navigate}
+            overallBudget={overallBudget}
             onEditTransaction={handleEditTransactionClick}
             onDeleteTransaction={handleDeleteTransaction}
+            username={username}
         />;
       case 'addTransaction':
         return <AddTransaction onCancel={() => navigate('dashboard')} initialType={initialTransactionType} onSave={handleSaveTransaction} categories={categories} onScanReceipt={handleScanReceipt} />;
@@ -463,12 +471,13 @@ const App: React.FC = () => {
             activityLogs={activityLogs}
         />;
       default:
-        return <Dashboard 
-            transactions={transactions} 
-            onNavigate={navigate} 
-            overallBudget={overallBudget} 
+        return <Dashboard
+            transactions={transactions}
+            onNavigate={navigate}
+            overallBudget={overallBudget}
             onEditTransaction={handleEditTransactionClick}
             onDeleteTransaction={handleDeleteTransaction}
+            username={username}
         />;
     }
   }
@@ -482,6 +491,8 @@ const App: React.FC = () => {
         onThemeChange={handleThemeChange}
         customThemeColor={customThemeColor}
         onCustomColorChange={handleCustomThemeChange}
+        username={username}
+        onUsernameChange={handleUsernameChange}
       />
       {section === 'budget' ? (
         <>
@@ -519,6 +530,7 @@ const App: React.FC = () => {
                 onToggleEvent={handleToggleEvent}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
+                username={username}
               />
             )}
             {plannerPage === 'progress' && (

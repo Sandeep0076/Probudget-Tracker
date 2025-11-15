@@ -9,6 +9,8 @@ interface TopSwitcherProps {
   onThemeChange: (theme: Theme) => void;
   customThemeColor: string;
   onCustomColorChange: (color: string) => void;
+  username: string;
+  onUsernameChange: (username: string) => void;
 }
 
 const Tab: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }>=({ active, onClick, children })=>{
@@ -30,7 +32,9 @@ const TopSwitcher: React.FC<TopSwitcherProps> = ({
   currentTheme,
   onThemeChange,
   customThemeColor,
-  onCustomColorChange
+  onCustomColorChange,
+  username,
+  onUsernameChange
 }) => {
   return (
     <div className="bg-surface/80 backdrop-blur-xl border-b border-border-shadow shadow-neu-lg sticky top-0 z-50">
@@ -45,6 +49,8 @@ const TopSwitcher: React.FC<TopSwitcherProps> = ({
             onThemeChange={onThemeChange}
             customThemeColor={customThemeColor}
             onCustomColorChange={onCustomColorChange}
+            username={username}
+            onUsernameChange={onUsernameChange}
           />
         </div>
       </div>

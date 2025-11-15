@@ -900,13 +900,17 @@ app.get('/api/activity', async (req, res) => {
 app.get('/api/settings', async (req, res) => {
   const theme = await getSetting('theme') || 'dark-blue';
   const color = await getSetting('customThemeColor') || '#5e258a';
-  res.json({ theme, customThemeColor: color });
+  const username = await getSetting('username') || 'Mr and Mrs Pathania';
+  res.json({ theme, customThemeColor: color, username });
 });
 
 app.post('/api/settings', async (req, res) => {
-  const { theme, customThemeColor } = req.body || {};
+  const { theme, customThemeColor, username } = req.body || {};
   await setSetting('theme', theme);
   await setSetting('customThemeColor', customThemeColor);
+  if (username !== undefined) {
+    await setSetting('username', username);
+  }
   res.json({ ok: true });
 });
 
