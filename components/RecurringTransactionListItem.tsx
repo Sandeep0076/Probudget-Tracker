@@ -1,7 +1,9 @@
 import React from 'react';
 import { RecurringTransaction, TransactionType } from '../types';
-import { GroceriesIcon, IncomeSalaryIcon, TransportIcon, UtilitiesIcon, EntertainmentIcon, HealthIcon } from './icons/CategoryIcons';
+import { GroceriesIcon, IncomeSalaryIcon, TransportIcon, UtilitiesIcon, EntertainmentIcon, HealthIcon, RentIcon } from './icons/CategoryIcons';
+import { ShoppingIcon, FoodIcon, TravelIcon, HomeIcon, CarIcon, PetsIcon, GiftsIcon, EducationIcon, FitnessIcon, OtherIcon } from './icons/NewCategoryIcons';
 import { CloseIcon } from './icons/CloseIcon';
+import { formatCurrency } from '../utils/formatters';
 
 const categoryIcons: { [key:string]: React.ReactNode } = {
     'Salary': <IncomeSalaryIcon />,
@@ -13,9 +15,23 @@ const categoryIcons: { [key:string]: React.ReactNode } = {
     'Transport': <TransportIcon />,
     'Entertainment': <EntertainmentIcon />,
     'Health': <HealthIcon />,
-    'Other': <div className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-slate-400 text-xs font-mono">...</div>,
-    'Default': <div className="w-10 h-10 rounded-full bg-white/10"></div>
+    'Rent': <RentIcon />,
+    'House Rent': <RentIcon />,
+    'Shopping': <ShoppingIcon />,
+    'Food': <FoodIcon />,
+    'Travel': <TravelIcon />,
+    'Home': <HomeIcon />,
+    'Car': <CarIcon />,
+    'Pets': <PetsIcon />,
+    'Gifts': <GiftsIcon />,
+    'Education': <EducationIcon />,
+    'Fitness': <FitnessIcon />,
+    'Other': <OtherIcon />
 }
+
+const getCategoryIcon = (category: string) => {
+    return categoryIcons[category] || <OtherIcon />;
+};
 
 interface RecurringTransactionListItemProps {
     transaction: RecurringTransaction;
@@ -24,7 +40,8 @@ interface RecurringTransactionListItemProps {
 
 const RecurringTransactionListItem: React.FC<RecurringTransactionListItemProps> = ({ transaction, onDelete }) => {
     const isIncome = transaction.type === TransactionType.INCOME;
-    const amountColor = isIncome ? 'text-green-400' : 'text-slate-200';
+    const amountColor = isIncome ? 'text-success' : 'text-text-primary';
+    const amountPrefix = isIncome ? '+' : '-';
     
     const getOrdinalSuffix = (day: number) => {
         if (day > 3 && day < 21) return 'th';
@@ -43,14 +60,14 @@ const RecurringTransactionListItem: React.FC<RecurringTransactionListItemProps> 
     };
     
     return (
-        <li className="flex items-center justify-between py-4 border-b border-black/20 last:border-b-0">
+        <li className="flex items-center justify-between py-4 border-b border-border-shadow last:border-b-0">
             <div className="flex items-center">
-                <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-white/10 text-sky-300">
-                    {categoryIcons[transaction.category] || categoryIcons['Default']}
+                <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-surface shadow-inner text-accent">
+                    {getCategoryIcon(transaction.category)}
                 </div>
                 <div className="ml-4">
-                    <p className="text-sm font-medium text-slate-100">{transaction.description}</p>
-                    <p className="text-sm text-slate-300">
+                    <p className="text-sm font-medium text-text-primary">{transaction.description}</p>
+                    <p className="text-sm text-text-secondary">
                         Monthly, on the {transaction.dayOfMonth}{getOrdinalSuffix(transaction.dayOfMonth)}
                     </p>
                     {transaction.labels && transaction.labels.length > 0 && (
@@ -66,11 +83,11 @@ const RecurringTransactionListItem: React.FC<RecurringTransactionListItemProps> 
             </div>
             <div className="flex items-center gap-4">
                 <p className={`text-sm font-semibold ${amountColor}`}>
-                    ${transaction.amount.toFixed(2)}
+                    {amountPrefix} {formatCurrency(transaction.amount)}
                 </p>
-                <button 
+                <button
                     onClick={handleDelete}
-                    className="p-1.5 rounded-full text-slate-400 hover:bg-red-500/30 hover:text-red-300 transition-colors"
+                    className="p-1.5 rounded-full text-text-secondary hover:bg-red-500/30 hover:text-red-300 transition-colors"
                     aria-label={`Delete recurring transaction: ${transaction.description}`}
                 >
                     <CloseIcon className="w-4 h-4" />

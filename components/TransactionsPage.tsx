@@ -1,6 +1,7 @@
 import React, { useState, useMemo, useRef, useEffect } from 'react';
-import { Transaction, TransactionType, Category } from '../types';
+import { Transaction, TransactionType, Category, RecurringTransaction } from '../types';
 import TransactionListItem from './TransactionListItem';
+import RecurringTransactionListItem from './RecurringTransactionListItem';
 import Pagination from './Pagination';
 import { PlusCircleIcon } from './icons/ActionIcons';
 import { CalendarIcon } from './icons/CalendarIcon';
@@ -8,6 +9,7 @@ import { ChevronDownIcon } from './icons/ChevronDownIcon';
 
 interface TransactionsPageProps {
     transactions: Transaction[];
+    recurringTransactions: RecurringTransaction[];
     categories: Category[];
     onAddTransactionClick: (type: TransactionType) => void;
     onEditTransaction: (transaction: Transaction) => void;
@@ -46,7 +48,7 @@ const FilterDropdown: React.FC<{ value: string; onChange: (e: React.ChangeEvent<
 );
 
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, categories, onAddTransactionClick, onEditTransaction, onDeleteTransaction }) => {
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, recurringTransactions, categories, onAddTransactionClick, onEditTransaction, onDeleteTransaction }) => {
     const [typeFilter, setTypeFilter] = useState<string>('all');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
     const [labelFilter, setLabelFilter] = useState<string>('all');
@@ -55,6 +57,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, categ
     const [endDate, setEndDate] = useState('');
     const [currentPage, setCurrentPage] = useState(1);
     const [isDatePopoverOpen, setIsDatePopoverOpen] = useState(false);
+    const [showRecurring, setShowRecurring] = useState(false);
 
     const datePopoverRef = useRef<HTMLDivElement>(null);
     const dateButtonRef = useRef<HTMLButtonElement>(null);
@@ -87,6 +90,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, categ
     
     const filteredTransactions = useMemo(() => {
         return transactions.filter(t => {
+            // Filter by recurring status
+            if (showRecurring && !t.recurringTransactionId) return false;
+            if (!showRecurring && t.recurringTransactionId) return false;
+
             const typeMatch = typeFilter === 'all' || t.type === typeFilter;
             const categoryMatch = categoryFilter === 'all' || t.category === categoryFilter;
             const labelMatch = labelFilter === 'all' || (t.labels && t.labels.includes(labelFilter));
@@ -124,13 +131,21 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, categ
 
             return true;
         });
-    }, [transactions, typeFilter, categoryFilter, labelFilter, dateFilter, startDate, endDate]);
+    }, [transactions, typeFilter, categoryFilter, labelFilter, dateFilter, startDate, endDate, showRecurring]);
     
     const totalPages = Math.ceil(filteredTransactions.length / TRANSACTIONS_PER_PAGE);
     const paginatedTransactions = filteredTransactions.slice((currentPage - 1) * TRANSACTIONS_PER_PAGE, currentPage * TRANSACTIONS_PER_PAGE);
 
     const handleTypeFilterChange = (type: string) => {
         setTypeFilter(type);
+        setCategoryFilter('all');
+        setCurrentPage(1);
+        setShowRecurring(false);
+    }
+
+    const handleRecurringToggle = () => {
+        setShowRecurring(!showRecurring);
+        setTypeFilter('all');
         setCategoryFilter('all');
         setCurrentPage(1);
     }
@@ -192,9 +207,10 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, categ
             {/* --- NEW FILTER BAR --- */}
             <div className="flex flex-wrap items-center gap-x-4 gap-y-3 mb-6">
                 <div className="flex items-center bg-surface shadow-inner rounded-lg p-1 space-x-1">
-                    <TypeFilterButton onClick={() => handleTypeFilterChange('all')} isActive={typeFilter === 'all'}>All</TypeFilterButton>
-                    <TypeFilterButton onClick={() => handleTypeFilterChange(TransactionType.INCOME)} isActive={typeFilter === TransactionType.INCOME}>Income</TypeFilterButton>
-                    <TypeFilterButton onClick={() => handleTypeFilterChange(TransactionType.EXPENSE)} isActive={typeFilter === TransactionType.EXPENSE}>Expense</TypeFilterButton>
+                    <TypeFilterButton onClick={() => handleTypeFilterChange('all')} isActive={typeFilter === 'all' && !showRecurring}>All</TypeFilterButton>
+                    <TypeFilterButton onClick={() => handleTypeFilterChange(TransactionType.INCOME)} isActive={typeFilter === TransactionType.INCOME && !showRecurring}>Income</TypeFilterButton>
+                    <TypeFilterButton onClick={() => handleTypeFilterChange(TransactionType.EXPENSE)} isActive={typeFilter === TransactionType.EXPENSE && !showRecurring}>Expense</TypeFilterButton>
+                    <TypeFilterButton onClick={handleRecurringToggle} isActive={showRecurring}>Recurring</TypeFilterButton>
                 </div>
                 
                 <FilterDropdown value={categoryFilter} onChange={handleCategoryFilterChange} placeholder="All Categories">
@@ -241,18 +257,51 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, categ
             </div>
             
             <div className="bg-card-bg backdrop-blur-xl p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
-                {paginatedTransactions.length > 0 ? (
+                {showRecurring ? (
                     <>
-                        <ul>
-                            {paginatedTransactions.map(tx => <TransactionListItem key={tx.id} transaction={tx} onEdit={onEditTransaction} onDelete={onDeleteTransaction} />)}
-                        </ul>
-                        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                        {recurringTransactions.length > 0 || paginatedTransactions.length > 0 ? (
+                            <div className="space-y-6">
+                                {recurringTransactions.length > 0 && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-text-primary mb-4">Upcoming Recurring Transactions</h3>
+                                        <ul className="space-y-2">
+                                            {recurringTransactions.map(tx => <RecurringTransactionListItem key={tx.id} transaction={tx} onDelete={() => {}} />)}
+                                        </ul>
+                                    </div>
+                                )}
+                                {paginatedTransactions.length > 0 && (
+                                    <div>
+                                        <h3 className="text-lg font-semibold text-text-primary mb-4">Past Recurring Transactions</h3>
+                                        <ul>
+                                            {paginatedTransactions.map(tx => <TransactionListItem key={tx.id} transaction={tx} onEdit={onEditTransaction} onDelete={onDeleteTransaction} />)}
+                                        </ul>
+                                        <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                                    </div>
+                                )}
+                            </div>
+                        ) : (
+                            <div className="text-center text-text-secondary py-16">
+                                <p className="text-lg">No recurring transactions found.</p>
+                                <p className="mt-2 text-sm">Add a recurring transaction to see it here.</p>
+                            </div>
+                        )}
                     </>
                 ) : (
-                    <div className="text-center text-text-secondary py-16">
-                        <p className="text-lg">No transactions match your filters.</p>
-                        <p className="mt-2 text-sm">Try adjusting your search or add a new transaction.</p>
-                    </div>
+                    <>
+                        {paginatedTransactions.length > 0 ? (
+                            <>
+                                <ul>
+                                    {paginatedTransactions.map(tx => <TransactionListItem key={tx.id} transaction={tx} onEdit={onEditTransaction} onDelete={onDeleteTransaction} />)}
+                                </ul>
+                                <Pagination currentPage={currentPage} totalPages={totalPages} onPageChange={setCurrentPage} />
+                            </>
+                        ) : (
+                            <div className="text-center text-text-secondary py-16">
+                                <p className="text-lg">No transactions match your filters.</p>
+                                <p className="mt-2 text-sm">Try adjusting your search or add a new transaction.</p>
+                            </div>
+                        )}
+                    </>
                 )}
             </div>
         </div>
