@@ -1,20 +1,23 @@
 import { Budget, Category, RecurringTransaction, Saving, Transaction, TransactionFormData, TransactionType, ActivityLog, Task, Subtask } from '../types';
 
+// Get API base URL from environment variable or default to current origin
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
 const json = async <T>(res: Response): Promise<T> => {
   if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
   return res.json();
 };
 
-const get = <T>(url: string) => fetch(url).then(r => json<T>(r));
-const post = <T>(url: string, body: unknown) => fetch(url, {
+const get = <T>(url: string) => fetch(`${API_BASE_URL}${url}`).then(r => json<T>(r));
+const post = <T>(url: string, body: unknown) => fetch(`${API_BASE_URL}${url}`, {
   method: 'POST', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(body)
 }).then(r => json<T>(r));
-const put = <T>(url: string, body: unknown) => fetch(url, {
+const put = <T>(url: string, body: unknown) => fetch(`${API_BASE_URL}${url}`, {
   method: 'PUT', headers: { 'Content-Type': 'application/json' },
   body: JSON.stringify(body)
 }).then(r => json<T>(r));
-const del = <T>(url: string) => fetch(url, { method: 'DELETE' }).then(r => json<T>(r));
+const del = <T>(url: string) => fetch(`${API_BASE_URL}${url}`, { method: 'DELETE' }).then(r => json<T>(r));
 
 export const OVERALL_BUDGET_CATEGORY = '##OVERALL_BUDGET##';
 
