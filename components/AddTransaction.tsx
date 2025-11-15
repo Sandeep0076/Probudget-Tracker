@@ -123,14 +123,14 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
         }
     };
 
-    const commonInputClasses = "w-full px-4 py-3 bg-white border border-gray-300 rounded-md text-gray-800 placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-inner transition-colors";
+    const commonInputClasses = "w-full px-4 py-3 bg-input-bg border border-input-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-inner transition-colors";
 
     return (
         <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8 flex justify-center">
-            <div className="w-full max-w-2xl bg-white p-8 rounded-xl shadow-neu-3d relative">
+            <div className="w-full max-w-2xl modal-content bg-modal-bg backdrop-blur-xl p-8 rounded-xl shadow-neu-3d relative">
 
                 {isScanning && (
-                    <div className="absolute inset-0 bg-white/95 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl z-20">
+                    <div className="absolute inset-0 bg-modal-bg/95 backdrop-blur-sm flex flex-col items-center justify-center rounded-xl z-20">
                         <SpinnerIcon className="w-12 h-12 animate-spin text-accent" />
                         <p className="mt-4 text-lg font-semibold text-text-primary">Scanning Receipt...</p>
                         <p className="text-sm text-text-secondary">Please wait while we analyze the items.</p>
@@ -229,8 +229,8 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                     </div>
                     
                      <div>
-                        <label htmlFor="labels" className="block text-sm font-medium text-gray-600 mb-1">Labels (optional)</label>
-                        <div className="flex flex-wrap items-center gap-2 p-2 bg-gray-50 border border-gray-300 shadow-inner rounded-md">
+                        <label htmlFor="labels" className="block text-sm font-medium text-text-secondary mb-1">Labels (optional)</label>
+                        <div className="flex flex-wrap items-center gap-2 p-2 bg-input-bg border border-input-border shadow-inner rounded-md">
                             {labels.map(label => (
                                 <span key={label} className="label-chip">
                                     {label}
@@ -286,12 +286,12 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                         </div>
                     </div>
                     
-                    <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-lg shadow-inner">
+                    <div className="flex items-center gap-4 bg-input-bg p-4 rounded-lg shadow-inner border border-input-border">
                         <label htmlFor="recurring-toggle" className="flex items-center cursor-pointer">
                             <div className="relative">
                                 <input type="checkbox" id="recurring-toggle" className="sr-only" checked={isRecurring} onChange={() => setIsRecurring(!isRecurring)} />
-                                <div className="block bg-background-start w-14 h-8 rounded-full shadow-inner"></div>
-                                <div className={`dot absolute left-1 top-1 bg-white w-6 h-6 rounded-full transition-transform shadow-neu-sm ${isRecurring ? 'translate-x-6 bg-accent' : ''}`}></div>
+                                <div className="block bg-input-border w-14 h-8 rounded-full shadow-inner"></div>
+                                <div className={`dot absolute left-1 top-1 bg-surface-white w-6 h-6 rounded-full transition-transform shadow-neu-sm ${isRecurring ? 'translate-x-6 bg-accent' : ''}`}></div>
                             </div>
                         </label>
                         <div>
@@ -303,16 +303,16 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                     </div>
                     
                     <div className="flex items-center justify-end gap-4 pt-4">
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={onCancel}
-                            className="px-6 py-3 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all shadow-neu-xs"
+                            className="custom-styled px-6 py-3 text-sm font-medium rounded-md bg-input-bg text-text-primary border border-input-border hover:opacity-80 transition-all shadow-neu-xs"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="px-6 py-3 text-sm font-medium rounded-md shadow-sm text-white bg-brand hover:bg-brand/90 transition-all shadow-neu-sm"
+                            className="custom-styled px-6 py-3 text-sm font-medium rounded-md shadow-sm bg-button-primary text-button-text hover:opacity-90 transition-all shadow-neu-sm"
                         >
                             Save Transaction
                         </button>

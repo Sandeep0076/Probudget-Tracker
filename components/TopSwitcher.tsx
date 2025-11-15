@@ -1,8 +1,14 @@
 import React from 'react';
+import ThemeSelector from './ThemeSelector';
+import { Theme } from '../App';
 
 interface TopSwitcherProps {
   section: 'budget' | 'planner';
   onChange: (s: 'budget' | 'planner') => void;
+  currentTheme: Theme;
+  onThemeChange: (theme: Theme) => void;
+  customThemeColor: string;
+  onCustomColorChange: (color: string) => void;
 }
 
 const Tab: React.FC<{ active: boolean; onClick: () => void; children: React.ReactNode }>=({ active, onClick, children })=>{
@@ -18,7 +24,14 @@ const Tab: React.FC<{ active: boolean; onClick: () => void; children: React.Reac
   );
 };
 
-const TopSwitcher: React.FC<TopSwitcherProps> = ({ section, onChange }) => {
+const TopSwitcher: React.FC<TopSwitcherProps> = ({
+  section,
+  onChange,
+  currentTheme,
+  onThemeChange,
+  customThemeColor,
+  onCustomColorChange
+}) => {
   return (
     <div className="bg-surface/80 backdrop-blur-xl border-b border-border-shadow shadow-neu-lg sticky top-0 z-50">
       <div className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -27,6 +40,12 @@ const TopSwitcher: React.FC<TopSwitcherProps> = ({ section, onChange }) => {
             <Tab active={section === 'budget'} onClick={() => onChange('budget')}>Budget</Tab>
             <Tab active={section === 'planner'} onClick={() => onChange('planner')}>Planner</Tab>
           </div>
+          <ThemeSelector
+            currentTheme={currentTheme}
+            onThemeChange={onThemeChange}
+            customThemeColor={customThemeColor}
+            onCustomColorChange={onCustomColorChange}
+          />
         </div>
       </div>
     </div>

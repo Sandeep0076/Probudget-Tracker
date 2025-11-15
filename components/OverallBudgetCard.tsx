@@ -26,7 +26,7 @@ const OverallBudgetCard: React.FC<OverallBudgetCardProps> = ({ budget, totalSpen
     }
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
+        <div className="bg-card-bg backdrop-blur-xl p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
             <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-4">
                 <div>
                     <h2 className="text-xl font-semibold text-text-primary">Overall Monthly Budget</h2>

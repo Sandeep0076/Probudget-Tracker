@@ -13,7 +13,7 @@ interface PlannerDashboardProps {
 }
 
 const Section: React.FC<{ title: string; children: React.ReactNode }>=({title,children})=> (
-  <div className="relative bg-white backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 border border-white/40">
+  <div className="relative bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 border border-white/40">
     <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
     <div className="relative flex items-center justify-between">
       <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">{title}</h3>
@@ -138,7 +138,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
       </div>
       {/* Upcoming Calendar - appears second on mobile/tablet, first on desktop */}
       <div className="space-y-4 lg:col-span-1 lg:order-1">
-        <div className="relative bg-white backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 border border-white/40">
+        <div className="relative bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 border border-white/40">
           <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
           <div className="relative flex items-center justify-between">
             <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">Upcoming Calendar</h3>

@@ -10,7 +10,7 @@ const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday }) =
   const backlog = tasks.filter(t => !t.start && !t.due && t.status !== 'completed');
 
   return (
-    <div className="relative bg-white backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 border border-white/40">
+    <div className="relative bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 border border-white/40">
       <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
       <div className="relative flex items-center justify-between mb-3">
         <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">Backlogs</h3>

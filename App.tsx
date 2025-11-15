@@ -456,11 +456,7 @@ const App: React.FC = () => {
       case 'confirmReceipt':
         return <ReceiptConfirmationPage items={receiptItemsToConfirm} onSaveAll={handleSaveAllTransactions} onCancel={() => setCurrentPage('addTransaction')} categories={categories.filter(c => c.type === TransactionType.EXPENSE)} />;
       case 'settings':
-        return <SettingsPage 
-            currentTheme={theme}
-            onThemeChange={handleThemeChange}
-            customThemeColor={customThemeColor}
-            onCustomColorChange={handleCustomThemeChange}
+        return <SettingsPage
             activityLogs={activityLogs}
         />;
       default:
@@ -476,7 +472,14 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen font-sans text-text-primary bg-transparent">
-      <TopSwitcher section={section} onChange={handleSectionChange} />
+      <TopSwitcher
+        section={section}
+        onChange={handleSectionChange}
+        currentTheme={theme}
+        onThemeChange={handleThemeChange}
+        customThemeColor={customThemeColor}
+        onCustomColorChange={handleCustomThemeChange}
+      />
       {section === 'budget' ? (
         <>
           <Header 

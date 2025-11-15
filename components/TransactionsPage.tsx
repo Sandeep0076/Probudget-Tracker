@@ -240,7 +240,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, categ
                 </div>
             </div>
             
-            <div className="bg-white p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
+            <div className="bg-card-bg backdrop-blur-xl p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
                 {paginatedTransactions.length > 0 ? (
                     <>
                         <ul>

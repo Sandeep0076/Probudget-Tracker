@@ -31,7 +31,7 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spentAmount, onEdit }) 
     }
 
     return (
-        <div className="bg-white p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
+        <div className="bg-card-bg backdrop-blur-xl p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
             <div className="flex items-center justify-between mb-3">
                 <div className="flex items-center gap-3">
                     <div className="flex-shrink-0 h-8 w-8 flex items-center justify-center rounded-full bg-surface shadow-inner text-accent">

@@ -10,7 +10,7 @@ interface PlannerBoardProps {
 }
 
 const Column: React.FC<{ title: string; children: React.ReactNode }>=({title,children})=> (
-  <div className="relative bg-white backdrop-blur-xl rounded-xl p-4 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 min-h-[300px] border border-white/40">
+  <div className="relative bg-card-bg backdrop-blur-xl rounded-xl p-4 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 min-h-[300px] border border-white/40">
     <div className="absolute inset-0 rounded-xl bg-gradient-to-br from-white/5 to-transparent pointer-events-none"></div>
     <div className="relative text-sm font-semibold tracking-wide uppercase text-text-dark mb-3">{title}</div>
     <div className="relative">{children}</div>
@@ -24,8 +24,8 @@ const SortableItem: React.FC<{ id: string; title: string }>=({ id, title })=>{
     transition,
   };
   return (
-    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="px-3 py-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 border border-gray-200 mb-2 cursor-grab shadow-neu-xs hover:shadow-neu-sm transition-all duration-200">
-      <div className="text-sm text-text-dark font-medium">{title}</div>
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="px-3 py-2.5 rounded-lg bg-card-bg backdrop-blur-sm border border-border-shadow mb-2 cursor-grab shadow-neu-xs hover:shadow-neu-sm transition-all duration-200">
+      <div className="text-sm text-text-primary font-medium">{title}</div>
     </div>
   );
 };

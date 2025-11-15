@@ -85,7 +85,7 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
                   totalSpent={totalMonthlyExpenses} 
                   onSetBudget={() => setIsOverallModalOpen(true)} 
                 />
-                <div className="bg-white p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 flex flex-col justify-between">
+                <div className="bg-card-bg backdrop-blur-xl p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 flex flex-col justify-between">
                     <div>
                         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-2">
                             <div>
@@ -140,7 +140,7 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
                     ))}
                 </div>
             ) : (
-                <div className="text-center text-text-secondary py-16 bg-white rounded-xl shadow-neu-3d">
+                <div className="text-center text-text-secondary py-16 bg-card-bg backdrop-blur-xl rounded-xl shadow-neu-3d">
                     <p className="text-lg">You haven't set any category budgets for this month.</p>
                     <p className="mt-2">Click 'Create Category Budget' to get started!</p>
                 </div>
