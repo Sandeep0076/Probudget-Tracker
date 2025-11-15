@@ -14,6 +14,10 @@ const OverallBudgetCard: React.FC<OverallBudgetCardProps> = ({ budget, totalSpen
     const remainingAmount = budgetAmount - totalSpent;
     const percentageSpent = budgetAmount > 0 ? (totalSpent / budgetAmount) * 100 : 0;
     
+    console.log('[OverallBudgetCard] Budget amount (raw):', budgetAmount);
+    console.log('[OverallBudgetCard] Total spent (raw):', totalSpent);
+    console.log('[OverallBudgetCard] Remaining (raw):', remainingAmount);
+    
     let progressBarColor = 'bg-accent';
     if (percentageSpent > 100) {
         progressBarColor = 'bg-danger';

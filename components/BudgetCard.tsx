@@ -2,10 +2,12 @@ import React from 'react';
 import { Budget } from '../types';
 import { GroceriesIcon, UtilitiesIcon, TransportIcon, EntertainmentIcon, HealthIcon } from './icons/CategoryIcons';
 import { formatCurrency } from '../utils/formatters';
+import { EditIcon } from './icons/ActionIcons';
 
 interface BudgetCardProps {
     budget: Budget;
     spentAmount: number;
+    onEdit?: () => void;
 }
 
 const categoryIcons: { [key: string]: React.ReactNode } = {
@@ -17,7 +19,7 @@ const categoryIcons: { [key: string]: React.ReactNode } = {
     'Other': <div className="text-text-muted text-xs font-mono">...</div>,
 };
 
-const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spentAmount }) => {
+const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spentAmount, onEdit }) => {
     const remainingAmount = budget.amount - spentAmount;
     const percentageSpent = budget.amount > 0 ? (spentAmount / budget.amount) * 100 : 0;
     
@@ -37,8 +39,19 @@ const BudgetCard: React.FC<BudgetCardProps> = ({ budget, spentAmount }) => {
                     </div>
                     <h3 className="text-lg font-semibold text-text-primary">{budget.category}</h3>
                 </div>
-                <div className="text-sm font-medium text-text-secondary">
-                    {formatCurrency(budget.amount)}
+                <div className="flex items-center gap-2">
+                    <div className="text-sm font-medium text-text-secondary">
+                        {formatCurrency(budget.amount)}
+                    </div>
+                    {onEdit && (
+                        <button
+                            onClick={onEdit}
+                            className="p-1.5 text-text-muted hover:text-accent transition-colors rounded-md hover:bg-surface"
+                            title="Edit budget"
+                        >
+                            <EditIcon className="w-4 h-4" />
+                        </button>
+                    )}
                 </div>
             </div>
 

@@ -59,6 +59,8 @@ const ExpenseChart: React.FC<{transactions: Transaction[], className?: string}> 
   );
 
   const totalMonthlyExpenses = monthlyExpenses.reduce((sum, t) => sum + t.amount, 0);
+  
+  console.log('[ExpenseChart] Total monthly expenses (raw):', totalMonthlyExpenses);
 
   const categorySpending = monthlyExpenses.reduce((acc, transaction) => {
     acc[transaction.category] = (acc[transaction.category] || 0) + transaction.amount;

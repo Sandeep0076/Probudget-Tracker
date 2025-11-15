@@ -303,6 +303,7 @@ const App: React.FC = () => {
   };
 
   const handleAddCategoryBudget = wrapAction(api.addCategoryBudget);
+  const handleEditCategoryBudget = wrapAction(api.updateCategoryBudget);
   const handleSetOverallBudget = wrapAction(api.addOrUpdateOverallBudget);
   const handleSetSaving = wrapAction(api.addOrUpdateSaving);
   const handleAddCategory = wrapAction(api.addCategory);
@@ -445,7 +446,7 @@ const App: React.FC = () => {
       case 'addTransaction':
         return <AddTransaction onCancel={() => navigate('dashboard')} initialType={initialTransactionType} onSave={handleSaveTransaction} categories={categories} onScanReceipt={handleScanReceipt} />;
       case 'budgets':
-        return <Budgets overallBudget={overallBudget} categoryBudgets={categoryBudgets} transactions={transactions} onSetOverallBudget={handleSetOverallBudget} onAddCategoryBudget={handleAddCategoryBudget} categories={categories} savings={savings} onSetSaving={handleSetSaving} />;
+        return <Budgets overallBudget={overallBudget} categoryBudgets={categoryBudgets} transactions={transactions} onSetOverallBudget={handleSetOverallBudget} onAddCategoryBudget={handleAddCategoryBudget} onEditCategoryBudget={handleEditCategoryBudget} categories={categories} savings={savings} onSetSaving={handleSetSaving} />;
       case 'transactions':
         return <TransactionsPage transactions={transactions} categories={categories} onAddTransactionClick={handleAddTransactionClick} onEditTransaction={handleEditTransactionClick} onDeleteTransaction={handleDeleteTransaction} />;
       case 'categories':
