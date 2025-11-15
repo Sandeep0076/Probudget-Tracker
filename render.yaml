@@ -2,13 +2,21 @@
 # See: https://render.com/docs/infrastructure-as-code
 
 services:
+  # Backend API Service
   - type: web
     name: probudget-backend
     runtime: node
-    buildCommand: npm install
-    startCommand: npm start
+    region: oregon
+    plan: free
+    buildCommand: cd server && npm install
+    startCommand: cd server && npm start
     autoDeploy: true
+    rootDir: ./
     envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 4000
       - key: SUPABASE_URL
         value: YOUR_SUPABASE_URL
       - key: SUPABASE_ANON_KEY
@@ -22,13 +30,23 @@ services:
       - key: GOOGLE_REDIRECT_URI
         value: https://probudget-backend.onrender.com/api/calendar/callback
       - key: ENCRYPTION_KEY
-        value: CHANGE_ME_SECURE_KEY
+        value: CHANGE_ME_SECURE_KEY_32_CHARS_LONG
 
-# NOTE: Static site blueprint validation may vary; if unsupported here, create the
-# frontend Static Site manually in the Render dashboard with:
-# Build Command: npm install && npm run build
-# Publish Directory: dist
+  # Frontend Static Site
+  - type: web
+    name: probudget-frontend
+    buildCommand: npm install && npm run build
+    staticPublishPath: ./dist
+    autoDeploy: true
+    envVars:
+      - key: VITE_API_BASE_URL
+        value: https://probudget-backend.onrender.com
+      - key: NODE_ENV
+        value: production
 
-# After creating the services from this file (via Render Dashboard or CLI),
-# set the environment variable values in the Render dashboard.
-# For production GOOGLE_REDIRECT_URI use: https://probudget-backend.onrender.com/api/calendar/callback
+# Instructions:
+# 1. Update all environment variables with your actual values in the Render dashboard
+# 2. Set SUPABASE_URL and SUPABASE_ANON_KEY from your Supabase project settings
+# 3. Configure Google OAuth credentials in Google Cloud Console
+# 4. Generate a secure 32-character ENCRYPTION_KEY
+# 5. Update GOOGLE_REDIRECT_URI to match your backend service URL
