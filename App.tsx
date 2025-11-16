@@ -572,7 +572,12 @@ const App: React.FC = () => {
               />
             )}
             {plannerPage === 'progress' && (
-              <PlannerBoard tasks={tasks} onMove={(id, status)=> handleUpdateTask(id, { status })} />
+              <PlannerBoard
+                tasks={tasks}
+                onMove={(id, status)=> handleUpdateTask(id, { status })}
+                onEdit={handleEditTask}
+                onDelete={handleDeleteTask}
+              />
             )}
             {plannerPage === 'calendar' && (
               <PlannerCalendar
@@ -585,7 +590,12 @@ const App: React.FC = () => {
               />
             )}
             {plannerPage === 'backlog' && (
-              <PlannerBacklog tasks={tasks} onPlanToday={(id)=> handleUpdateTask(id, { due: new Date().toISOString().split('T')[0] })} />
+              <PlannerBacklog
+                tasks={tasks}
+                onPlanToday={(id)=> handleUpdateTask(id, { due: new Date().toISOString().split('T')[0] })}
+                onEdit={handleEditTask}
+                onDelete={handleDeleteTask}
+              />
             )}
           </main>
           <TaskModal

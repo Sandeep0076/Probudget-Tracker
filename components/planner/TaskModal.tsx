@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Subtask, TaskPriority, TaskRepeat } from '../../types';
+import { Subtask, TaskPriority, TaskRepeat, Task, TaskStatus } from '../../types';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -74,6 +74,16 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
     console.log('[TaskModal] Saving task with data:', { title, notes, priority, allDay, start, end, due });
     setSaving(true);
     try {
+      // Determine status: if editing existing task, keep its status; otherwise set based on schedule
+      let taskStatus: TaskStatus;
+      if (initial?.id) {
+        // Editing existing task - keep current status unless it has schedule info
+        taskStatus = (start || due) ? 'scheduled' : (initial.status || 'backlog');
+      } else {
+        // New task - default to backlog unless it has schedule info
+        taskStatus = (start || due) ? 'scheduled' : 'backlog';
+      }
+      
       const payload: any = {
         title: title.trim(),
         notes: notes.trim(),
@@ -86,8 +96,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         color,
         labels: labels.split(',').map(s=>s.trim()).filter(Boolean),
         subtasks: subtasks.map(s=>({ title: s.title, done: s.done })),
-        status: start || due ? 'scheduled' : 'new'
+        status: taskStatus
       };
+      console.log('[TaskModal] Task will be saved with status:', taskStatus);
       await onSave(payload, initial?.id);
       console.log('[TaskModal] Task saved successfully');
       onClose();

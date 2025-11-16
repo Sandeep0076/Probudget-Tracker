@@ -79,6 +79,9 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
   const today = tasks.filter(t => isSameDay(t.start||t.due, todayKey));
   const tomorrow = tasks.filter(t => isSameDay(t.start||t.due, tomorrowKey));
   const someday = tasks.filter(t => !t.start && !t.due && t.status!=='completed');
+  
+  console.log('[PlannerDashboard] Filtering someday tasks - total tasks:', tasks.length, 'someday tasks:', someday.length);
+  console.log('[PlannerDashboard] Someday tasks:', someday.map(t => ({ id: t.id, title: t.title, status: t.status })));
 
   // Filter events for today and tomorrow
   const todayEvents = (events || []).filter((e: any) => {
