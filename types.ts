@@ -109,4 +109,16 @@ export interface Task {
   updatedAt: string;
   completedAt?: string | null;
   subtasks?: Subtask[];
+  progress?: number; // Progress percentage (0-100)
+}
+
+export interface ShoppingItem {
+  id: string;
+  title: string;
+  category?: string;
+  notes?: string;
+  priority: 'low' | 'medium' | 'high';
+  completed: boolean;
+  createdAt: string;
+  completedAt?: string | null;
 }

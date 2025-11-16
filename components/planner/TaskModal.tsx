@@ -45,6 +45,31 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   const commonInputClasses = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-inner";
   const commonSelectClasses = "px-2 py-1 rounded-md bg-input-bg border border-input-border text-text-primary focus:outline-none focus:ring-2 focus:ring-accent shadow-inner";
 
+  // Helper function to format datetime for input fields
+  const formatDateTimeForInput = (dateString?: string | null, isDateOnly: boolean = false): string => {
+    if (!dateString) return '';
+    try {
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return '';
+      
+      if (isDateOnly) {
+        // For date input: yyyy-MM-dd
+        return date.toISOString().split('T')[0];
+      } else {
+        // For datetime-local input: yyyy-MM-ddThh:mm
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, '0');
+        const day = String(date.getDate()).padStart(2, '0');
+        const hours = String(date.getHours()).padStart(2, '0');
+        const minutes = String(date.getMinutes()).padStart(2, '0');
+        return `${year}-${month}-${day}T${hours}:${minutes}`;
+      }
+    } catch (e) {
+      console.error('[TaskModal] Error formatting date:', dateString, e);
+      return '';
+    }
+  };
+
   // Reset form state when modal opens or initial data changes
   useEffect(() => {
     if (isOpen) {
@@ -53,9 +78,9 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
       setNotes(initial?.notes || '');
       setPriority(initial?.priority || 'medium');
       setAllDay(!!initial?.allDay);
-      setStart(initial?.start || '');
-      setEnd(initial?.end || '');
-      setDue(initial?.due || '');
+      setStart(formatDateTimeForInput(initial?.start, false));
+      setEnd(formatDateTimeForInput(initial?.end, false));
+      setDue(formatDateTimeForInput(initial?.due, true));
       setRepeat(initial?.repeat || null);
       setColor(initial?.color || '#f59e0b');
       setLabels((initial?.labels || []).join(', '));
@@ -78,7 +103,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
       let taskStatus: TaskStatus;
       if (initial?.id) {
         // Editing existing task - keep current status unless it has schedule info
-        taskStatus = (start || due) ? 'scheduled' : (initial.status || 'backlog');
+        taskStatus = (start || due) ? 'scheduled' : ((initial as any).status || 'backlog');
       } else {
         // New task - default to backlog unless it has schedule info
         taskStatus = (start || due) ? 'scheduled' : 'backlog';
@@ -98,7 +123,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         subtasks: subtasks.map(s=>({ title: s.title, done: s.done })),
         status: taskStatus
       };
-      console.log('[TaskModal] Task will be saved with status:', taskStatus);
+      console.log('[TaskModal] Task will be saved with status:', taskStatus, 'payload:', payload);
       await onSave(payload, initial?.id);
       console.log('[TaskModal] Task saved successfully');
       onClose();

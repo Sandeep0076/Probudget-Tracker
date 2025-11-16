@@ -1,0 +1,224 @@
+[TaskModal] Saving task with data: {title: 'task4', notes: '', priority: 'medium', allDay: false, start: '', …}
+TaskModal.tsx:126 [TaskModal] Task will be saved with status: backlog payload: {title: 'task4', notes: '', priority: 'medium', allDay: false, start: null, …}
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:62 [PlannerBoard] Edit button clicked for task: 9dca707e-e811-42b9-b802-06b5489928ad task4
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: backlog ShowProgress: false Progress: 0 Start: null Due: null
+TaskModal.tsx:76 [TaskModal] Modal opened with initial data: {title: 'task4', notes: '', priority: 'medium', allDay: false, start: null, …}
+TaskModal.tsx:99 [TaskModal] Saving task with data: {title: 'task4', notes: '', priority: 'medium', allDay: false, start: '2025-11-16T18:06', …}
+TaskModal.tsx:126 [TaskModal] Task will be saved with status: scheduled payload: {title: 'task4', notes: '', priority: 'medium', allDay: false, start: '2025-11-16T18:06', …}
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+PlannerBoard.tsx:50 [SortableItem] Task: task4 Status: scheduled ShowProgress: false Progress: 0 Start: 2025-11-16T18:06:00+00:00 Due: 2025-11-30T00:00:00+00:00
+[server] [POST /api/tasks] Creating task: { title: 'task4', status: 'backlog', priority: 'medium' }
+[server] [POST /api/tasks] Task created successfully: {
+[server]   id: '9dca707e-e811-42b9-b802-06b5489928ad',
+[server]   created_at: '2025-11-16T17:05:59.758586+00:00'
+[server] }
+[server] [GET /api/tasks] Fetched 10 tasks
+[server] [PUT /api/tasks/:id] Updating task: {
+[server]   id: '9dca707e-e811-42b9-b802-06b5489928ad',
+[server]   oldStatus: 'backlog',
+[server]   newStatus: 'scheduled',
+[server]   progress: undefined
+[server] }
+[server] [PUT /api/tasks/:id] Task updated successfully with data: {
+[server]   id: '9dca707e-e811-42b9-b802-06b5489928ad',
+[server]   status: 'scheduled',
+[server]   progress: undefined,
+[server]   start: '2025-11-16T18:06',
+[server]   due: '2025-11-30'
+[server] }
+[server] Failed to sync Google Task: Missing task ID
