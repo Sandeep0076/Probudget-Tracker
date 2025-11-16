@@ -2,22 +2,23 @@ import React, { useState, useEffect } from 'react';
 import { RecurringTransaction, TransactionType, Category } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import RecurringTransactionListItem from './RecurringTransactionListItem';
+import LabelAutocomplete from './LabelAutocomplete';
 
 interface RecurringPageProps {
     recurringTransactions: RecurringTransaction[];
     categories: Category[];
+    availableLabels: string[];
     onAddRecurringTransaction: (transaction: Omit<RecurringTransaction, 'id'>) => void;
     onDeleteRecurringTransaction: (id: string) => void;
 }
 
-const RecurringPage: React.FC<RecurringPageProps> = ({ recurringTransactions, categories, onAddRecurringTransaction, onDeleteRecurringTransaction }) => {
+const RecurringPage: React.FC<RecurringPageProps> = ({ recurringTransactions, categories, availableLabels, onAddRecurringTransaction, onDeleteRecurringTransaction }) => {
     const [transactionType, setTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
     const [amount, setAmount] = useState('');
     const [description, setDescription] = useState('');
     const [category, setCategory] = useState('');
     const [startDate, setStartDate] = useState(new Date().toISOString().split('T')[0]);
     const [labels, setLabels] = useState<string[]>([]);
-    const [labelInput, setLabelInput] = useState('');
 
     const availableCategories = categories.filter(c => c.type === transactionType).map(c => c.name);
 
@@ -30,25 +31,9 @@ const RecurringPage: React.FC<RecurringPageProps> = ({ recurringTransactions, ca
         setAmount('');
         setDescription('');
         setLabels([]);
-        setLabelInput('');
         setStartDate(new Date().toISOString().split('T')[0]);
         const currentCategories = categories.filter(c => c.type === transactionType);
         setCategory(currentCategories.length > 0 ? currentCategories[0].name : '');
-    };
-
-    const handleLabelKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            const newLabel = labelInput.trim().toLowerCase();
-            if (newLabel && !labels.includes(newLabel)) {
-                setLabels([...labels, newLabel]);
-            }
-            setLabelInput('');
-        }
-    };
-
-    const removeLabel = (labelToRemove: string) => {
-        setLabels(labels.filter(label => label !== labelToRemove));
     };
 
     const handleSubmit = (e: React.FormEvent) => {
@@ -103,21 +88,12 @@ const RecurringPage: React.FC<RecurringPageProps> = ({ recurringTransactions, ca
 
                      <div>
                         <label htmlFor="labels" className="block text-sm font-medium text-slate-200 mb-1">Labels (optional)</label>
-                        <div className="flex flex-wrap items-center gap-2 p-2 bg-white/10 border-t border-l border-black/20 border-b border-r border-white/30 shadow-inner shadow-black/10 rounded-md">
-                            {labels.map(label => (
-                                <span key={label} className="label-chip">
-                                    {label}
-                                    <button
-                                        type="button"
-                                        onClick={() => removeLabel(label)}
-                                        className="label-chip__remove"
-                                    >
-                                        <CloseIcon className="w-3 h-3" />
-                                    </button>
-                                </span>
-                            ))}
-                            <input type="text" id="labels" value={labelInput} onChange={(e) => setLabelInput(e.target.value)} onKeyDown={handleLabelKeyDown} className="bg-transparent flex-grow p-1 focus:outline-none text-slate-100 placeholder-slate-300 min-w-[160px]" placeholder="Add a label and press Enter..."/>
-                        </div>
+                        <LabelAutocomplete
+                            selectedLabels={labels}
+                            availableLabels={availableLabels}
+                            onLabelsChange={setLabels}
+                            placeholder="Add a label and press Enter..."
+                        />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">

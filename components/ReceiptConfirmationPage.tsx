@@ -7,9 +7,10 @@ interface ReceiptConfirmationPageProps {
     onSaveAll: (items: TransactionFormData[]) => void;
     onCancel: () => void;
     categories: Category[];
+    availableLabels: string[];
 }
 
-const ReceiptConfirmationPage: React.FC<ReceiptConfirmationPageProps> = ({ items, onSaveAll, onCancel, categories }) => {
+const ReceiptConfirmationPage: React.FC<ReceiptConfirmationPageProps> = ({ items, onSaveAll, onCancel, categories, availableLabels }) => {
     const [editedItems, setEditedItems] = useState<TransactionFormData[]>(items);
 
     const handleItemChange = (index: number, updatedItem: TransactionFormData) => {
@@ -44,6 +45,7 @@ const ReceiptConfirmationPage: React.FC<ReceiptConfirmationPageProps> = ({ items
                             key={index}
                             item={item}
                             categories={categories}
+                            availableLabels={availableLabels}
                             onChange={(updatedItem) => handleItemChange(index, updatedItem)}
                             onRemove={() => handleItemRemove(index)}
                         />

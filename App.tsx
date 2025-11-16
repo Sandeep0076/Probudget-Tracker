@@ -41,6 +41,7 @@ const App: React.FC = () => {
   const [savings, setSavings] = useState<Saving[]>([]);
   const [activityLogs, setActivityLogs] = useState<ActivityLog[]>([]);
   const [recurringTransactions, setRecurringTransactions] = useState<RecurringTransaction[]>([]);
+  const [availableLabels, setAvailableLabels] = useState<string[]>([]);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
@@ -126,13 +127,14 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const loadData = async () => {
-    const [transactionsData, budgetsData, categoriesData, savingsData, logsData, recurringData] = await Promise.all([
+    const [transactionsData, budgetsData, categoriesData, savingsData, logsData, recurringData, labelsData] = await Promise.all([
       api.getTransactions(),
       api.getBudgets(),
       api.getCategories(),
       api.getSavings(),
       api.getActivityLog(),
       api.getRecurringTransactions(),
+      api.getLabels(),
     ]);
 
     const overall = budgetsData.find(b => b.category === api.OVERALL_BUDGET_CATEGORY) || null;
@@ -145,6 +147,7 @@ const App: React.FC = () => {
     setSavings(savingsData);
     setActivityLogs(logsData);
     setRecurringTransactions(recurringData);
+    setAvailableLabels(labelsData);
   };
 
   const loadTasks = async () => {
@@ -491,7 +494,7 @@ const App: React.FC = () => {
             username={username}
         />;
       case 'addTransaction':
-        return <AddTransaction onCancel={() => navigate('dashboard')} initialType={initialTransactionType} onSave={handleSaveTransaction} categories={categories} onScanReceipt={handleScanReceipt} />;
+        return <AddTransaction onCancel={() => navigate('dashboard')} initialType={initialTransactionType} onSave={handleSaveTransaction} categories={categories} onScanReceipt={handleScanReceipt} availableLabels={availableLabels} />;
       case 'budgets':
         return <Budgets overallBudget={overallBudget} categoryBudgets={categoryBudgets} transactions={transactions} onSetOverallBudget={handleSetOverallBudget} onAddCategoryBudget={handleAddCategoryBudget} onEditCategoryBudget={handleEditCategoryBudget} categories={categories} savings={savings} onSetSaving={handleSetSaving} />;
       case 'transactions':
@@ -501,7 +504,7 @@ const App: React.FC = () => {
       case 'reports':
         return <ReportsPage transactions={transactions} savings={savings} />;
       case 'confirmReceipt':
-        return <ReceiptConfirmationPage items={receiptItemsToConfirm} onSaveAll={handleSaveAllTransactions} onCancel={() => setCurrentPage('addTransaction')} categories={categories.filter(c => c.type === TransactionType.EXPENSE)} />;
+        return <ReceiptConfirmationPage items={receiptItemsToConfirm} onSaveAll={handleSaveAllTransactions} onCancel={() => setCurrentPage('addTransaction')} categories={categories.filter(c => c.type === TransactionType.EXPENSE)} availableLabels={availableLabels} />;
       case 'settings':
         return <SettingsPage
             activityLogs={activityLogs}
@@ -552,6 +555,7 @@ const App: React.FC = () => {
                 }}
                 transaction={editingTransaction}
                 categories={categories}
+                availableLabels={availableLabels}
             />
           )}
         </>

@@ -40,6 +40,9 @@ export const addCategory = (category: Omit<Category, 'id' | 'isDefault'>) => pos
 export const updateCategory = (id: string, newName: string, oldName: string) => put<{ ok: boolean }>(`/api/categories/${id}`, { newName, oldName });
 export const deleteCategory = (id: string) => del<{ ok: boolean }>(`/api/categories/${id}`);
 
+// Labels
+export const getLabels = () => get<string[]>('/api/labels');
+
 // Recurring
 export const getRecurringTransactions = () => get<RecurringTransaction[]>('/api/recurring');
 export const addRecurringTransaction = (r: Omit<RecurringTransaction, 'id'>) => post<RecurringTransaction>('/api/recurring', r);

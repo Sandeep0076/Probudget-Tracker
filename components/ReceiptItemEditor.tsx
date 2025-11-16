@@ -1,34 +1,19 @@
 import React, { useState } from 'react';
 import { TransactionFormData, Category } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
+import LabelAutocomplete from './LabelAutocomplete';
 
 interface ReceiptItemEditorProps {
     item: TransactionFormData;
     categories: Category[];
+    availableLabels: string[];
     onChange: (item: TransactionFormData) => void;
     onRemove: () => void;
 }
 
-const ReceiptItemEditor: React.FC<ReceiptItemEditorProps> = ({ item, categories, onChange, onRemove }) => {
-    const [labelInput, setLabelInput] = useState('');
-
+const ReceiptItemEditor: React.FC<ReceiptItemEditorProps> = ({ item, categories, availableLabels, onChange, onRemove }) => {
     const handleChange = (field: keyof TransactionFormData, value: any) => {
         onChange({ ...item, [field]: value });
-    };
-
-    const handleLabelKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            const newLabel = labelInput.trim().toLowerCase();
-            if (newLabel && !item.labels.includes(newLabel)) {
-                handleChange('labels', [...item.labels, newLabel]);
-            }
-            setLabelInput('');
-        }
-    };
-    
-    const removeLabel = (labelToRemove: string) => {
-        handleChange('labels', item.labels.filter(label => label !== labelToRemove));
     };
     
     const commonInputClasses = "w-full px-3 py-2 bg-surface border border-border-shadow shadow-inner rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent text-sm transition-colors";
@@ -98,28 +83,13 @@ const ReceiptItemEditor: React.FC<ReceiptItemEditorProps> = ({ item, categories,
              </div>
              <div className="mt-4">
                 <label className="block text-xs font-medium text-text-secondary mb-1">Labels</label>
-                <div className="flex flex-wrap items-center gap-2 p-1.5 bg-surface/80 border border-border-shadow shadow-inner rounded-md">
-                     {item.labels.map(label => (
-                        <span key={label} className="label-chip">
-                            {label}
-                            <button
-                                type="button"
-                                onClick={() => removeLabel(label)}
-                                className="label-chip__remove"
-                            >
-                                <CloseIcon className="w-3 h-3" />
-                            </button>
-                        </span>
-                    ))}
-                    <input
-                        type="text"
-                        value={labelInput}
-                        onChange={(e) => setLabelInput(e.target.value)}
-                        onKeyDown={handleLabelKeyDown}
-                        className="bg-transparent flex-grow p-1 text-sm focus:outline-none text-text-primary placeholder-text-muted min-w-[120px]"
-                        placeholder="Add label..."
-                    />
-                </div>
+                <LabelAutocomplete
+                    selectedLabels={item.labels}
+                    availableLabels={availableLabels}
+                    onLabelsChange={(labels) => handleChange('labels', labels)}
+                    placeholder="Add label..."
+                    className="text-sm"
+                />
             </div>
         </div>
     );
