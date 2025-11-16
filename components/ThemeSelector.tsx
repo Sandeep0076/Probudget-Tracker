@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Theme } from '../App';
 import { PaletteIcon } from './icons/PaletteIcon';
+import { clearStoredCredentials } from './LoginPage';
 
 interface ThemeSelectorProps {
   currentTheme: Theme;
@@ -88,6 +89,17 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
     setPasswordSaveTimeout(timeout);
   };
 
+  const handleLogout = () => {
+    console.log('[ThemeSelector] Logout button clicked');
+    if (confirm('Are you sure you want to logout?')) {
+      console.log('[ThemeSelector] User confirmed logout, clearing credentials and reloading');
+      clearStoredCredentials();
+      window.location.reload();
+    } else {
+      console.log('[ThemeSelector] User cancelled logout');
+    }
+  };
+
   React.useEffect(() => {
     setLocalUsername(username);
   }, [username]);
@@ -143,8 +155,8 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
               />
             </div>
 
-            <h3 className="text-lg font-semibold mb-3" style={{ color: getTextColor() }}>Theme</h3>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            <h3 className="text-lg font-semibold mb-3 mt-6" style={{ color: getTextColor() }}>Theme</h3>
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
               {themes.map(theme => (
                 <button
                   key={theme.id}
@@ -179,6 +191,16 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                   Custom
                 </button>
               </div>
+            </div>
+
+            {/* Logout Button */}
+            <div className="mt-6 pt-6 border-t border-border-shadow">
+              <button
+                onClick={handleLogout}
+                className="w-full px-4 py-2 bg-red-500/10 hover:bg-red-500/20 text-red-500 font-semibold rounded-lg transition-all duration-200 border border-red-500/30 hover:border-red-500/50"
+              >
+                Logout
+              </button>
             </div>
           </div>
         </div>
