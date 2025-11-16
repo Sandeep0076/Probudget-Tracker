@@ -367,8 +367,10 @@ app.get('/api/tasks', async (req, res) => {
     gcalEventId: t.gcal_event_id,
     createdAt: t.created_at,
     updatedAt: t.updated_at,
+    completedAt: t.completed_at,
   }));
 
+  console.log('[GET /api/tasks] Fetched', tasks.length, 'tasks');
   res.json(out);
 });
 
@@ -383,19 +385,23 @@ app.post('/api/tasks', async (req, res) => {
     return res.status(400).json({ error: 'Title is required' });
   }
 
+  console.log('[POST /api/tasks] Creating task:', { title, status, priority });
+
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .insert({
       title, notes, status, priority, all_day: allDay, start, end, due,
       repeat_json: repeat, color
     })
-    .select('id')
+    .select('id, created_at')
     .single();
 
   if (taskError) {
-    console.error('Error creating task:', taskError);
+    console.error('[POST /api/tasks] Error creating task:', taskError);
     return res.status(500).json({ error: 'Failed to create task' });
   }
+
+  console.log('[POST /api/tasks] Task created successfully:', { id: task.id, created_at: task.created_at });
 
   if (labels.length > 0) {
     const labelIds = await Promise.all(labels.map(name => upsertLabelIdByName(name)));
@@ -437,18 +443,36 @@ app.put('/api/tasks/:id', async (req, res) => {
     repeat = existing.repeat_json, color = existing.color, labels = [], subtasks = []
   } = req.body || {};
 
+  console.log('[PUT /api/tasks/:id] Updating task:', { id, oldStatus: existing.status, newStatus: status });
+
+  // Prepare update data
+  const updateData = {
+    title, notes, status, priority, all_day: allDay, start, end, due,
+    repeat_json: repeat, color, updated_at: new Date().toISOString()
+  };
+
+  // Set completed_at when task is marked as completed
+  if (status === 'completed' && existing.status !== 'completed') {
+    updateData.completed_at = new Date().toISOString();
+    console.log('[PUT /api/tasks/:id] Task marked as completed, setting completed_at:', updateData.completed_at);
+  }
+  // Clear completed_at if task is unmarked from completed
+  else if (status !== 'completed' && existing.status === 'completed') {
+    updateData.completed_at = null;
+    console.log('[PUT /api/tasks/:id] Task unmarked from completed, clearing completed_at');
+  }
+
   const { error: updateError } = await supabase
     .from('tasks')
-    .update({
-      title, notes, status, priority, all_day: allDay, start, end, due,
-      repeat_json: repeat, color, updated_at: new Date().toISOString()
-    })
+    .update(updateData)
     .eq('id', id);
 
   if (updateError) {
-    console.error('Error updating task:', updateError);
+    console.error('[PUT /api/tasks/:id] Error updating task:', updateError);
     return res.status(500).json({ error: 'Failed to update task' });
   }
+
+  console.log('[PUT /api/tasks/:id] Task updated successfully');
 
   await supabase.from('task_labels').delete().eq('task_id', id);
   if (labels.length > 0) {

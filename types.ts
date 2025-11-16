@@ -107,5 +107,6 @@ export interface Task {
   gcalEventId?: string | null;
   createdAt: string;
   updatedAt: string;
+  completedAt?: string | null;
   subtasks?: Subtask[];
 }
