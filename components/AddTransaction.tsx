@@ -3,6 +3,7 @@ import { TransactionFormData, TransactionType, Category } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { SpinnerIcon } from './icons/SpinnerIcon';
+import LabelAutocomplete from './LabelAutocomplete';
 
 interface AddTransactionProps {
     onCancel: () => void;
@@ -10,9 +11,10 @@ interface AddTransactionProps {
     onSave: (data: TransactionFormData) => void;
     categories: Category[];
     onScanReceipt: (file: File) => Promise<void>;
+    availableLabels: string[];
 }
 
-const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, onSave, categories, onScanReceipt }) => {
+const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, onSave, categories, onScanReceipt, availableLabels }) => {
     const [transactionType, setTransactionType] = useState<TransactionType>(initialType);
     const [amount, setAmount] = useState('');
     const [quantity, setQuantity] = useState('1');
@@ -20,7 +22,6 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
     const [category, setCategory] = useState('');
     const [date, setDate] = useState(new Date().toISOString().split('T')[0]);
     const [labels, setLabels] = useState<string[]>([]);
-    const [labelInput, setLabelInput] = useState('');
     const [isRecurring, setIsRecurring] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
 
@@ -45,32 +46,12 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
         setTransactionType(type);
     }
 
-    const handleLabelKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            const newLabel = labelInput.trim().toLowerCase();
-            if (newLabel && !labels.includes(newLabel)) {
-                setLabels([...labels, newLabel]);
-            }
-            setLabelInput('');
-        }
-    };
-
-    const removeLabel = (labelToRemove: string) => {
-        setLabels(labels.filter(label => label !== labelToRemove));
-    };
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!amount || !description || !category) {
             alert('Please fill all fields');
             return;
         }
-
-        const pending = labelInput.trim().toLowerCase();
-        const finalLabels = pending && !labels.includes(pending)
-            ? [...labels, pending]
-            : labels;
 
         onSave({
             amount: parseFloat(amount),
@@ -79,7 +60,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
             category,
             date,
             type: transactionType,
-            labels: finalLabels,
+            labels: labels,
             isRecurring,
         });
     };
@@ -230,29 +211,12 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                     
                      <div>
                         <label htmlFor="labels" className="block text-sm font-medium text-text-secondary mb-1">Labels (optional)</label>
-                        <div className="flex flex-wrap items-center gap-2 p-2 bg-input-bg border border-input-border shadow-inner rounded-md">
-                            {labels.map(label => (
-                                <span key={label} className="label-chip">
-                                    {label}
-                                    <button
-                                        type="button"
-                                        onClick={() => removeLabel(label)}
-                                        className="label-chip__remove"
-                                    >
-                                        <CloseIcon className="w-3 h-3" />
-                                    </button>
-                                </span>
-                            ))}
-                            <input
-                                type="text"
-                                id="labels"
-                                value={labelInput}
-                                onChange={(e) => setLabelInput(e.target.value)}
-                                onKeyDown={handleLabelKeyDown}
-                                className="bg-transparent flex-grow p-1 focus:outline-none text-text-primary placeholder-text-muted min-w-[160px]"
-                                placeholder="Add a label and press Enter..."
-                            />
-                        </div>
+                        <LabelAutocomplete
+                            selectedLabels={labels}
+                            availableLabels={availableLabels}
+                            onLabelsChange={setLabels}
+                            placeholder="Add a label and press Enter..."
+                        />
                         <p className="text-xs text-text-muted mt-1">Separate labels with a comma or by pressing Enter.</p>
                     </div>
 

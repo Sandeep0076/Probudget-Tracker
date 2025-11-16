@@ -721,6 +721,12 @@ app.get('/api/categories', async (req, res) => {
   res.json(data);
 });
 
+app.get('/api/labels', async (req, res) => {
+  const { data, error } = await supabase.from('labels').select('name').order('name');
+  if (error) return res.status(500).json({ error: 'Failed to fetch labels' });
+  res.json(data.map(label => label.name));
+});
+
 app.post('/api/categories', async (req, res) => {
   const { name, type } = req.body || {};
   const { data, error } = await supabase.from('categories').insert({ name, type }).select().single();

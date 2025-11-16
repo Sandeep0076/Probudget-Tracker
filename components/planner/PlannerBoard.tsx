@@ -1,5 +1,5 @@
-import React, { useMemo, useState } from 'react';
-import { DndContext, DragEndEvent } from '@dnd-kit/core';
+import React, { useMemo, useState, useEffect } from 'react';
+import { DndContext, DragEndEvent, DragOverEvent, useDroppable, DragOverlay } from '@dnd-kit/core';
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Task } from '../../types';
@@ -11,12 +11,25 @@ interface PlannerBoardProps {
   onDelete: (taskId: string) => void;
 }
 
-const Column: React.FC<{ title: string; children: React.ReactNode }>=({title,children})=> (
-  <div className="bg-card-bg backdrop-blur-xl rounded-xl p-4 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 min-h-[300px]">
-    <div className="text-sm font-semibold tracking-wide uppercase text-text-dark mb-3">{title}</div>
-    <div>{children}</div>
-  </div>
-);
+const Column: React.FC<{
+  id: string;
+  title: string;
+  children: React.ReactNode;
+}>=({id, title, children})=> {
+  const { setNodeRef, isOver } = useDroppable({ id });
+  
+  return (
+    <div
+      ref={setNodeRef}
+      className={`bg-card-bg backdrop-blur-xl rounded-xl p-4 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 min-h-[300px] ${
+        isOver ? 'ring-2 ring-brand shadow-[0_0_20px_var(--color-brand)]' : ''
+      }`}
+    >
+      <div className="text-sm font-semibold tracking-wide uppercase text-text-dark mb-3">{title}</div>
+      <div className="min-h-[200px]">{children}</div>
+    </div>
+  );
+};
 
 const SortableItem: React.FC<{
   id: string;
@@ -98,47 +111,139 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
     return map;
   }, [tasks]);
 
-  const [order, setOrder] = useState<Record<string, string[]>>(() => {
-    const initialOrder: Record<string, string[]> = {};
+  const [order, setOrder] = useState<Record<string, string[]>>({});
+  const [activeId, setActiveId] = useState<string | null>(null);
+
+  // Update order when tasks change
+  useEffect(() => {
+    const newOrder: Record<string, string[]> = {};
     Object.entries(itemsByCol).forEach(([k, arr]) => {
-      initialOrder[k] = (arr as Task[]).map(t => t.id);
+      newOrder[k] = (arr as Task[]).map(t => t.id);
     });
-    return initialOrder;
-  });
+    setOrder(newOrder);
+    console.log('[PlannerBoard] Order updated:', Object.entries(newOrder).map(([k, v]) => `${k}: ${v.length}`).join(', '));
+  }, [itemsByCol]);
+
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id);
+    console.log('[PlannerBoard] Drag started - task:', event.active.id);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+
+    console.log('[PlannerBoard] Drag over - active:', activeId, 'over:', overId);
+
+    // Find which column the active item is in
+    const activeColumn = Object.keys(order).find(col => order[col].includes(activeId));
+    
+    // Determine the target column
+    let overColumn: string | undefined;
+    
+    // Check if we're over a column directly
+    if (['scheduled', 'in_progress', 'backlog', 'completed'].includes(overId)) {
+      overColumn = overId;
+    } else {
+      // We're over an item, find which column it's in
+      overColumn = Object.keys(order).find(col => order[col].includes(overId));
+    }
+
+    if (!activeColumn || !overColumn) return;
+
+    console.log('[PlannerBoard] Drag over - from column:', activeColumn, 'to column:', overColumn);
+
+    // If moving to a different column
+    if (activeColumn !== overColumn) {
+      setOrder(prev => {
+        const activeItems = [...prev[activeColumn]];
+        const overItems = [...prev[overColumn]];
+        
+        // Remove from source
+        const activeIndex = activeItems.indexOf(activeId);
+        activeItems.splice(activeIndex, 1);
+        
+        // Add to destination at the top
+        overItems.unshift(activeId);
+        
+        return {
+          ...prev,
+          [activeColumn]: activeItems,
+          [overColumn]: overItems,
+        };
+      });
+    }
+  };
 
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
     console.log('[PlannerBoard] Drag end - active:', active.id, 'over:', over?.id);
+    
+    setActiveId(null);
+    
     if (!over) return;
-    const sourceCol = Object.keys(order).find(col => order[col].includes(String(active.id)));
-    const destCol = String(over.id).startsWith('col:') ? String(over.id).slice(4) : sourceCol;
-    console.log('[PlannerBoard] Moving from', sourceCol, 'to', destCol);
+
+    const activeId = String(active.id);
+    const overId = String(over.id);
+    
+    const sourceCol = Object.keys(order).find(col => order[col].includes(activeId));
+    
+    // Determine destination column
+    let destCol: string | undefined;
+    if (['scheduled', 'in_progress', 'backlog', 'completed'].includes(overId)) {
+      destCol = overId;
+    } else {
+      destCol = Object.keys(order).find(col => order[col].includes(overId));
+    }
+    
+    console.log('[PlannerBoard] Final drop - from:', sourceCol, 'to:', destCol);
+    
     if (!sourceCol || !destCol) return;
 
-    if (sourceCol === destCol) {
-      const idxFrom = order[sourceCol].indexOf(String(active.id));
-      const idxTo = order[destCol].indexOf(String(over.id));
-      const updated = arrayMove(order[sourceCol], idxFrom, idxTo);
-      setOrder({ ...order, [sourceCol]: updated });
-    } else {
-      setOrder({
-        ...order,
-        [sourceCol]: order[sourceCol].filter(id => id !== active.id),
-        [destCol]: [active.id as string, ...order[destCol]],
-      });
-      onMove(String(active.id), destCol as Task['status']);
-      console.log('[PlannerBoard] Task moved to new status:', destCol);
+    // If moved to a different column, update the backend
+    if (sourceCol !== destCol) {
+      console.log('[PlannerBoard] Task moved to new status:', destCol, 'calling onMove');
+      onMove(activeId, destCol as Task['status']);
+    } else if (sourceCol === destCol) {
+      // Reordering within the same column
+      const items = order[sourceCol];
+      const oldIndex = items.indexOf(activeId);
+      const newIndex = items.indexOf(overId);
+      
+      if (oldIndex !== newIndex) {
+        const reordered = arrayMove(items, oldIndex, newIndex);
+        setOrder(prev => ({
+          ...prev,
+          [sourceCol]: reordered,
+        }));
+        console.log('[PlannerBoard] Reordered within column:', sourceCol);
+      }
     }
   };
 
+  const handleDragCancel = () => {
+    setActiveId(null);
+    console.log('[PlannerBoard] Drag cancelled');
+  };
+
+  const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
+
   return (
-    <DndContext onDragEnd={handleDragEnd}>
+    <DndContext
+      onDragStart={handleDragStart}
+      onDragOver={handleDragOver}
+      onDragEnd={handleDragEnd}
+      onDragCancel={handleDragCancel}
+    >
       <div className="space-y-4">
         {/* Top Row: SCHEDULED, IN PROGRESS (doubled width) */}
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4">
           {topRowColumns.map(col => (
-            <div key={col.key} id={`col:${col.key}`} className={col.key === 'in_progress' ? 'md:col-span-2' : ''}>
-              <Column title={col.title}>
+            <div key={col.key} className={col.key === 'in_progress' ? 'md:col-span-2' : ''}>
+              <Column id={col.key} title={col.title}>
                 <SortableContext items={(order[col.key] as string[] || []) as any} strategy={verticalListSortingStrategy}>
                   {((order[col.key] as string[] ) || []).map(id => {
                     const t = tasks.find(x=>x.id===id);
@@ -160,8 +265,8 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
         {/* Bottom Row: BACKLOG, COMPLETED */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {bottomRowColumns.map(col => (
-            <div key={col.key} id={`col:${col.key}`}>
-              <Column title={col.title}>
+            <div key={col.key}>
+              <Column id={col.key} title={col.title}>
                 <SortableContext items={(order[col.key] as string[] || []) as any} strategy={verticalListSortingStrategy}>
                   {((order[col.key] as string[] ) || []).map(id => {
                     const t = tasks.find(x=>x.id===id);
@@ -180,6 +285,14 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
           ))}
         </div>
       </div>
+      
+      <DragOverlay>
+        {activeTask ? (
+          <div className="px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-card-hover border-2 border-brand opacity-90">
+            <div className="text-sm text-text-primary font-semibold">{activeTask.title}</div>
+          </div>
+        ) : null}
+      </DragOverlay>
     </DndContext>
   );
 };

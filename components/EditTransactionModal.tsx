@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
+import LabelAutocomplete from './LabelAutocomplete';
 
 interface EditTransactionModalProps {
     isOpen: boolean;
@@ -8,11 +9,11 @@ interface EditTransactionModalProps {
     onSave: (transaction: Transaction) => void;
     transaction: Transaction;
     categories: Category[];
+    availableLabels: string[];
 }
 
-const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onClose, onSave, transaction, categories }) => {
+const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onClose, onSave, transaction, categories, availableLabels }) => {
     const [formData, setFormData] = useState<Transaction>(transaction);
-    const [labelInput, setLabelInput] = useState('');
 
     useEffect(() => {
         setFormData(transaction);
@@ -36,32 +37,13 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
         setFormData(prev => ({ ...prev, [name]: name === 'amount' || name === 'quantity' ? parseFloat(value) || 0 : value }));
     };
 
-    const handleLabelKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {
-        if (e.key === 'Enter' || e.key === ',') {
-            e.preventDefault();
-            const newLabel = labelInput.trim().toLowerCase();
-            if (newLabel && !formData.labels.includes(newLabel)) {
-                setFormData(prev => ({ ...prev, labels: [...prev.labels, newLabel] }));
-            }
-            setLabelInput('');
-        }
-    };
-
-    const removeLabel = (labelToRemove: string) => {
-        setFormData(prev => ({ ...prev, labels: prev.labels.filter(label => label !== labelToRemove) }));
-    };
-
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         if (!formData.amount || !formData.description || !formData.category) {
             alert('Please fill all fields');
             return;
         }
-        const pending = labelInput.trim().toLowerCase();
-        const finalLabels = pending && !formData.labels.includes(pending)
-            ? [...formData.labels, pending]
-            : formData.labels;
-        onSave({ ...formData, labels: finalLabels });
+        onSave(formData);
     };
 
     const commonInputClasses = "w-full px-4 py-3 bg-surface border border-border-shadow shadow-inner rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors";
@@ -105,21 +87,12 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
                     </div>
                     <div>
                         <label htmlFor="labels" className="block text-sm font-medium text-text-secondary mb-1">Labels (optional)</label>
-                        <div className="flex flex-wrap items-center gap-2 p-2 bg-surface border border-border-shadow shadow-inner rounded-md">
-                            {formData.labels.map(label => (
-                                <span key={label} className="label-chip">
-                                    {label}
-                                    <button
-                                        type="button"
-                                        onClick={() => removeLabel(label)}
-                                        className="label-chip__remove"
-                                    >
-                                        <CloseIcon className="w-3 h-3" />
-                                    </button>
-                                </span>
-                            ))}
-                            <input type="text" id="labels" value={labelInput} onChange={(e) => setLabelInput(e.target.value)} onKeyDown={handleLabelKeyDown} className="bg-transparent flex-grow p-1 focus:outline-none text-text-primary placeholder-text-muted min-w-[160px]" placeholder="Add a label and press Enter..." />
-                        </div>
+                        <LabelAutocomplete
+                            selectedLabels={formData.labels}
+                            availableLabels={availableLabels}
+                            onLabelsChange={(labels) => setFormData(prev => ({ ...prev, labels }))}
+                            placeholder="Add a label and press Enter..."
+                        />
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                          <div>
