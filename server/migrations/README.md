@@ -36,3 +36,17 @@ Adds a `completed_at` timestamp column to the tasks table to track when tasks ar
 - The `created_at` column already exists and is automatically set on task creation
 
 **Note:** The tasks table already has `created_at` and `updated_at` columns that are automatically managed by the database.
+
+### add-shopping-items.sql
+Creates a shopping_items table for the "To Buy" list feature in the planner section.
+
+**What it does:**
+- Creates `shopping_items` table with columns for title, category, notes, priority, completion status, and timestamps
+- Adds appropriate indexes for performance (completed, priority, category)
+- Sets up constraints for the priority field (low, medium, high)
+
+**Benefits:**
+- Enables users to create and manage shopping lists
+- Supports categorization and prioritization of shopping items
+- Allows marking items as completed with completion timestamps
+- Provides sorting and filtering capabilities

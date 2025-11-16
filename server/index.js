@@ -16,7 +16,26 @@ const GOOGLE_API_SCOPES = [
 const ENC_KEY = (process.env.ENCRYPTION_KEY || '').padEnd(32, '0').slice(0, 32);
 
 const app = express();
-app.use(cors());
+const allowedOrigins = [
+  'https://probudget-frontend.onrender.com',
+  'http://localhost:5173', // Vite dev server
+  'http://localhost:4173', // Vite preview server
+];
+
+const corsOptions = {
+  origin: (origin, callback) => {
+    // `origin` is undefined for same-origin requests or server-to-server requests.
+    if (!origin || allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.error(`CORS Error: Origin ${origin} not allowed.`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+};
+
+app.use(cors(corsOptions));
+console.log('CORS middleware configured to allow origins:', allowedOrigins);
 app.use(express.json({ limit: '5mb' }));
 
 
@@ -368,9 +387,22 @@ app.get('/api/tasks', async (req, res) => {
     createdAt: t.created_at,
     updatedAt: t.updated_at,
     completedAt: t.completed_at,
+    progress: t.progress !== null && t.progress !== undefined ? t.progress : 0,
   }));
 
   console.log('[GET /api/tasks] Fetched', tasks.length, 'tasks');
+  // Log tasks with in_progress status for debugging
+  const inProgressTasks = out.filter(t => t.status === 'in_progress');
+  if (inProgressTasks.length > 0) {
+    console.log('[GET /api/tasks] In-progress tasks:', inProgressTasks.map(t => ({
+      id: t.id,
+      title: t.title,
+      status: t.status,
+      progress: t.progress,
+      start: t.start,
+      due: t.due
+    })));
+  }
   res.json(out);
 });
 
@@ -440,15 +472,26 @@ app.put('/api/tasks/:id', async (req, res) => {
     title = existing.title, notes = existing.notes, status = existing.status,
     priority = existing.priority, allDay = existing.all_day,
     start = existing.start, end = existing.end, due = existing.due,
-    repeat = existing.repeat_json, color = existing.color, labels = [], subtasks = []
+    repeat = existing.repeat_json, color = existing.color, labels = [], subtasks = [],
+    progress = existing.progress
   } = req.body || {};
 
-  console.log('[PUT /api/tasks/:id] Updating task:', { id, oldStatus: existing.status, newStatus: status });
+  console.log('[PUT /api/tasks/:id] Updating task:', { id, oldStatus: existing.status, newStatus: status, progress });
+
+  // Initialize progress to 0 when moving to in_progress if not already set
+  let finalProgress = progress;
+  if (status === 'in_progress' && existing.status !== 'in_progress') {
+    // Task is being moved to in_progress for the first time
+    if (finalProgress === undefined || finalProgress === null) {
+      finalProgress = 0;
+      console.log('[PUT /api/tasks/:id] Initializing progress to 0 for new in_progress task');
+    }
+  }
 
   // Prepare update data
   const updateData = {
     title, notes, status, priority, all_day: allDay, start, end, due,
-    repeat_json: repeat, color, updated_at: new Date().toISOString()
+    repeat_json: repeat, color, updated_at: new Date().toISOString(), progress: finalProgress
   };
 
   // Set completed_at when task is marked as completed
@@ -472,7 +515,13 @@ app.put('/api/tasks/:id', async (req, res) => {
     return res.status(500).json({ error: 'Failed to update task' });
   }
 
-  console.log('[PUT /api/tasks/:id] Task updated successfully');
+  console.log('[PUT /api/tasks/:id] Task updated successfully with data:', {
+    id,
+    status: updateData.status,
+    progress: updateData.progress,
+    start: updateData.start,
+    due: updateData.due
+  });
 
   await supabase.from('task_labels').delete().eq('task_id', id);
   if (labels.length > 0) {
@@ -574,6 +623,113 @@ app.get('/api/tasks/agenda', async (req, res) => {
     return res.status(500).json({ error: 'Failed to fetch agenda items' });
   }
   res.json(data);
+});
+
+// Shopping Items APIs
+app.get('/api/shopping-items', async (req, res) => {
+  try {
+    const { data, error } = await supabase
+      .from('shopping_items')
+      .select('*')
+      .order('createdAt', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching shopping items:', error);
+      return res.status(500).json({ error: 'Failed to fetch shopping items' });
+    }
+
+    res.json(data);
+  } catch (err) {
+    console.error('Error in shopping items route:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.post('/api/shopping-items', async (req, res) => {
+  try {
+    const { title, category, notes, priority, completed, completedAt } = req.body;
+
+    if (!title?.trim()) {
+      return res.status(400).json({ error: 'Title is required' });
+    }
+
+    const itemData = {
+      id: randomUUID(),
+      title: title.trim(),
+      category: category?.trim() || null,
+      notes: notes?.trim() || null,
+      priority: priority || 'medium',
+      completed: completed || false,
+      completedAt: completedAt || null,
+      createdAt: new Date().toISOString()
+    };
+
+    const { data, error } = await supabase
+      .from('shopping_items')
+      .insert(itemData)
+      .select('id')
+      .single();
+
+    if (error) {
+      console.error('Error creating shopping item:', error);
+      return res.status(500).json({ error: 'Failed to create shopping item' });
+    }
+
+    await addActivity('add_shopping_item', `Added shopping item: ${title}`);
+    res.json({ id: data.id });
+  } catch (err) {
+    console.error('Error in create shopping item route:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.put('/api/shopping-items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const updateData = { ...req.body };
+    
+    // Remove fields that shouldn't be updated
+    delete updateData.id;
+    delete updateData.createdAt;
+
+    const { error } = await supabase
+      .from('shopping_items')
+      .update(updateData)
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error updating shopping item:', error);
+      return res.status(500).json({ error: 'Failed to update shopping item' });
+    }
+
+    await addActivity('update_shopping_item', `Updated shopping item: ${id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error in update shopping item route:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
+app.delete('/api/shopping-items/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    
+    const { error } = await supabase
+      .from('shopping_items')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting shopping item:', error);
+      return res.status(500).json({ error: 'Failed to delete shopping item' });
+    }
+
+    await addActivity('delete_shopping_item', `Deleted shopping item: ${id}`);
+    res.json({ ok: true });
+  } catch (err) {
+    console.error('Error in delete shopping item route:', err);
+    res.status(500).json({ error: 'Internal server error' });
+  }
 });
 
 // ===== Google Calendar OAuth & Events =====
@@ -1052,12 +1208,22 @@ app.post('/api/settings', async (req, res) => {
   try {
     const { theme, customThemeColor, username, password } = req.body || {};
     
+    console.log('[POST /api/settings] Received settings update:', {
+      theme,
+      customThemeColor,
+      username,
+      hasPassword: password !== undefined,
+      passwordLength: password ? password.length : 0
+    });
+    
     // Update theme settings
     if (theme !== undefined) {
       await setSetting('theme', theme);
+      console.log('[POST /api/settings] Theme updated to:', theme);
     }
     if (customThemeColor !== undefined) {
       await setSetting('customThemeColor', customThemeColor);
+      console.log('[POST /api/settings] Custom theme color updated to:', customThemeColor);
     }
     
     // Update user data in users table
@@ -1072,17 +1238,33 @@ app.post('/api/settings', async (req, res) => {
       if (existingUser) {
         // Update existing user
         const updateData = {};
-        if (username !== undefined) updateData.username = username;
-        if (password !== undefined) updateData.password = password;
+        if (username !== undefined) {
+          updateData.username = username;
+          console.log('[POST /api/settings] Updating username to:', username);
+        }
+        // CRITICAL: Only update password if it's explicitly provided and not empty
+        if (password !== undefined && password !== null && password !== '') {
+          updateData.password = password;
+          console.log('[POST /api/settings] Updating password (length):', password.length);
+        } else if (password === '') {
+          console.warn('[POST /api/settings] WARNING: Attempted to set empty password - IGNORING');
+        }
         
-        const { error } = await supabase
-          .from('users')
-          .update(updateData)
-          .eq('id', existingUser.id);
-        
-        if (error) throw error;
+        // Only update if there's something to update
+        if (Object.keys(updateData).length > 0) {
+          const { error } = await supabase
+            .from('users')
+            .update(updateData)
+            .eq('id', existingUser.id);
+          
+          if (error) throw error;
+          console.log('[POST /api/settings] User data updated successfully');
+        } else {
+          console.log('[POST /api/settings] No user data to update');
+        }
       } else {
         // Insert new user
+        console.log('[POST /api/settings] Creating new user');
         const { error } = await supabase
           .from('users')
           .insert({
@@ -1091,12 +1273,13 @@ app.post('/api/settings', async (req, res) => {
           });
         
         if (error) throw error;
+        console.log('[POST /api/settings] New user created');
       }
     }
     
     res.json({ ok: true });
   } catch (error) {
-    console.error('Error saving settings:', error);
+    console.error('[POST /api/settings] Error saving settings:', error);
     res.status(500).json({ error: error.message });
   }
 });

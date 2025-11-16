@@ -1,4 +1,4 @@
-import { Budget, Category, RecurringTransaction, Saving, Transaction, TransactionFormData, TransactionType, ActivityLog, Task, Subtask } from '../types';
+import { Budget, Category, RecurringTransaction, Saving, Transaction, TransactionFormData, TransactionType, ActivityLog, Task, Subtask, ShoppingItem } from '../types';
 
 // Get API base URL from environment variable or default to current origin
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
@@ -66,6 +66,12 @@ export const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'sub
 export const updateTask = (id: string, task: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>) => put<{ ok: boolean }>(`/api/tasks/${id}`, task);
 export const deleteTask = (id: string) => del<{ ok: boolean }>(`/api/tasks/${id}`);
 export const getAgenda = (range: 'today'|'week'|'overdue') => get<any[]>(`/api/tasks/agenda?range=${range}`);
+
+// Planner: Shopping List
+export const getShoppingItems = () => get<ShoppingItem[]>('/api/shopping-items');
+export const addShoppingItem = (item: Omit<ShoppingItem, 'id' | 'createdAt'>) => post<{ id: string }>('/api/shopping-items', item);
+export const updateShoppingItem = (id: string, item: Partial<Omit<ShoppingItem, 'id' | 'createdAt'>>) => put<{ ok: boolean }>(`/api/shopping-items/${id}`, item);
+export const deleteShoppingItem = (id: string) => del<{ ok: boolean }>(`/api/shopping-items/${id}`);
 
 // Calendar integration
 export const getCalendarAuthUrl = () => get<{ url: string }>(`/api/calendar/auth-url`);

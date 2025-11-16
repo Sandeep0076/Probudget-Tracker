@@ -1,14 +1,16 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { DndContext, DragEndEvent, DragOverEvent, useDroppable, DragOverlay } from '@dnd-kit/core';
-import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable';
+import { DndContext, DragEndEvent, DragOverEvent, useDroppable, DragOverlay, useSensors, useSensor, PointerSensor, KeyboardSensor } from '@dnd-kit/core';
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove, sortableKeyboardCoordinates } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import { Task } from '../../types';
+import ProgressBar from './ProgressBar';
 
 interface PlannerBoardProps {
   tasks: Task[];
   onMove: (id: string, status: Task['status']) => void;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onProgressChange: (taskId: string, progress: number) => void;
 }
 
 const Column: React.FC<{
@@ -33,26 +35,31 @@ const Column: React.FC<{
 
 const SortableItem: React.FC<{
   id: string;
-  title: string;
+  task: Task;
   onEdit: () => void;
   onDelete: () => void;
-}>=({ id, title, onEdit, onDelete })=>{
+  onProgressChange?: (progress: number) => void;
+}>=({ id, task, onEdit, onDelete, onProgressChange })=>{
   const { attributes, listeners, setNodeRef, transform, transition } = useSortable({ id });
   const style: React.CSSProperties = {
     transform: CSS.Transform.toString(transform),
     transition,
   };
+  
+  const showProgress = task.status === 'in_progress';
+  console.log('[SortableItem] Task:', task.title, 'Status:', task.status, 'ShowProgress:', showProgress, 'Progress:', task.progress, 'Start:', task.start, 'Due:', task.due);
+  
   return (
     <div ref={setNodeRef} style={style} className="group px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-card-hover hover:-translate-y-1 mb-3 transition-all duration-200">
       <div className="flex items-center justify-between gap-2">
         <div {...attributes} {...listeners} className="flex-1 cursor-grab active:cursor-grabbing">
-          <div className="text-sm text-text-primary font-semibold">{title}</div>
+          <div className="text-sm text-text-primary font-semibold">{task.title}</div>
         </div>
         <div className="flex items-center gap-1">
           <button
             onClick={(e) => {
               e.stopPropagation();
-              console.log('[PlannerBoard] Edit button clicked for task:', id, title);
+              console.log('[PlannerBoard] Edit button clicked for task:', id, task.title);
               onEdit();
             }}
             className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-border-highlight rounded-lg transition-opacity"
@@ -65,7 +72,7 @@ const SortableItem: React.FC<{
           <button
             onClick={(e) => {
               e.stopPropagation();
-              console.log('[PlannerBoard] Delete button clicked for task:', id, title);
+              console.log('[PlannerBoard] Delete button clicked for task:', id, task.title);
               onDelete();
             }}
             className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-danger/10 rounded-lg transition-opacity"
@@ -77,11 +84,21 @@ const SortableItem: React.FC<{
           </button>
         </div>
       </div>
+      
+      {/* Progress bar for in_progress tasks */}
+      {showProgress && onProgressChange && (
+        <ProgressBar
+          progress={task.progress || 0}
+          startDate={task.start}
+          dueDate={task.due}
+          onProgressChange={onProgressChange}
+        />
+      )}
     </div>
   );
 };
 
-const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDelete }) => {
+const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDelete, onProgressChange }) => {
   console.log('[PlannerBoard] Rendering with tasks:', tasks.length);
   
   const topRowColumns: { key: Task['status']; title: string }[] = [
@@ -125,103 +142,67 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
   }, [itemsByCol]);
 
   const handleDragStart = (event: any) => {
-    setActiveId(event.active.id);
-    console.log('[PlannerBoard] Drag started - task:', event.active.id);
+    const { active } = event;
+    setActiveId(active.id);
+    console.log('[PlannerBoard] Drag started - task:', active.id);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
-    const { active, over } = event;
-    if (!over) return;
+      const { active, over } = event;
+      if (!over) return;
 
-    const activeId = String(active.id);
-    const overId = String(over.id);
+      const activeId = String(active.id);
+      const overId = String(over.id);
 
-    console.log('[PlannerBoard] Drag over - active:', activeId, 'over:', overId);
+      const activeColumn = findColumnForTask(activeId);
+      const overColumn = findColumnForTask(overId) || over.id as string;
 
-    // Find which column the active item is in
-    const activeColumn = Object.keys(order).find(col => order[col].includes(activeId));
-    
-    // Determine the target column
-    let overColumn: string | undefined;
-    
-    // Check if we're over a column directly
-    if (['scheduled', 'in_progress', 'backlog', 'completed'].includes(overId)) {
-      overColumn = overId;
-    } else {
-      // We're over an item, find which column it's in
-      overColumn = Object.keys(order).find(col => order[col].includes(overId));
-    }
+      if (!activeColumn || !overColumn || activeColumn === overColumn) {
+          return;
+      }
 
-    if (!activeColumn || !overColumn) return;
+      setOrder((prev) => {
+          const activeItems = prev[activeColumn];
+          const overItems = prev[overColumn];
+          const activeIndex = activeItems.indexOf(activeId);
+          
+          let newIndex;
+          if (overItems) {
+              const overIndex = overItems.indexOf(overId);
+              newIndex = overIndex >= 0 ? overIndex : overItems.length;
+          } else {
+              newIndex = 0;
+          }
 
-    console.log('[PlannerBoard] Drag over - from column:', activeColumn, 'to column:', overColumn);
-
-    // If moving to a different column
-    if (activeColumn !== overColumn) {
-      setOrder(prev => {
-        const activeItems = [...prev[activeColumn]];
-        const overItems = [...prev[overColumn]];
-        
-        // Remove from source
-        const activeIndex = activeItems.indexOf(activeId);
-        activeItems.splice(activeIndex, 1);
-        
-        // Add to destination at the top
-        overItems.unshift(activeId);
-        
-        return {
-          ...prev,
-          [activeColumn]: activeItems,
-          [overColumn]: overItems,
-        };
+          return {
+              ...prev,
+              [activeColumn]: [
+                  ...prev[activeColumn].filter((id) => id !== activeId),
+              ],
+              [overColumn]: [
+                  ...prev[overColumn].slice(0, newIndex),
+                  activeId,
+                  ...prev[overColumn].slice(newIndex),
+              ],
+          };
       });
-    }
   };
 
   const handleDragEnd = (e: DragEndEvent) => {
     const { active, over } = e;
-    console.log('[PlannerBoard] Drag end - active:', active.id, 'over:', over?.id);
-    
-    setActiveId(null);
-    
-    if (!over) return;
+    if (over && active.id !== over.id) {
+      const sourceColumn = findColumnForTask(active.id as string);
+      const destColumn = findColumnForTask(over.id as string) || over.id as string;
 
-    const activeId = String(active.id);
-    const overId = String(over.id);
-    
-    const sourceCol = Object.keys(order).find(col => order[col].includes(activeId));
-    
-    // Determine destination column
-    let destCol: string | undefined;
-    if (['scheduled', 'in_progress', 'backlog', 'completed'].includes(overId)) {
-      destCol = overId;
-    } else {
-      destCol = Object.keys(order).find(col => order[col].includes(overId));
-    }
-    
-    console.log('[PlannerBoard] Final drop - from:', sourceCol, 'to:', destCol);
-    
-    if (!sourceCol || !destCol) return;
-
-    // If moved to a different column, update the backend
-    if (sourceCol !== destCol) {
-      console.log('[PlannerBoard] Task moved to new status:', destCol, 'calling onMove');
-      onMove(activeId, destCol as Task['status']);
-    } else if (sourceCol === destCol) {
-      // Reordering within the same column
-      const items = order[sourceCol];
-      const oldIndex = items.indexOf(activeId);
-      const newIndex = items.indexOf(overId);
-      
-      if (oldIndex !== newIndex) {
-        const reordered = arrayMove(items, oldIndex, newIndex);
-        setOrder(prev => ({
-          ...prev,
-          [sourceCol]: reordered,
-        }));
-        console.log('[PlannerBoard] Reordered within column:', sourceCol);
+      if (sourceColumn && destColumn && sourceColumn !== destColumn) {
+        onMove(active.id as string, destColumn as Task['status']);
       }
     }
+    setActiveId(null);
+  };
+
+  const findColumnForTask = (taskId: string) => {
+    return Object.keys(order).find(key => order[key].includes(taskId));
   };
 
   const handleDragCancel = () => {
@@ -237,6 +218,12 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
       onDragOver={handleDragOver}
       onDragEnd={handleDragEnd}
       onDragCancel={handleDragCancel}
+      sensors={useSensors(
+        useSensor(PointerSensor),
+        useSensor(KeyboardSensor, {
+          coordinateGetter: sortableKeyboardCoordinates,
+        })
+      )}
     >
       <div className="space-y-4">
         {/* Top Row: SCHEDULED, IN PROGRESS (doubled width) */}
@@ -251,9 +238,13 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
                     return <SortableItem
                       key={id}
                       id={id}
-                      title={t.title}
+                      task={t}
                       onEdit={() => onEdit(t)}
                       onDelete={() => onDelete(t.id)}
+                      onProgressChange={(progress) => {
+                        console.log('[PlannerBoard] Progress changed for task:', t.id, 'to:', progress);
+                        onProgressChange(t.id, progress);
+                      }}
                     />
                   })}
                 </SortableContext>
@@ -274,9 +265,13 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
                     return <SortableItem
                       key={id}
                       id={id}
-                      title={t.title}
+                      task={t}
                       onEdit={() => onEdit(t)}
                       onDelete={() => onDelete(t.id)}
+                      onProgressChange={(progress) => {
+                        console.log('[PlannerBoard] Progress changed for task:', t.id, 'to:', progress);
+                        onProgressChange(t.id, progress);
+                      }}
                     />
                   })}
                 </SortableContext>
@@ -290,6 +285,11 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
         {activeTask ? (
           <div className="px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-card-hover border-2 border-brand opacity-90">
             <div className="text-sm text-text-primary font-semibold">{activeTask.title}</div>
+            {activeTask.status === 'in_progress' && (
+              <div className="mt-2 text-xs text-text-secondary">
+                Progress: {activeTask.progress || 0}%
+              </div>
+            )}
           </div>
         ) : null}
       </DragOverlay>

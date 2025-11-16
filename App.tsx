@@ -11,7 +11,7 @@ import ReceiptConfirmationPage from './components/ReceiptConfirmationPage';
 import SettingsPage from './components/SettingsPage';
 import EditTransactionModal from './components/EditTransactionModal';
 import LoginPage from './components/LoginPage';
-import { Transaction, TransactionType, Budget, Category, RecurringTransaction, TransactionFormData, Saving, ActivityLog, Task } from './types';
+import { Transaction, TransactionType, Budget, Category, RecurringTransaction, TransactionFormData, Saving, ActivityLog, Task, ShoppingItem } from './types';
 import * as api from './services/api';
 import { applyCustomTheme } from './utils/theme';
 import TopSwitcher from './components/TopSwitcher';
@@ -21,6 +21,8 @@ import PlannerDashboard from './components/planner/PlannerDashboard';
 import PlannerBoard from './components/planner/PlannerBoard';
 import PlannerCalendar from './components/planner/PlannerCalendar';
 import PlannerBacklog from './components/planner/PlannerBacklog';
+import PlannerToBuy from './components/planner/PlannerToBuy';
+import ShoppingItemModal from './components/ShoppingItemModal';
 
 export type Page = 'dashboard' | 'addTransaction' | 'budgets' | 'transactions' | 'categories' | 'reports' | 'confirmReceipt' | 'settings';
 export type Theme = 'dark-blue' | 'light' | 'dark' | 'custom';
@@ -46,6 +48,9 @@ const App: React.FC = () => {
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [prefillTask, setPrefillTask] = useState<any | null>(null);
+  const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
+  const [isShoppingModalOpen, setIsShoppingModalOpen] = useState(false);
+  const [editingShoppingItem, setEditingShoppingItem] = useState<ShoppingItem | null>(null);
   
   const [receiptItemsToConfirm, setReceiptItemsToConfirm] = useState<TransactionFormData[]>([]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
@@ -69,23 +74,31 @@ const App: React.FC = () => {
   }, [theme, customThemeColor]);
 
   const handleThemeChange = (newTheme: Theme) => {
+    console.log('[App] Theme change requested:', newTheme);
     setTheme(newTheme);
-    api.setSettings(newTheme, customThemeColor, username, password).catch(console.error);
+    // Don't send password when only changing theme - use undefined to skip password update
+    api.setSettings(newTheme, customThemeColor, username, undefined as any).catch(console.error);
   };
 
   const handleCustomThemeChange = (color: string) => {
+    console.log('[App] Custom theme color change requested:', color);
     setTheme('custom');
     setCustomThemeColor(color);
-    api.setSettings('custom', color, username, password).catch(console.error);
+    // Don't send password when only changing color - use undefined to skip password update
+    api.setSettings('custom', color, username, undefined as any).catch(console.error);
   };
 
   const handleUsernameChange = (newUsername: string) => {
+    console.log('[App] Username change requested:', newUsername);
     setUsername(newUsername);
-    api.setSettings(theme, customThemeColor, newUsername, password).catch(console.error);
+    // Don't send password when only changing username - use undefined to skip password update
+    api.setSettings(theme, customThemeColor, newUsername, undefined as any).catch(console.error);
   };
 
   const handlePasswordChange = (newPassword: string) => {
+    console.log('[App] Password change requested (length):', newPassword.length);
     setPassword(newPassword);
+    // Only send password when explicitly changing it
     api.setSettings(theme, customThemeColor, username, newPassword).catch(console.error);
   };
 
@@ -94,11 +107,18 @@ const App: React.FC = () => {
       try {
         console.log('[App] Starting bootstrap process...');
         const settings = await api.getSettings();
+        console.log('[App] Settings received from API:', {
+          theme: settings.theme,
+          customThemeColor: settings.customThemeColor,
+          username: settings.username,
+          hasPassword: !!settings.password,
+          passwordLength: settings.password ? settings.password.length : 0
+        });
         setTheme((['dark-blue','light','dark','custom'] as Theme[]).includes(settings.theme as Theme) ? settings.theme as Theme : 'dark-blue');
         setCustomThemeColor(settings.customThemeColor || '#5e258a');
         setUsername(settings.username || 'Mr and Mrs Pathania');
         setPassword(settings.password || '');
-        console.log('[App] Settings loaded, theme:', settings.theme);
+        console.log('[App] Settings loaded successfully');
       } catch (e) {
         console.error('[App] Failed to load settings:', e);
       } finally {
@@ -116,6 +136,7 @@ const App: React.FC = () => {
           await api.generateDueRecurringTransactions();
           await loadData();
           await loadTasks();
+          await loadShoppingItems();
           await loadCalendarForWeek();
           console.log('[App] Application data loaded successfully');
         } catch (e) {
@@ -156,6 +177,15 @@ const App: React.FC = () => {
       setTasks(list);
     } catch (e) {
       console.error('Failed to load tasks', e);
+    }
+  };
+
+  const loadShoppingItems = async () => {
+    try {
+      const items = await api.getShoppingItems();
+      setShoppingItems(items);
+    } catch (e) {
+      console.error('Failed to load shopping items', e);
     }
   };
 
@@ -413,9 +443,17 @@ const App: React.FC = () => {
   };
 
   const handleUpdateTask = async (id: string, patch: any) => {
+    console.log('[App] handleUpdateTask called:', { id, patch });
+    if (patch.status === 'in_progress') {
+      const task = tasks.find(t => t.id === id);
+      if (task && task.progress === null) {
+        patch.progress = 0;
+      }
+    }
     await api.updateTask(id, patch);
     await loadTasks();
     await loadCalendarForWeek();
+    console.log('[App] handleUpdateTask completed');
   };
 
   const handleToggleEvent = async (event: any) => {
@@ -459,6 +497,82 @@ const App: React.FC = () => {
       console.error('Failed to delete task', err);
       alert('Failed to delete task');
     }
+  };
+
+  const handleProgressChange = async (taskId: string, progress: number) => {
+    console.log('[App] Updating task progress:', taskId, 'to:', progress);
+    try {
+      await api.updateTask(taskId, { progress });
+      await loadTasks();
+      console.log('[App] Task progress updated successfully');
+    } catch (err) {
+      console.error('[App] Failed to update task progress:', err);
+      alert('Failed to update task progress');
+    }
+  };
+
+  // Shopping Item Handlers
+  const handleAddShoppingItem = async (item: Omit<ShoppingItem, 'id' | 'createdAt'>) => {
+    try {
+      await api.addShoppingItem(item);
+      await loadShoppingItems();
+    } catch (err) {
+      console.error('Failed to add shopping item', err);
+      alert('Failed to add shopping item');
+    }
+  };
+
+  const handleUpdateShoppingItem = async (id: string, patch: Partial<ShoppingItem>) => {
+    try {
+      await api.updateShoppingItem(id, patch);
+      await loadShoppingItems();
+    } catch (err) {
+      console.error('Failed to update shopping item', err);
+      alert('Failed to update shopping item');
+    }
+  };
+
+  const handleToggleShoppingItem = async (id: string) => {
+    const item = shoppingItems.find(item => item.id === id);
+    if (!item) return;
+    
+    const updateData: Partial<ShoppingItem> = {
+      completed: !item.completed,
+      completedAt: !item.completed ? new Date().toISOString() : null
+    };
+    
+    await handleUpdateShoppingItem(id, updateData);
+  };
+
+  const handleEditShoppingItem = (item: ShoppingItem) => {
+    setEditingShoppingItem(item);
+    setIsShoppingModalOpen(true);
+  };
+
+  const handleDeleteShoppingItem = async (itemId: string) => {
+    if (!confirm('Are you sure you want to delete this item?')) return;
+    try {
+      await api.deleteShoppingItem(itemId);
+      await loadShoppingItems();
+    } catch (err) {
+      console.error('Failed to delete shopping item', err);
+      alert('Failed to delete shopping item');
+    }
+  };
+
+  const openNewShoppingModal = () => {
+    setEditingShoppingItem(null);
+    setIsShoppingModalOpen(true);
+  };
+
+  const handleSaveShoppingItem = async (itemData: Omit<ShoppingItem, 'id' | 'createdAt'>) => {
+    if (editingShoppingItem) {
+      await handleUpdateShoppingItem(editingShoppingItem.id, itemData);
+    } else {
+      await handleAddShoppingItem(itemData);
+    }
+    setIsShoppingModalOpen(false);
+    setEditingShoppingItem(null);
   };
 
   const handleLoginSuccess = (loggedInUsername: string) => {
@@ -581,6 +695,7 @@ const App: React.FC = () => {
                 onMove={(id, status)=> handleUpdateTask(id, { status })}
                 onEdit={handleEditTask}
                 onDelete={handleDeleteTask}
+                onProgressChange={handleProgressChange}
               />
             )}
             {plannerPage === 'calendar' && (
@@ -601,6 +716,15 @@ const App: React.FC = () => {
                 onDelete={handleDeleteTask}
               />
             )}
+            {plannerPage === 'toBuy' && (
+              <PlannerToBuy
+                items={shoppingItems}
+                onAddItem={handleAddShoppingItem}
+                onToggleComplete={handleToggleShoppingItem}
+                onEdit={handleEditShoppingItem}
+                onDelete={handleDeleteShoppingItem}
+              />
+            )}
           </main>
           <TaskModal
             isOpen={isTaskModalOpen}
@@ -610,6 +734,15 @@ const App: React.FC = () => {
               setPrefillTask(null); // Clear prefill data when modal closes
             }}
             onSave={handleSaveTask}
+          />
+          <ShoppingItemModal
+            isOpen={isShoppingModalOpen}
+            onClose={() => {
+              setIsShoppingModalOpen(false);
+              setEditingShoppingItem(null);
+            }}
+            onSave={handleSaveShoppingItem}
+            initialItem={editingShoppingItem || undefined}
           />
         </>
       )}

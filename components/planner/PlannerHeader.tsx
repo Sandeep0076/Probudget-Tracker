@@ -5,7 +5,7 @@ import { MenuIcon } from '../icons/MenuIcon';
 import { CloseIcon } from '../icons/CloseIcon';
 import { Page } from '../../App';
 
-export type PlannerPage = 'dashboard' | 'progress' | 'calendar' | 'backlog';
+export type PlannerPage = 'dashboard' | 'progress' | 'calendar' | 'backlog' | 'toBuy';
 
 interface PlannerHeaderProps {
   page: PlannerPage;
@@ -38,7 +38,8 @@ const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTa
     { name: 'Dashboard', page: 'dashboard' },
     { name: 'Progressing Tasks', page: 'progress' },
     { name: 'Calendar', page: 'calendar' },
-    { name: 'Backlogs', page: 'backlog' }
+    { name: 'Backlogs', page: 'backlog' },
+    { name: 'To Buy', page: 'toBuy' }
   ];
 
   const handleMobileNavClick = (p: PlannerPage | Page) => {

@@ -22,6 +22,7 @@ ProBudget Tracker is a comprehensive personal finance and productivity platform 
 - **Calendar Integration:** Full calendar view with Google Calendar sync and Google Tasks integration
 - **Smart Task Management:** Tasks with priorities, due dates, notes, subtasks, labels, and recurring patterns
 - **Project Backlog:** Organize and prioritize future tasks and ideas
+- **Shopping List (To Buy):** Dedicated shopping list management with categories, priorities, and completion tracking
 
 ### 🎨 Customization & Themes
 - **Advanced Theme System:** Four built-in themes (Dark Blue, Light, Dark, Custom) with instant switching
@@ -87,8 +88,10 @@ ProBudget Tracker is a comprehensive personal finance and productivity platform 
 │   │   │   ├── PlannerBoard.tsx       # Kanban-style task board
 │   │   │   ├── PlannerCalendar.tsx    # Full calendar view with Google sync
 │   │   │   ├── PlannerBacklog.tsx     # Task backlog management
+│   │   │   ├── PlannerToBuy.tsx       # Shopping list management
 │   │   │   ├── PlannerHeader.tsx      # Planner navigation
 │   │   │   └── TaskModal.tsx          # Task creation/editing interface
+│   │   └── ShoppingItemModal.tsx      # Shopping item creation/editing interface
 │   ├── Authentication & Settings
 │   │   ├── LoginPage.tsx              # Multi-step authentication
 │   │   ├── SettingsPage.tsx           # User preferences and activity log
