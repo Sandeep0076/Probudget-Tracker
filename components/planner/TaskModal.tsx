@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Subtask, TaskPriority, TaskRepeat } from '../../types';
 
 interface TaskModalProps {
@@ -45,6 +45,24 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   const commonInputClasses = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-inner";
   const commonSelectClasses = "px-2 py-1 rounded-md bg-input-bg border border-input-border text-text-primary focus:outline-none focus:ring-2 focus:ring-accent shadow-inner";
 
+  // Reset form state when modal opens or initial data changes
+  useEffect(() => {
+    if (isOpen) {
+      console.log('[TaskModal] Modal opened with initial data:', initial);
+      setTitle(initial?.title || '');
+      setNotes(initial?.notes || '');
+      setPriority(initial?.priority || 'medium');
+      setAllDay(!!initial?.allDay);
+      setStart(initial?.start || '');
+      setEnd(initial?.end || '');
+      setDue(initial?.due || '');
+      setRepeat(initial?.repeat || null);
+      setColor(initial?.color || '#f59e0b');
+      setLabels((initial?.labels || []).join(', '));
+      setSubtasks(initial?.subtasks || []);
+      setSaving(false);
+    }
+  }, [isOpen, initial]);
 
   if (!isOpen) return null;
 
@@ -53,6 +71,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   };
 
   const handleSave = async () => {
+    console.log('[TaskModal] Saving task with data:', { title, notes, priority, allDay, start, end, due });
     setSaving(true);
     try {
       const payload: any = {
@@ -70,16 +89,19 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         status: start || due ? 'scheduled' : 'new'
       };
       await onSave(payload, initial?.id);
+      console.log('[TaskModal] Task saved successfully');
       onClose();
+    } catch (error) {
+      console.error('[TaskModal] Error saving task:', error);
     } finally {
       setSaving(false);
     }
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
-      <div className="relative w-full max-w-xl modal-content bg-modal-bg backdrop-blur-xl rounded-xl p-6 shadow-neu-3d">
+      <div className="relative w-full max-w-[95vw] sm:max-w-md md:max-w-lg lg:max-w-xl modal-content bg-modal-bg backdrop-blur-xl rounded-xl p-4 sm:p-6 shadow-neu-3d max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-xl font-semibold text-text-primary">{initial?.id ? 'Edit Task' : 'New Task'}</h3>
           <button className="text-gray-400 hover:text-gray-600 transition-colors" onClick={onClose}>✕</button>

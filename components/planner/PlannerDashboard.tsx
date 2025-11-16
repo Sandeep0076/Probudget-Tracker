@@ -47,7 +47,7 @@ const TaskRow: React.FC<{ task: Task; onToggle: () => void; onEdit: () => void; 
 const EventRow: React.FC<{ event: any; onToggle: () => void }>=({event, onToggle})=> {
   const title = event.summary || event.title || 'Event';
   const dt = event.start?.dateTime || event.start?.date || event.start;
-  const when = dt ? new Date(dt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+  const when = event.start?.dateTime ? new Date(event.start.dateTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
   const isCancelled = event.status === 'cancelled' || event.status === 'completed';
   
   return (
@@ -161,7 +161,14 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
               .slice(0,8).map((e:any)=>{
               const title = e.summary || e.title || 'Event';
               const dt = e.start?.dateTime || e.start?.date || e.start;
-              const when = dt ? new Date(dt).toLocaleString() : '';
+              let when = '';
+              if (e.start?.dateTime) {
+                when = new Date(e.start.dateTime).toLocaleString();
+              } else if (e.start?.date) {
+                when = new Date(e.start.date.replace(/-/g, '/')).toLocaleDateString();
+              } else if (dt) {
+                when = new Date(dt).toLocaleString();
+              }
               return <div key={e.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5"><span className="h-2 w-2 rounded-full bg-accent flex-shrink-0"/> <div className="flex-1 min-w-0"><div className="font-semibold text-text-primary truncate">{title}</div><div className="text-xs text-text-secondary font-medium">{when}</div></div></div>
             })}
             {(!events || events.length===0) && (

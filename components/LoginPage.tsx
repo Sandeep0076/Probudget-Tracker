@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import * as api from '../services/api';
 import { LogoIcon } from './icons/LogoIcon';
 
@@ -8,10 +8,23 @@ interface LoginPageProps {
 
 type ViewMode = 'login' | 'forgot-password' | 'verify-security' | 'reset-password';
 
+const REMEMBER_ME_KEY = 'probudget_remember_me';
+const STORED_USERNAME_KEY = 'probudget_username';
+const STORED_PASSWORD_KEY = 'probudget_password';
+
+// Export function to clear stored credentials (for logout)
+export const clearStoredCredentials = () => {
+  console.log('[LoginPage] Clearing stored credentials from localStorage');
+  localStorage.removeItem(REMEMBER_ME_KEY);
+  localStorage.removeItem(STORED_USERNAME_KEY);
+  localStorage.removeItem(STORED_PASSWORD_KEY);
+};
+
 const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
   const [viewMode, setViewMode] = useState<ViewMode>('login');
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
+  const [rememberMe, setRememberMe] = useState(false);
   const [securityAnswer, setSecurityAnswer] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -21,15 +34,71 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
 
   console.log('[LoginPage] Current view mode:', viewMode);
 
+  // Auto-login on component mount if credentials are stored
+  useEffect(() => {
+    const attemptAutoLogin = async () => {
+      const shouldRemember = localStorage.getItem(REMEMBER_ME_KEY) === 'true';
+      const storedUsername = localStorage.getItem(STORED_USERNAME_KEY);
+      const storedPassword = localStorage.getItem(STORED_PASSWORD_KEY);
+
+      console.log('[LoginPage] Checking for stored credentials...', {
+        shouldRemember,
+        hasUsername: !!storedUsername,
+        hasPassword: !!storedPassword
+      });
+
+      if (shouldRemember && storedUsername && storedPassword) {
+        console.log('[LoginPage] Found stored credentials, attempting auto-login...');
+        setUsername(storedUsername);
+        setPassword(storedPassword);
+        setRememberMe(true);
+        setLoading(true);
+
+        try {
+          const result = await api.login(storedUsername, storedPassword);
+          console.log('[LoginPage] Auto-login successful:', result);
+          onLoginSuccess(result.username);
+        } catch (err: any) {
+          console.error('[LoginPage] Auto-login failed:', err);
+          // Clear invalid stored credentials
+          localStorage.removeItem(REMEMBER_ME_KEY);
+          localStorage.removeItem(STORED_USERNAME_KEY);
+          localStorage.removeItem(STORED_PASSWORD_KEY);
+          setError('Auto-login failed. Please login again.');
+        } finally {
+          setLoading(false);
+        }
+      } else {
+        console.log('[LoginPage] No stored credentials found or remember me not enabled');
+      }
+    };
+
+    attemptAutoLogin();
+  }, [onLoginSuccess]);
+
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setLoading(true);
-    console.log('[LoginPage] Attempting login for username:', username);
+    console.log('[LoginPage] Attempting login for username:', username, 'Remember me:', rememberMe);
 
     try {
       const result = await api.login(username, password);
       console.log('[LoginPage] Login successful:', result);
+
+      // Store credentials if "Remember Me" is checked
+      if (rememberMe) {
+        console.log('[LoginPage] Storing credentials in localStorage');
+        localStorage.setItem(REMEMBER_ME_KEY, 'true');
+        localStorage.setItem(STORED_USERNAME_KEY, username);
+        localStorage.setItem(STORED_PASSWORD_KEY, password);
+      } else {
+        console.log('[LoginPage] Clearing stored credentials');
+        localStorage.removeItem(REMEMBER_ME_KEY);
+        localStorage.removeItem(STORED_USERNAME_KEY);
+        localStorage.removeItem(STORED_PASSWORD_KEY);
+      }
+
       onLoginSuccess(result.username);
     } catch (err: any) {
       console.error('[LoginPage] Login failed:', err);
@@ -180,7 +249,16 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
                 />
               </div>
 
-              <div className="flex items-center justify-end">
+              <div className="flex items-center justify-between">
+                <label className="flex items-center cursor-pointer">
+                  <input
+                    type="checkbox"
+                    checked={rememberMe}
+                    onChange={(e) => setRememberMe(e.target.checked)}
+                    className="w-4 h-4 text-accent bg-bg-secondary border-border rounded focus:ring-accent focus:ring-2 cursor-pointer"
+                  />
+                  <span className="ml-2 text-sm text-text-primary">Remember me</span>
+                </label>
                 <button
                   type="button"
                   onClick={() => setViewMode('forgot-password')}
