@@ -9,7 +9,8 @@
     "dev:all": "concurrently -k -n server,web -c green,blue \"npm:server\" \"npm:dev\"",
     "build": "vite build",
   "preview": "vite preview",
-  "start": "node server/index.js"
+  "start": "node server/index.js",
+  "start:frontend": "serve -s dist"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",
@@ -26,7 +27,8 @@
     "googleapis": "^140.0.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "recharts": "^3.3.0"
+    "recharts": "^3.3.0",
+    "serve": "^14.2.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

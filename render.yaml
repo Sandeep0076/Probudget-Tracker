@@ -35,8 +35,9 @@ services:
   # Frontend Static Site
   - type: web
     name: probudget-frontend
+    runtime: node
     buildCommand: npm install && npm run build
-    staticPublishPath: ./dist
+    startCommand: npm run start:frontend
     autoDeploy: true
     envVars:
       - key: VITE_API_BASE_URL
