@@ -24,6 +24,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
     const [labels, setLabels] = useState<string[]>([]);
     const [isRecurring, setIsRecurring] = useState(false);
     const [isScanning, setIsScanning] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
 
     const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -46,23 +47,37 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
         setTransactionType(type);
     }
 
-    const handleSubmit = (e: React.FormEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        
+        if (isSaving) {
+            console.log('[AddTransaction] Save already in progress, ignoring duplicate submission');
+            return;
+        }
+        
         if (!amount || !description || !category) {
             alert('Please fill all fields');
             return;
         }
 
-        onSave({
-            amount: parseFloat(amount),
-            quantity: parseInt(quantity, 10) || 1,
-            description,
-            category,
-            date,
-            type: transactionType,
-            labels: labels,
-            isRecurring,
-        });
+        setIsSaving(true);
+        console.log('[AddTransaction] Starting save process');
+        
+        try {
+            await onSave({
+                amount: parseFloat(amount),
+                quantity: parseInt(quantity, 10) || 1,
+                description,
+                category,
+                date,
+                type: transactionType,
+                labels: labels,
+                isRecurring,
+            });
+        } catch (error) {
+            console.error('[AddTransaction] Save failed:', error);
+            setIsSaving(false);
+        }
     };
     
     const handleScanClick = () => {
@@ -270,15 +285,17 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                         <button
                             type="button"
                             onClick={onCancel}
-                            className="custom-styled px-6 py-3 text-sm font-medium rounded-md bg-input-bg text-text-primary border border-input-border hover:opacity-80 transition-all shadow-neu-xs"
+                            disabled={isSaving}
+                            className="custom-styled px-6 py-3 text-sm font-medium rounded-md bg-input-bg text-text-primary border border-input-border hover:opacity-80 transition-all shadow-neu-xs disabled:opacity-50 disabled:cursor-not-allowed"
                         >
                             Cancel
                         </button>
                         <button
                             type="submit"
-                            className="custom-styled px-6 py-3 text-sm font-medium rounded-md shadow-sm bg-button-primary text-button-text hover:opacity-90 transition-all shadow-neu-sm"
+                            disabled={isSaving}
+                            className="custom-styled px-6 py-3 text-sm font-medium rounded-md shadow-sm bg-button-primary text-button-text hover:opacity-90 transition-all shadow-neu-sm disabled:opacity-50 disabled:cursor-not-allowed"
                         >
-                            Save Transaction
+                            {isSaving ? 'Saving...' : 'Save Transaction'}
                         </button>
                     </div>
                 </form>

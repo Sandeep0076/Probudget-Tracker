@@ -26,7 +26,12 @@ export const getTransactions = () => get<Transaction[]>('/api/transactions');
 export const addTransaction = (tx: Omit<Transaction, 'id'>) => post<Transaction>('/api/transactions', tx);
 export const updateTransaction = (tx: Transaction) => put<{ ok: boolean }>(`/api/transactions/${tx.id}`, tx);
 export const deleteTransaction = (id: string) => del<{ ok: boolean }>(`/api/transactions/${id}`);
-export const addMultipleTransactions = (items: Omit<Transaction, 'id'>[]) => post<{ ok: boolean }>('/api/transactions/bulk', items);
+export const addMultipleTransactions = (items: Omit<Transaction, 'id'>[]) => {
+  console.log('[API] addMultipleTransactions called with', items.length, 'items');
+  console.log('[API] API_BASE_URL:', API_BASE_URL);
+  console.log('[API] First item sample:', items.length > 0 ? JSON.stringify(items[0]) : 'none');
+  return post<{ ok: boolean }>('/api/transactions/bulk', items);
+};
 
 // Budgets
 export const getBudgets = () => get<Budget[]>('/api/budgets');

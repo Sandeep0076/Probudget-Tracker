@@ -363,6 +363,7 @@ const App: React.FC = () => {
     
   const handleSaveAllTransactions = async (items: TransactionFormData[]) => {
       try {
+          console.log('[App] handleSaveAllTransactions called with', items.length, 'items');
           const transactionsToSave = items.map(item => ({
              description: item.description,
              amount: item.amount,
@@ -372,12 +373,19 @@ const App: React.FC = () => {
              category: item.category,
              labels: item.labels,
           }));
+          console.log('[App] Mapped transactions to save:', transactionsToSave.length);
+          console.log('[App] First transaction sample:', transactionsToSave.length > 0 ? JSON.stringify(transactionsToSave[0]) : 'none');
+          
           await api.addMultipleTransactions(transactionsToSave);
+          console.log('[App] Bulk save successful, reloading data');
+          
           await loadData();
           setReceiptItemsToConfirm([]);
           setCurrentPage('dashboard');
+          console.log('[App] Navigation to dashboard complete');
       } catch (error) {
-          console.error("Failed to save all transactions:", error);
+          console.error('[App] Failed to save all transactions:', error);
+          console.error('[App] Error details:', error instanceof Error ? error.message : String(error));
           alert("There was an error saving the transactions. Please try again.");
       }
   };

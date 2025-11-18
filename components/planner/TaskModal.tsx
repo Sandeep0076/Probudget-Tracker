@@ -96,6 +96,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   };
 
   const handleSave = async () => {
+    if (saving) {
+      console.log('[TaskModal] Save already in progress, ignoring duplicate click');
+      return;
+    }
+    
     console.log('[TaskModal] Saving task with data:', { title, notes, priority, allDay, start, end, due });
     setSaving(true);
     try {
@@ -248,8 +253,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         </div>
 
         <div className="mt-6 flex justify-end gap-3">
-          <button onClick={onClose} className="custom-styled px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-all shadow-neu-xs">Cancel</button>
-          <button disabled={saving || !title.trim()} onClick={handleSave} className="custom-styled px-4 py-2 rounded-md bg-button-primary text-button-text hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-neu-sm">Save</button>
+          <button onClick={onClose} disabled={saving} className="custom-styled px-4 py-2 rounded-md bg-gray-100 text-gray-700 border border-gray-300 hover:bg-gray-200 transition-all shadow-neu-xs disabled:opacity-50 disabled:cursor-not-allowed">Cancel</button>
+          <button disabled={saving || !title.trim()} onClick={handleSave} className="custom-styled px-4 py-2 rounded-md bg-button-primary text-button-text hover:opacity-90 disabled:opacity-50 disabled:cursor-not-allowed transition-all shadow-neu-sm">
+            {saving ? 'Saving...' : 'Save'}
+          </button>
         </div>
       </div>
     </div>
