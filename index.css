@@ -1,0 +1,29 @@
+/* Global stylesheet compiled by Vite.
+   Tailwind directives + custom utility overrides. */
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Root gradient backgrounds (themes set via class on <html>) */
+html, body { height: 100%; }
+body { background-attachment: fixed; }
+
+/* Label chip utility (kept from inline style) */
+.label-chip { @apply inline-flex items-center gap-1 px-3 py-0.5 rounded-full text-xs font-semibold transition-colors; background-color: var(--color-label-bg); color: var(--color-label-text); border: 1px solid var(--color-label-border); }
+.label-chip__remove { @apply inline-flex items-center; color: var(--color-label-text-muted); }
+.label-chip__remove:hover { color: var(--color-label-text); }
+
+/* Buttons default style (avoid overriding custom-styled) */
+button:not(.custom-styled) { background-color: var(--color-button-primary); color: var(--color-button-text); }
+button:not(.custom-styled):hover { opacity: .9; }
+
+/* Inputs */
+input[type=text], input[type=number], input[type=date], input[type=email], input[type=password], textarea, select {
+  background-color: var(--color-input-bg);
+  border-color: var(--color-input-border);
+  color: var(--color-text-primary);
+}
+input::placeholder, textarea::placeholder { color: var(--color-text-muted); }
+
+/* Accessibility focus */
+button:focus, input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-accent-light); outline-offset: 2px; }
