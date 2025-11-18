@@ -376,29 +376,60 @@ app.post('/api/transactions/bulk', async (req, res) => {
     }
 
     console.log('[BULK] Successfully inserted', insertedTxs?.length, 'transactions');
+    console.log('[BULK] Inserted transaction IDs:', insertedTxs.map(t => t.id));
 
-    // Process labels
-    const labelPromises = items.flatMap((item, i) => {
-      const labels = item.labels || [];
-      if (labels.length === 0) return [];
-      const transactionId = insertedTxs[i].id;
-      console.log(`[BULK] Processing ${labels.length} labels for transaction ${transactionId}`);
-      return labels.map(async (name) => {
-        const labelId = await upsertLabelIdByName(name);
-        return { transaction_id: transactionId, label_id: labelId };
+    // Process labels with better error handling
+    try {
+      const labelPromises = items.flatMap((item, i) => {
+        const labels = item.labels || [];
+        if (labels.length === 0) {
+          console.log(`[BULK] No labels for transaction ${i + 1}`);
+          return [];
+        }
+        const transactionId = insertedTxs[i].id;
+        console.log(`[BULK] Processing ${labels.length} labels for transaction ${transactionId}:`, labels);
+        return labels.map(async (name) => {
+          try {
+            console.log(`[BULK] Upserting label: "${name}"`);
+            const labelId = await upsertLabelIdByName(name);
+            console.log(`[BULK] Label "${name}" has ID: ${labelId}`);
+            return { transaction_id: transactionId, label_id: labelId };
+          } catch (labelError) {
+            console.error(`[BULK] Error upserting label "${name}":`, labelError);
+            throw labelError;
+          }
+        });
       });
-    });
 
-    if (labelPromises.length > 0) {
-      console.log('[BULK] Processing', labelPromises.length, 'label associations');
-      const transactionLabels = await Promise.all(labelPromises);
-      const { error: labelError } = await supabase.from('transaction_labels').insert(transactionLabels);
-      if (labelError) {
-        console.error('[BULK] Label insert error:', labelError);
-        // Don't fail the whole request if labels fail
+      if (labelPromises.length > 0) {
+        console.log('[BULK] Awaiting', labelPromises.length, 'label upsert operations');
+        const transactionLabels = await Promise.all(labelPromises);
+        console.log('[BULK] Label associations to insert:', JSON.stringify(transactionLabels, null, 2));
+        
+        const { error: labelError } = await supabase.from('transaction_labels').insert(transactionLabels);
+        if (labelError) {
+          console.error('[BULK] Label insert error:', labelError);
+          console.error('[BULK] Label error details:', JSON.stringify(labelError, null, 2));
+          // Return error since labels are important
+          return res.status(500).json({
+            error: 'Failed to insert transaction labels',
+            details: labelError.message,
+            transactionsInserted: insertedTxs.length
+          });
+        } else {
+          console.log('[BULK] Successfully inserted', transactionLabels.length, 'label associations');
+        }
       } else {
-        console.log('[BULK] Successfully inserted', transactionLabels.length, 'label associations');
+        console.log('[BULK] No labels to process');
       }
+    } catch (labelProcessError) {
+      console.error('[BULK] Error processing labels:', labelProcessError);
+      console.error('[BULK] Label process error stack:', labelProcessError.stack);
+      return res.status(500).json({
+        error: 'Failed to process transaction labels',
+        message: labelProcessError.message,
+        transactionsInserted: insertedTxs.length
+      });
     }
 
     console.log('[BULK] Bulk transaction insert completed successfully');
