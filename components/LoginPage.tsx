@@ -102,7 +102,17 @@ const LoginPage: React.FC<LoginPageProps> = ({ onLoginSuccess }) => {
       onLoginSuccess(result.username);
     } catch (err: any) {
       console.error('[LoginPage] Login failed:', err);
-      setError('Invalid username or password');
+      // Distinguish errors: api.ts throws Error(status statusText)
+      const msg: string = err?.message || '';
+      if (/401/.test(msg)) {
+        setError('Invalid username or password');
+      } else if (/400/.test(msg)) {
+        setError('Missing username or password');
+      } else if (/500/.test(msg)) {
+        setError('Server error during login. Please check backend logs.');
+      } else {
+        setError('Login failed. Please retry.');
+      }
     } finally {
       setLoading(false);
     }

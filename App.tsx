@@ -279,66 +279,85 @@ const App: React.FC = () => {
 
   const handleScanReceipt = (file: File): Promise<void> => {
     return new Promise((resolve, reject) => {
-        const reader = new FileReader();
-        reader.readAsDataURL(file);
+      const reader = new FileReader();
+      reader.readAsDataURL(file);
 
-        reader.onload = async () => {
-            const base64Image = (reader.result as string).split(',')[1];
-            const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE).map(c => c.name);
-            
-            try {
-                const ai = new GoogleGenAI({ apiKey: process.env.API_KEY as string });
-                const response = await ai.models.generateContent({
-                    model: 'gemini-2.5-flash',
-                    contents: {
-                        parts: [
-                            { text: `You are an expert receipt scanner. The receipt may be in German. Analyze this receipt image. If the text is in German, translate all item descriptions to English. Extract every line item as a separate transaction. For each item, provide a concise 'description' (in English), the total 'amount' as a number, the 'quantity' of the item as a number (default to 1 if not specified), and the 'date' of the transaction from the receipt in YYYY-MM-DD format. If the date is not found, use today's date: ${new Date().toISOString().split('T')[0]}. Also, suggest a 'category' for each item from the following list of available categories: ${expenseCategories.join(', ')}. Finally, suggest up to two relevant 'labels' as an array of strings. Respond ONLY with a valid JSON array matching the provided schema. Do not include any other text or explanations.` },
-                            { inlineData: { mimeType: file.type, data: base64Image } }
-                        ]
-                    },
-                    config: {
-                        responseMimeType: "application/json",
-                        responseSchema: {
-                            type: Type.ARRAY,
-                            items: {
-                                type: Type.OBJECT,
-                                properties: {
-                                    description: { type: Type.STRING },
-                                    amount: { type: Type.NUMBER },
-                                    quantity: { type: Type.NUMBER },
-                                    date: { type: Type.STRING },
-                                    category: { type: Type.STRING },
-                                    labels: { type: Type.ARRAY, items: { type: Type.STRING } }
-                                },
-                                required: ['description', 'amount', 'date', 'category', 'labels', 'quantity']
-                            }
-                        }
-                    }
-                });
+      reader.onload = async () => {
+        console.log('[ReceiptScan] File loaded:', { name: file.name, size: file.size, type: file.type });
+        const base64Image = (reader.result as string).split(',')[1];
+        const expenseCategories = categories.filter(c => c.type === TransactionType.EXPENSE).map(c => c.name);
 
-                const parsedItems: TransactionFormData[] = JSON.parse(response.text).map((item: any) => ({
-                    ...item,
-                    quantity: item.quantity || 1,
-                    type: TransactionType.EXPENSE,
-                    isRecurring: false,
-                    // Ensure the category suggested by AI is valid, otherwise fallback
-                    category: expenseCategories.includes(item.category) ? item.category : expenseCategories[0] || 'Other'
-                }));
-                setReceiptItemsToConfirm(parsedItems);
-                setCurrentPage('confirmReceipt');
-                resolve();
-            } catch (error) {
-                console.error("AI Receipt Scan Failed:", error);
-                alert("Sorry, there was an error reading the receipt. Please check the image quality or try again. If the problem persists, please enter the transaction manually.");
-                reject(error);
+        const apiKey = import.meta.env.VITE_GEMINI_API_KEY || (process.env.GEMINI_API_KEY as string) || (process.env.API_KEY as string);
+        console.log('[ReceiptScan] API key present:', !!apiKey, 'length:', apiKey ? apiKey.length : 0);
+
+        if (!apiKey) {
+          console.error('[ReceiptScan] Missing Gemini API key. Environment variables:', {
+            VITE_GEMINI_API_KEY: import.meta.env.VITE_GEMINI_API_KEY,
+            processEnv: {
+              GEMINI_API_KEY: process.env.GEMINI_API_KEY,
+              API_KEY: process.env.API_KEY,
             }
-        };
+          });
+          alert('Gemini API key missing. Please configure VITE_GEMINI_API_KEY before using receipt scan.');
+          reject(new Error('Missing Gemini API key'));
+          return;
+        }
 
-        reader.onerror = (error) => {
-            console.error("FileReader error:", error);
-            alert("Sorry, there was an error reading your file. Please try again.");
-            reject(error);
-        };
+        try {
+          const ai = new GoogleGenAI({ apiKey });
+          const response = await ai.models.generateContent({
+            model: 'gemini-2.5-flash',
+            contents: {
+              parts: [
+                { text: `You are an expert receipt scanner. The receipt may be in German. Analyze this receipt image. If the text is in German, translate all item descriptions to English. Extract every line item as a separate transaction. For each item, provide a concise 'description' (in English), the total 'amount' as a number, the 'quantity' of the item as a number (default to 1 if not specified), and the 'date' of the transaction from the receipt in YYYY-MM-DD format. If the date is not found, use today's date: ${new Date().toISOString().split('T')[0]}. Also, suggest a 'category' for each item from the following list of available categories: ${expenseCategories.join(', ')}. Finally, suggest up to two relevant 'labels' as an array of strings. Respond ONLY with a valid JSON array matching the provided schema. Do not include any other text or explanations.` },
+                { inlineData: { mimeType: file.type, data: base64Image } }
+              ]
+            },
+            config: {
+              responseMimeType: 'application/json',
+              responseSchema: {
+                type: Type.ARRAY,
+                items: {
+                  type: Type.OBJECT,
+                  properties: {
+                    description: { type: Type.STRING },
+                    amount: { type: Type.NUMBER },
+                    quantity: { type: Type.NUMBER },
+                    date: { type: Type.STRING },
+                    category: { type: Type.STRING },
+                    labels: { type: Type.ARRAY, items: { type: Type.STRING } }
+                  },
+                  required: ['description', 'amount', 'date', 'category', 'labels', 'quantity']
+                }
+              }
+            }
+          });
+
+          console.log('[ReceiptScan] Raw AI response length:', response.text?.length || 0);
+
+          const parsedItems: TransactionFormData[] = JSON.parse(response.text).map((item: any) => ({
+            ...item,
+            quantity: item.quantity || 1,
+            type: TransactionType.EXPENSE,
+            isRecurring: false,
+            category: expenseCategories.includes(item.category) ? item.category : expenseCategories[0] || 'Other'
+          }));
+          console.log('[ReceiptScan] Parsed items count:', parsedItems.length);
+          setReceiptItemsToConfirm(parsedItems);
+          setCurrentPage('confirmReceipt');
+          resolve();
+        } catch (error) {
+          console.error('[ReceiptScan] AI Receipt Scan Failed:', error);
+          alert('Error reading the receipt. Please check image quality or try again.');
+          reject(error);
+        }
+      };
+
+      reader.onerror = (error) => {
+        console.error('[ReceiptScan] FileReader error:', error);
+        alert('Error reading file. Please try again.');
+        reject(error);
+      };
     });
   };
     

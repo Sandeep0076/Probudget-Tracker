@@ -18,7 +18,8 @@ const ENC_KEY = (process.env.ENCRYPTION_KEY || '').padEnd(32, '0').slice(0, 32);
 const app = express();
 const allowedOrigins = [
   'https://probudget-frontend.onrender.com',
-  'http://localhost:5173', // Vite dev server
+  'http://localhost:3000', // Vite dev server (configured port)
+  'http://localhost:5173', // Vite dev server (default port)
   'http://localhost:4173', // Vite preview server
 ];
 
@@ -1087,38 +1088,48 @@ app.get('/api/activity', async (req, res) => {
 
 // ===== Authentication =====
 app.post('/api/auth/login', async (req, res) => {
+  const startTs = Date.now();
   try {
     const { username, password } = req.body || {};
-    console.log('Login attempt for username:', username);
-    
+    console.log('[LOGIN] Attempt for username:', username, 'Body keys:', Object.keys(req.body || {}));
+
     if (!username || !password) {
-      console.log('Login failed: Missing credentials');
+      console.log('[LOGIN] Missing credentials');
       return res.status(400).json({ error: 'Username and password are required' });
     }
-    
-    // Get user from database
-    const { data: user, error } = await supabase
+
+    // Query user
+    const { data: user, error: dbError } = await supabase
       .from('users')
       .select('id, username, password')
       .eq('username', username)
       .single();
-    
-    if (error || !user) {
-      console.log('Login failed: User not found');
+
+    if (dbError) {
+      // Distinguish not found vs actual DB failure
+      if (dbError.code === 'PGRST116') { // No rows found
+        console.log('[LOGIN] User not found for username:', username);
+        return res.status(401).json({ error: 'Invalid username or password' });
+      }
+      console.error('[LOGIN] Supabase query error:', dbError);
+      return res.status(500).json({ error: 'Internal auth error' });
+    }
+    if (!user) {
+      console.log('[LOGIN] No user record returned');
       return res.status(401).json({ error: 'Invalid username or password' });
     }
-    
-    // Check password (in production, you should use bcrypt)
+
+    // Verify password (TODO: replace with hashed comparison e.g. bcrypt.compare())
     if (user.password !== password) {
-      console.log('Login failed: Invalid password');
+      console.log('[LOGIN] Password mismatch for username:', username);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
-    
-    console.log('Login successful for user:', username);
+
+    console.log('[LOGIN] Success for user:', username, 'Elapsed ms:', Date.now() - startTs);
     res.json({ success: true, username: user.username });
-  } catch (error) {
-    console.error('Login error:', error);
-    res.status(500).json({ error: 'Login failed' });
+  } catch (err) {
+    console.error('[LOGIN] Unexpected error:', err && err.stack ? err.stack : err);
+    res.status(500).json({ error: 'Login failed due to server error' });
   }
 });
 
