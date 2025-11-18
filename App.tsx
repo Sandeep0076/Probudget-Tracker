@@ -386,7 +386,9 @@ const App: React.FC = () => {
       } catch (error) {
           console.error('[App] Failed to save all transactions:', error);
           console.error('[App] Error details:', error instanceof Error ? error.message : String(error));
-          alert("There was an error saving the transactions. Please try again.");
+          const errorMessage = error instanceof Error ? error.message : String(error);
+          alert(`Error saving transactions: ${errorMessage}\n\nPlease check the console for more details and try again.`);
+          throw error; // Re-throw to prevent navigation away from confirmation page
       }
   };
 

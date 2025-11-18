@@ -4,7 +4,26 @@ import { Budget, Category, RecurringTransaction, Saving, Transaction, Transactio
 const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
 const json = async <T>(res: Response): Promise<T> => {
-  if (!res.ok) throw new Error(`${res.status} ${res.statusText}`);
+  if (!res.ok) {
+    // Try to get error details from response body
+    let errorMessage = `${res.status} ${res.statusText}`;
+    try {
+      const errorData = await res.json();
+      if (errorData.error) {
+        errorMessage = errorData.error;
+        if (errorData.details) {
+          errorMessage += `: ${errorData.details}`;
+        }
+        if (errorData.message) {
+          errorMessage += ` - ${errorData.message}`;
+        }
+      }
+    } catch (e) {
+      // If parsing fails, use default error message
+    }
+    console.error('[API] Request failed:', errorMessage);
+    throw new Error(errorMessage);
+  }
   return res.json();
 };
 
