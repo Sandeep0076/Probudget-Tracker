@@ -26,17 +26,21 @@ const allowedOrigins = [
 const corsOptions = {
   origin: (origin, callback) => {
     // `origin` is undefined for same-origin requests or server-to-server requests.
+    console.log('[CORS] Request from origin:', origin);
     if (!origin || allowedOrigins.includes(origin)) {
       callback(null, true);
     } else {
-      console.error(`CORS Error: Origin ${origin} not allowed.`);
+      console.error(`[CORS] Error: Origin ${origin} not allowed.`);
       callback(new Error('Not allowed by CORS'));
     }
   },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
 };
 
 app.use(cors(corsOptions));
-console.log('CORS middleware configured to allow origins:', allowedOrigins);
+console.log('[CORS] Middleware configured to allow origins:', allowedOrigins);
 app.use(express.json({ limit: '5mb' }));
 
 
@@ -326,41 +330,84 @@ app.delete('/api/transactions/:id', async (req, res) => {
 });
 
 app.post('/api/transactions/bulk', async (req, res) => {
-  const items = Array.isArray(req.body) ? req.body : [];
-  if (items.length === 0) return res.json({ ok: true });
+  console.log('[BULK] Received bulk transaction request');
+  console.log('[BULK] Request body type:', typeof req.body);
+  console.log('[BULK] Request body is array:', Array.isArray(req.body));
+  console.log('[BULK] Request body length:', req.body?.length);
+  
+  try {
+    const items = Array.isArray(req.body) ? req.body : [];
+    console.log('[BULK] Processing', items.length, 'items');
+    
+    if (items.length === 0) {
+      console.log('[BULK] No items to process, returning success');
+      return res.json({ ok: true });
+    }
 
-  const transactions = items.map(item => ({
-    description: item.description,
-    amount: toCents(item.amount),
-    date: item.date,
-    type: item.type,
-    category: item.category,
-    quantity: Math.round(item.quantity ?? 1),
-    recurring_transaction_id: item.recurringTransactionId ?? null
-  }));
+    // Log first item for debugging
+    if (items.length > 0) {
+      console.log('[BULK] First item sample:', JSON.stringify(items[0]));
+    }
 
-  const { data: insertedTxs, error: txError } = await supabase.from('transactions').insert(transactions).select('id');
-  if (txError) {
-    console.error('Bulk insert error:', txError);
-    return res.status(500).json({ error: 'Failed to bulk insert transactions' });
-  }
-
-  const labelPromises = items.flatMap((item, i) => {
-    const labels = item.labels || [];
-    if (labels.length === 0) return [];
-    const transactionId = insertedTxs[i].id;
-    return labels.map(async (name) => {
-      const labelId = await upsertLabelIdByName(name);
-      return { transaction_id: transactionId, label_id: labelId };
+    const transactions = items.map((item, index) => {
+      const tx = {
+        description: item.description,
+        amount: toCents(item.amount),
+        date: item.date,
+        type: item.type,
+        category: item.category,
+        quantity: Math.round(item.quantity ?? 1),
+        recurring_transaction_id: item.recurringTransactionId ?? null
+      };
+      console.log(`[BULK] Mapped transaction ${index + 1}:`, JSON.stringify(tx));
+      return tx;
     });
-  });
 
-  if (labelPromises.length > 0) {
-    const transactionLabels = await Promise.all(labelPromises);
-    await supabase.from('transaction_labels').insert(transactionLabels);
+    console.log('[BULK] Inserting', transactions.length, 'transactions into database');
+    const { data: insertedTxs, error: txError } = await supabase
+      .from('transactions')
+      .insert(transactions)
+      .select('id');
+    
+    if (txError) {
+      console.error('[BULK] Database insert error:', txError);
+      console.error('[BULK] Error details:', JSON.stringify(txError, null, 2));
+      return res.status(500).json({ error: 'Failed to bulk insert transactions', details: txError.message });
+    }
+
+    console.log('[BULK] Successfully inserted', insertedTxs?.length, 'transactions');
+
+    // Process labels
+    const labelPromises = items.flatMap((item, i) => {
+      const labels = item.labels || [];
+      if (labels.length === 0) return [];
+      const transactionId = insertedTxs[i].id;
+      console.log(`[BULK] Processing ${labels.length} labels for transaction ${transactionId}`);
+      return labels.map(async (name) => {
+        const labelId = await upsertLabelIdByName(name);
+        return { transaction_id: transactionId, label_id: labelId };
+      });
+    });
+
+    if (labelPromises.length > 0) {
+      console.log('[BULK] Processing', labelPromises.length, 'label associations');
+      const transactionLabels = await Promise.all(labelPromises);
+      const { error: labelError } = await supabase.from('transaction_labels').insert(transactionLabels);
+      if (labelError) {
+        console.error('[BULK] Label insert error:', labelError);
+        // Don't fail the whole request if labels fail
+      } else {
+        console.log('[BULK] Successfully inserted', transactionLabels.length, 'label associations');
+      }
+    }
+
+    console.log('[BULK] Bulk transaction insert completed successfully');
+    res.json({ ok: true, inserted: insertedTxs.length });
+  } catch (error) {
+    console.error('[BULK] Unexpected error in bulk transaction endpoint:', error);
+    console.error('[BULK] Error stack:', error.stack);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
   }
-
-  res.json({ ok: true });
 });
 
 // ===== Planner: Tasks & Subtasks =====

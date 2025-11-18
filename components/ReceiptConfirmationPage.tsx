@@ -12,6 +12,7 @@ interface ReceiptConfirmationPageProps {
 
 const ReceiptConfirmationPage: React.FC<ReceiptConfirmationPageProps> = ({ items, onSaveAll, onCancel, categories, availableLabels }) => {
     const [editedItems, setEditedItems] = useState<TransactionFormData[]>(items);
+    const [isSaving, setIsSaving] = useState(false);
 
     const handleItemChange = (index: number, updatedItem: TransactionFormData) => {
         const newItems = [...editedItems];
@@ -24,9 +25,21 @@ const ReceiptConfirmationPage: React.FC<ReceiptConfirmationPageProps> = ({ items
         setEditedItems(newItems);
     };
     
-    const handleSave = () => {
+    const handleSave = async () => {
+        if (isSaving) {
+            console.log('[ReceiptConfirmation] Save already in progress, ignoring duplicate click');
+            return;
+        }
+        
         if (editedItems.length > 0) {
-            onSaveAll(editedItems);
+            setIsSaving(true);
+            console.log('[ReceiptConfirmation] Starting save process');
+            try {
+                await onSaveAll(editedItems);
+            } catch (error) {
+                console.error('[ReceiptConfirmation] Save failed:', error);
+                setIsSaving(false);
+            }
         } else {
             // If all items were removed, just cancel
             onCancel();
@@ -60,20 +73,21 @@ const ReceiptConfirmationPage: React.FC<ReceiptConfirmationPageProps> = ({ items
                 )}
                 
                 <div className="flex items-center justify-end gap-4 pt-4 border-t border-border-shadow">
-                    <button 
-                        type="button" 
+                    <button
+                        type="button"
                         onClick={onCancel}
-                        className="px-6 py-3 text-sm font-medium rounded-md text-text-primary bg-surface hover:bg-surface/80 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
+                        disabled={isSaving}
+                        className="px-6 py-3 text-sm font-medium rounded-md text-text-primary bg-surface hover:bg-surface/80 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow disabled:opacity-50 disabled:cursor-not-allowed"
                     >
                         Cancel
                     </button>
-                    <button 
+                    <button
                         type="button"
                         onClick={handleSave}
-                        disabled={editedItems.length === 0}
+                        disabled={editedItems.length === 0 || isSaving}
                         className="px-6 py-3 text-sm font-medium rounded-md shadow-sm text-white bg-brand hover:bg-brand/90 disabled:bg-surface/50 disabled:cursor-not-allowed disabled:shadow-inner transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
                     >
-                        Save All Transactions
+                        {isSaving ? 'Saving...' : 'Save All Transactions'}
                     </button>
                 </div>
             </div>

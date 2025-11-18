@@ -19,6 +19,7 @@ const ShoppingItemModal: React.FC<ShoppingItemModalProps> = ({
   const [category, setCategory] = useState('');
   const [notes, setNotes] = useState('');
   const [priority, setPriority] = useState<'low' | 'medium' | 'high'>('medium');
+  const [isSaving, setIsSaving] = useState(false);
 
   useEffect(() => {
     if (initialItem) {
@@ -32,21 +33,35 @@ const ShoppingItemModal: React.FC<ShoppingItemModalProps> = ({
       setNotes('');
       setPriority('medium');
     }
+    setIsSaving(false);
   }, [initialItem, isOpen]);
 
-  const handleSave = () => {
+  const handleSave = async () => {
+    if (isSaving) {
+      console.log('[ShoppingItemModal] Save already in progress, ignoring duplicate click');
+      return;
+    }
+    
     if (!title.trim()) return;
 
-    onSave({
-      title: title.trim(),
-      category: category.trim() || undefined,
-      notes: notes.trim() || undefined,
-      priority,
-      completed: initialItem?.completed || false,
-      completedAt: initialItem?.completedAt || null
-    });
+    setIsSaving(true);
+    console.log('[ShoppingItemModal] Starting save process');
     
-    onClose();
+    try {
+      await onSave({
+        title: title.trim(),
+        category: category.trim() || undefined,
+        notes: notes.trim() || undefined,
+        priority,
+        completed: initialItem?.completed || false,
+        completedAt: initialItem?.completedAt || null
+      });
+      
+      onClose();
+    } catch (error) {
+      console.error('[ShoppingItemModal] Save failed:', error);
+      setIsSaving(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -136,16 +151,17 @@ const ShoppingItemModal: React.FC<ShoppingItemModalProps> = ({
         <div className="flex justify-end gap-3 p-6 border-t border-border-shadow">
           <button
             onClick={onClose}
-            className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all"
+            disabled={isSaving}
+            className="px-4 py-2 text-sm font-medium text-text-secondary hover:text-text-primary hover:bg-surface/50 rounded-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
             Cancel
           </button>
           <button
             onClick={handleSave}
-            disabled={!title.trim()}
+            disabled={!title.trim() || isSaving}
             className="px-4 py-2 text-sm font-medium bg-brand text-white rounded-lg hover:bg-brand/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all transform hover:scale-105 shadow-neu-sm"
           >
-            {initialItem ? 'Update Item' : 'Add Item'}
+            {isSaving ? 'Saving...' : (initialItem ? 'Update Item' : 'Add Item')}
           </button>
         </div>
       </div>
