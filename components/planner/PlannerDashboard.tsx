@@ -154,35 +154,107 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
             </div>
           </div>
           <div className="relative mt-3 space-y-2">
-            {(events||[])
-              .filter((e: any) => {
-                const eventDate = new Date(e.start?.dateTime || e.start?.date || e.start);
-                const today = new Date();
-                const nextWeek = new Date(today.getFullYear(), today.getMonth(), today.getDate() + 7);
-                return eventDate >= today && eventDate <= nextWeek;
-              })
-              .slice(0,8).map((e:any)=>{
-              const title = e.summary || e.title || 'Event';
-              const dt = e.start?.dateTime || e.start?.date || e.start;
-              let when = '';
-              if (e.start?.dateTime) {
-                when = new Date(e.start.dateTime).toLocaleString();
-              } else if (e.start?.date) {
-                when = new Date(e.start.date.replace(/-/g, '/')).toLocaleDateString();
-              } else if (dt) {
-                when = new Date(dt).toLocaleString();
+            {(() => {
+              console.log('[PlannerDashboard] Rendering Upcoming Calendar section');
+              console.log('[PlannerDashboard] Total events received:', events?.length || 0);
+              
+              if (!events || events.length === 0) {
+                console.log('[PlannerDashboard] No events available');
+                return (
+                  <div className="text-sm text-text-secondary">
+                    No calendar events.{" "}
+                    <button
+                      className="text-brand underline hover:text-brand/80 transition-colors"
+                      onClick={handleConnectCalendar}
+                    >Connect Google Calendar</button>.
+                  </div>
+                );
               }
-              return <div key={e.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5"><span className="h-2 w-2 rounded-full bg-accent flex-shrink-0"/> <div className="flex-1 min-w-0"><div className="font-semibold text-text-primary truncate">{title}</div><div className="text-xs text-text-secondary font-medium">{when}</div></div></div>
-            })}
-            {(!events || events.length===0) && (
-              <div className="text-sm text-text-secondary">
-                No calendar events.{" "}
-                <button
-                  className="text-brand underline hover:text-brand/80 transition-colors"
-                  onClick={handleConnectCalendar}
-                >Connect Google Calendar</button>.
-              </div>
-            )}
+
+              const today = new Date();
+              today.setHours(0, 0, 0, 0);
+              const nextWeek = new Date(today);
+              nextWeek.setDate(today.getDate() + 7);
+              nextWeek.setHours(23, 59, 59, 999);
+              
+              console.log('[PlannerDashboard] Filter range:', {
+                today: today.toISOString(),
+                nextWeek: nextWeek.toISOString()
+              });
+
+              const filteredEvents = events.filter((e: any) => {
+                try {
+                  const startValue = e.start?.dateTime || e.start?.date || e.start;
+                  
+                  // Skip events without a valid start date
+                  if (!startValue) {
+                    console.log('[PlannerDashboard] Event has no start date, skipping:', e.summary || e.title);
+                    return false;
+                  }
+                  
+                  const eventDate = new Date(startValue);
+                  
+                  // Check if date is valid
+                  if (isNaN(eventDate.getTime())) {
+                    console.log('[PlannerDashboard] Invalid date for event:', {
+                      title: e.summary || e.title,
+                      startValue,
+                      start: e.start
+                    });
+                    return false;
+                  }
+                  
+                  const isInRange = eventDate >= today && eventDate <= nextWeek;
+                  
+                  console.log('[PlannerDashboard] Event filter check:', {
+                    title: e.summary || e.title,
+                    eventDate: eventDate.toISOString(),
+                    isInRange,
+                    start: e.start
+                  });
+                  
+                  return isInRange;
+                } catch (error) {
+                  console.error('[PlannerDashboard] Error filtering event:', {
+                    event: e,
+                    error: error.message
+                  });
+                  return false;
+                }
+              });
+
+              console.log('[PlannerDashboard] Filtered events count:', filteredEvents.length);
+
+              if (filteredEvents.length === 0) {
+                return (
+                  <div className="text-sm text-text-secondary">
+                    No upcoming events in the next 7 days.
+                  </div>
+                );
+              }
+
+              return filteredEvents.slice(0, 8).map((e: any) => {
+                const title = e.summary || e.title || 'Event';
+                const dt = e.start?.dateTime || e.start?.date || e.start;
+                let when = '';
+                if (e.start?.dateTime) {
+                  when = new Date(e.start.dateTime).toLocaleString();
+                } else if (e.start?.date) {
+                  when = new Date(e.start.date.replace(/-/g, '/')).toLocaleDateString();
+                } else if (dt) {
+                  when = new Date(dt).toLocaleString();
+                }
+                return (
+                  <div key={e.id} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5">
+                    <span className="h-2 w-2 rounded-full bg-accent flex-shrink-0"/>
+                    <div className="flex-1 min-w-0">
+                      <div className="font-semibold text-text-primary truncate">{title}</div>
+                      <div className="text-xs text-text-secondary font-medium">{when}</div>
+                    </div>
+                  </div>
+                );
+              });
+            })()}
           </div>
         </div>
       </div>

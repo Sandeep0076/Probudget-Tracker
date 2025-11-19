@@ -16,6 +16,7 @@ interface TaskModalProps {
     color?: string | null;
     labels?: string[];
     subtasks?: Subtask[];
+    estimatedTime?: string | null;
   };
   onClose: () => void;
   onSave: (data: any, id?: string) => Promise<void> | void;
@@ -40,6 +41,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   const [color, setColor] = useState<string>(initial?.color || '#f59e0b');
   const [labels, setLabels] = useState<string>((initial?.labels || []).join(', '));
   const [subtasks, setSubtasks] = useState<Subtask[]>(initial?.subtasks || []);
+  const [estimatedTime, setEstimatedTime] = useState<string>(initial?.estimatedTime || '');
   const [saving, setSaving] = useState(false);
 
   const commonInputClasses = "w-full px-3 py-2 bg-input-bg border border-input-border rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent focus:border-accent shadow-inner";
@@ -85,6 +87,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
       setColor(initial?.color || '#f59e0b');
       setLabels((initial?.labels || []).join(', '));
       setSubtasks(initial?.subtasks || []);
+      setEstimatedTime(initial?.estimatedTime || '');
       setSaving(false);
     }
   }, [isOpen, initial]);
@@ -126,7 +129,8 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         color,
         labels: labels.split(',').map(s=>s.trim()).filter(Boolean),
         subtasks: subtasks.map(s=>({ title: s.title, done: s.done })),
-        status: taskStatus
+        status: taskStatus,
+        estimatedTime: estimatedTime.trim() || null
       };
       console.log('[TaskModal] Task will be saved with status:', taskStatus, 'payload:', payload);
       await onSave(payload, initial?.id);
@@ -162,6 +166,15 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
               <option value="medium">Medium</option>
               <option value="high">High</option>
             </select>
+          </LabeledRow>
+
+          <LabeledRow label="Estimated Time">
+            <input
+              value={estimatedTime}
+              onChange={(e)=>setEstimatedTime(e.target.value)}
+              placeholder="e.g., 5 min, 2 hours, 2-3 days"
+              className={commonInputClasses}
+            />
           </LabeledRow>
 
           <details className="bg-input-bg rounded-lg p-4 border border-input-border shadow-inner">
