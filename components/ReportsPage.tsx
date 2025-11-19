@@ -34,13 +34,33 @@ interface ChartProps {
     keys: string[];
     title: string;
     emptyMessage: string;
+    filterOptions?: string[];
+    selectedFilter?: string;
+    onFilterChange?: (value: string) => void;
+    filterLabel?: string;
 }
 
-const StackedBarChart: React.FC<ChartProps> = ({ data, keys, title, emptyMessage }) => {
-     if (data.length === 0) {
+const StackedBarChart: React.FC<ChartProps> = ({ data, keys, title, emptyMessage, filterOptions, selectedFilter, onFilterChange, filterLabel }) => {
+    const hasData = data.length > 0 && data.some(item => keys.some(key => (item[key] || 0) > 0));
+
+     if (!hasData) {
         return (
             <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
-                <h2 className="text-xl font-semibold text-text-primary mb-4">{title}</h2>
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+                    <h2 className="text-xl font-semibold text-text-primary">{title}</h2>
+                     {filterOptions && onFilterChange && (
+                        <select 
+                            value={selectedFilter} 
+                            onChange={(e) => onFilterChange(e.target.value)}
+                            className="px-3 py-1 bg-surface border border-border-shadow rounded-md text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                        >
+                            <option value="all">{filterLabel || 'All'}</option>
+                            {filterOptions.map(opt => (
+                                <option key={opt} value={opt}>{opt}</option>
+                            ))}
+                        </select>
+                    )}
+                </div>
                 <div className="flex items-center justify-center h-[300px] text-text-secondary">{emptyMessage}</div>
             </div>
         )
@@ -48,7 +68,21 @@ const StackedBarChart: React.FC<ChartProps> = ({ data, keys, title, emptyMessage
 
     return (
         <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
-            <h2 className="text-xl font-semibold text-text-primary mb-4">{title}</h2>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-4 gap-4">
+                <h2 className="text-xl font-semibold text-text-primary">{title}</h2>
+                {filterOptions && onFilterChange && (
+                    <select 
+                        value={selectedFilter} 
+                        onChange={(e) => onFilterChange(e.target.value)}
+                        className="px-3 py-1 bg-surface border border-border-shadow rounded-md text-sm text-text-primary focus:outline-none focus:ring-2 focus:ring-accent"
+                    >
+                        <option value="all">{filterLabel || 'All'}</option>
+                        {filterOptions.map(opt => (
+                            <option key={opt} value={opt}>{opt}</option>
+                        ))}
+                    </select>
+                )}
+            </div>
             <div style={{ width: '100%', height: 300 }}>
                 <ResponsiveContainer>
                     <BarChart data={data} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
@@ -58,7 +92,7 @@ const StackedBarChart: React.FC<ChartProps> = ({ data, keys, title, emptyMessage
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface)' }} />
                         <Legend wrapperStyle={{fontSize: "12px", paddingTop: "15px", overflow: "auto", maxHeight: "60px", color: "var(--color-text-secondary)" }} />
                         {keys.map((key, index) => (
-                            <Bar key={key} dataKey={key} stackId="a" fill={COLORS[index % COLORS.length]} />
+                            <Bar key={key} dataKey={key} stackId="a" fill={key === 'Other' ? '#94a3b8' : COLORS[index % COLORS.length]} />
                         ))}
                     </BarChart>
                 </ResponsiveContainer>
@@ -73,6 +107,8 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
     const [dateFilter, setDateFilter] = useState('last-6-months');
     const [customStartDate, setCustomStartDate] = useState('');
     const [customEndDate, setCustomEndDate] = useState('');
+    const [selectedCategory, setSelectedCategory] = useState<string>('all');
+    const [selectedLabel, setSelectedLabel] = useState<string>('all');
 
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
@@ -151,7 +187,7 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
         }
     };
 
-    const { categoryChartData, allCategories, labelChartData, allLabels } = useMemo(() => {
+    const { categoryChartData, chartCategoryKeys, allCategories, labelChartData, chartLabelKeys, allLabels } = useMemo(() => {
         const now = new Date();
         now.setUTCHours(0, 0, 0, 0);
         let startDate: Date | null = null;
@@ -191,25 +227,55 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
             return true;
         });
 
-        const catMonthlyData: { [month: string]: { [category: string]: number } } = {};
+        // 1. Collect all categories and labels first (for the dropdowns)
         const categorySet = new Set<string>();
-        const labMonthlyData: { [month: string]: { [label: string]: number } } = {};
         const labelSet = new Set<string>();
+        const labelTotals: {[label: string]: number} = {};
+
+        filteredTransactions.forEach(t => {
+             categorySet.add(t.category);
+             if (t.labels) {
+                 t.labels.forEach(l => {
+                     labelSet.add(l);
+                     labelTotals[l] = (labelTotals[l] || 0) + t.amount;
+                 });
+             }
+        });
+
+        const allCategories = Array.from(categorySet).sort();
+        const allLabels = Array.from(labelSet).sort();
+
+        // 2. Determine top labels
+        const sortedLabels = Object.entries(labelTotals).sort((a, b) => b[1] - a[1]);
+        const topLabels = new Set(sortedLabels.slice(0, 5).map(l => l[0])); // Top 5
+
+        const catMonthlyData: { [month: string]: { [category: string]: number } } = {};
+        const labMonthlyData: { [month: string]: { [label: string]: number } } = {};
 
         filteredTransactions.forEach(t => {
             const month = new Date(t.date).toLocaleString('default', { month: 'short', year: '2-digit', timeZone: 'UTC' });
             
             // By Category
-            if (!catMonthlyData[month]) catMonthlyData[month] = {};
-            catMonthlyData[month][t.category] = (catMonthlyData[month][t.category] || 0) + t.amount;
-            categorySet.add(t.category);
+            if (selectedCategory === 'all' || t.category === selectedCategory) {
+                if (!catMonthlyData[month]) catMonthlyData[month] = {};
+                catMonthlyData[month][t.category] = (catMonthlyData[month][t.category] || 0) + t.amount;
+            }
             
             // By Label
             if (t.labels && t.labels.length > 0) {
                 if (!labMonthlyData[month]) labMonthlyData[month] = {};
                 t.labels.forEach(label => {
-                    labMonthlyData[month][label] = (labMonthlyData[month][label] || 0) + t.amount;
-                    labelSet.add(label);
+                    let targetLabel = label;
+                    if (selectedLabel === 'all') {
+                        if (!topLabels.has(label)) {
+                            targetLabel = 'Other';
+                        }
+                    } else {
+                        // If specific label selected, only include if it matches
+                        if (label !== selectedLabel) return;
+                    }
+                    
+                    labMonthlyData[month][targetLabel] = (labMonthlyData[month][targetLabel] || 0) + t.amount;
                 });
             }
         });
@@ -217,13 +283,33 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
         const catChartData = Object.entries(catMonthlyData).map(([month, categories]) => ({ name: month, ...categories })).sort((a,b) => new Date(`1 ${a.name}`).getTime() - new Date(`1 ${b.name}`).getTime());
         const labChartData = Object.entries(labMonthlyData).map(([month, labels]) => ({ name: month, ...labels })).sort((a,b) => new Date(`1 ${a.name}`).getTime() - new Date(`1 ${b.name}`).getTime());
 
+        // Determine Keys for Charts
+        let chartCategoryKeys: string[] = [];
+        if (selectedCategory === 'all') {
+            chartCategoryKeys = allCategories;
+        } else {
+            chartCategoryKeys = [selectedCategory];
+        }
+
+        let chartLabelKeys: string[] = [];
+        if (selectedLabel === 'all') {
+            chartLabelKeys = Array.from(topLabels);
+            // Check if we actually have "Other" in the data
+            const hasOther = labChartData.some(d => d['Other'] !== undefined);
+            if (hasOther) chartLabelKeys.push('Other');
+        } else {
+            chartLabelKeys = [selectedLabel];
+        }
+
         return { 
             categoryChartData: catChartData, 
-            allCategories: Array.from(categorySet),
+            chartCategoryKeys,
+            allCategories,
             labelChartData: labChartData,
-            allLabels: Array.from(labelSet)
+            chartLabelKeys,
+            allLabels
         };
-    }, [transactions, dateFilter, customStartDate, customEndDate]);
+    }, [transactions, dateFilter, customStartDate, customEndDate, selectedCategory, selectedLabel]);
 
     const savingsChartData = useMemo(() => {
         const now = new Date();
@@ -345,15 +431,23 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
 
                 <StackedBarChart 
                     data={categoryChartData}
-                    keys={allCategories}
+                    keys={chartCategoryKeys}
                     title="Monthly Expenses by Category"
                     emptyMessage="No expense data for this period."
+                    filterOptions={allCategories}
+                    selectedFilter={selectedCategory}
+                    onFilterChange={setSelectedCategory}
+                    filterLabel="All Categories"
                 />
                  <StackedBarChart 
                     data={labelChartData}
-                    keys={allLabels}
+                    keys={chartLabelKeys}
                     title="Monthly Expenses by Label"
                     emptyMessage="No labeled expenses for this period."
+                    filterOptions={allLabels}
+                    selectedFilter={selectedLabel}
+                    onFilterChange={setSelectedLabel}
+                    filterLabel="All Labels"
                 />
             </div>
 
