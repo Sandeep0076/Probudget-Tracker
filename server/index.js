@@ -15,6 +15,11 @@ const GOOGLE_API_SCOPES = [
 ];
 const ENC_KEY = (process.env.ENCRYPTION_KEY || '').padEnd(32, '0').slice(0, 32);
 
+// Google OAuth token refresh threshold (seconds before expiry to refresh)
+// Can be overridden with GCAL_REFRESH_THRESHOLD_SECONDS env; defaults to 60s to minimize unnecessary calls.
+// Note: Access tokens from Google typically last ~3600s (1 hour); cannot be extended beyond Google's policy.
+const TOKEN_REFRESH_THRESHOLD_SECONDS = Number(process.env.GCAL_REFRESH_THRESHOLD_SECONDS || 60);
+
 const app = express();
 const allowedOrigins = [
   'https://probudget-frontend.onrender.com',
@@ -107,6 +112,49 @@ function getOAuth2Client() {
   return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
 }
 
+async function refreshGoogleTokensIfNeeded(oauth) {
+  if (!oauth) return null;
+  const creds = oauth.credentials || {};
+  const expiryDate = creds.expiry_date; // milliseconds epoch from googleapis
+  const now = Date.now();
+  try {
+    if (!expiryDate) {
+      console.log('[GCAL] No expiry_date present; attempting token refresh proactively');
+      const r = await oauth.getAccessToken();
+      if (r && r.res && r.res.data) {
+        oauth.setCredentials({ ...creds, access_token: r.token });
+      }
+      // Persist possibly updated credentials
+      await setSetting('gcal_tokens', encryptJSON(oauth.credentials));
+      return oauth.credentials;
+    }
+    const secondsLeft = Math.floor((expiryDate - now) / 1000);
+    console.log('[GCAL] Token seconds until expiry:', secondsLeft, 'Threshold:', TOKEN_REFRESH_THRESHOLD_SECONDS);
+    if (secondsLeft <= 0 || secondsLeft < TOKEN_REFRESH_THRESHOLD_SECONDS) {
+      console.log('[GCAL] Refreshing Google access token (seconds left', secondsLeft, 'threshold', TOKEN_REFRESH_THRESHOLD_SECONDS, ')');
+      const refreshed = await oauth.refreshAccessToken();
+      const newTokens = refreshed.credentials;
+      // Preserve existing refresh_token if new response omits it
+      if (!newTokens.refresh_token && creds.refresh_token) {
+        newTokens.refresh_token = creds.refresh_token;
+      }
+      oauth.setCredentials(newTokens);
+      await setSetting('gcal_tokens', encryptJSON(newTokens));
+      console.log('[GCAL] Token refresh success. New expiry:', newTokens.expiry_date);
+      return newTokens;
+    }
+    return creds; // No refresh needed
+  } catch (e) {
+    if (e && e.response && e.response.data && e.response.data.error === 'invalid_grant') {
+      console.error('[GCAL] Refresh failed: invalid_grant (expired or revoked). Clearing stored tokens.');
+      await supabase.from('settings').delete().eq('key', 'gcal_tokens');
+      return null;
+    }
+    console.error('[GCAL] Unexpected token refresh error:', e.message || e);
+    return creds;
+  }
+}
+
 async function getOAuthClientWithTokens() {
   const oauth = getOAuth2Client();
   if (!oauth) return null;
@@ -123,6 +171,12 @@ function withOAuth2(callback) {
     const enc = await getSetting('gcal_tokens');
     if (!enc) return res.status(400).json({ error: 'Google Calendar not connected' });
     oauth.setCredentials(decryptJSON(enc));
+    console.log('[GCAL] Loaded stored credentials. Expiry:', oauth.credentials && oauth.credentials.expiry_date);
+    const refreshed = await refreshGoogleTokensIfNeeded(oauth);
+    if (!refreshed) {
+      // Tokens invalid; ask client to reconnect
+      return res.status(401).json({ error: 'Google Calendar tokens expired or revoked. Please reconnect.', code: 'GCAL_RECONNECT' });
+    }
     try {
       await callback(req, res, oauth);
     } catch (e) {
@@ -824,8 +878,23 @@ app.get('/api/calendar/callback', async (req, res) => {
   if (!oauth) return res.status(400).send('Missing GOOGLE_* env');
   const code = req.query.code;
   if (!code) return res.status(400).send('Missing code');
+  console.log('[GCAL] OAuth callback received. Exchanging code for tokens');
   const { tokens } = await oauth.getToken(String(code));
-  setSetting('gcal_tokens', encryptJSON(tokens));
+  console.log('[GCAL] Tokens received keys:', Object.keys(tokens));
+  // Merge existing stored refresh token if missing (happens on subsequent consent without prompt=consent sometimes)
+  const existingEnc = await getSetting('gcal_tokens');
+  if (!tokens.refresh_token && existingEnc) {
+    try {
+      const existing = decryptJSON(existingEnc);
+      if (existing.refresh_token) {
+        console.log('[GCAL] Preserving existing refresh_token');
+        tokens.refresh_token = existing.refresh_token;
+      }
+    } catch (e) {
+      console.warn('[GCAL] Could not decrypt existing tokens to preserve refresh_token:', e.message);
+    }
+  }
+  await setSetting('gcal_tokens', encryptJSON(tokens));
   res.send('<html><body><p>Google Calendar connected. You can close this window.</p></body></html>');
 });
 
@@ -835,6 +904,26 @@ app.get('/api/calendar/events', withOAuth2(async (req, res, oauth) => {
   const r = await calendar.events.list({ calendarId: 'primary', timeMin: String(timeMin), timeMax: String(timeMax), singleEvents: true, orderBy: 'startTime' });
   res.json(r.data.items || []);
 }));
+
+app.get('/api/calendar/status', async (req, res) => {
+  const enc = await getSetting('gcal_tokens');
+  if (!enc) return res.json({ connected: false });
+  try {
+    const tokens = decryptJSON(enc);
+    const expiryMs = tokens.expiry_date || null;
+    const secondsLeft = expiryMs ? Math.floor((expiryMs - Date.now()) / 1000) : null;
+    res.json({
+      connected: true,
+      hasRefreshToken: Boolean(tokens.refresh_token),
+      expiry_date: expiryMs,
+      seconds_until_expiry: secondsLeft,
+      needs_refresh: secondsLeft !== null && secondsLeft < TOKEN_REFRESH_THRESHOLD_SECONDS
+    });
+  } catch (e) {
+    console.error('[GCAL] Failed to decrypt tokens for status endpoint:', e.message);
+    res.json({ connected: false, error: 'decrypt_failed' });
+  }
+});
 
 app.post('/api/calendar/events', withOAuth2(async (req, res, oauth) => {
   const calendar = google.calendar({ version: 'v3', auth: oauth });
