@@ -72,15 +72,15 @@ async function upsertLabelIdByName(name) {
 }
 
 async function getSetting(key) {
-    const { data, error } = await supabase.from('settings').select('value').eq('key', key).single();
-    if (error) return null;
-    return data.value;
+  const { data, error } = await supabase.from('settings').select('value').eq('key', key).single();
+  if (error) return null;
+  return data.value;
 }
 
 async function setSetting(key, value) {
-    const { data, error } = await supabase.from('settings').upsert({ key, value }, { onConflict: 'key' });
-    if (error) throw error;
-    return data;
+  const { data, error } = await supabase.from('settings').upsert({ key, value }, { onConflict: 'key' });
+  if (error) throw error;
+  return data;
 }
 
 function encryptJSON(obj) {
@@ -388,11 +388,11 @@ app.post('/api/transactions/bulk', async (req, res) => {
   console.log('[BULK] Request body type:', typeof req.body);
   console.log('[BULK] Request body is array:', Array.isArray(req.body));
   console.log('[BULK] Request body length:', req.body?.length);
-  
+
   try {
     const items = Array.isArray(req.body) ? req.body : [];
     console.log('[BULK] Processing', items.length, 'items');
-    
+
     if (items.length === 0) {
       console.log('[BULK] No items to process, returning success');
       return res.json({ ok: true });
@@ -422,7 +422,7 @@ app.post('/api/transactions/bulk', async (req, res) => {
       .from('transactions')
       .insert(transactions)
       .select('id');
-    
+
     if (txError) {
       console.error('[BULK] Database insert error:', txError);
       console.error('[BULK] Error details:', JSON.stringify(txError, null, 2));
@@ -459,7 +459,7 @@ app.post('/api/transactions/bulk', async (req, res) => {
         console.log('[BULK] Awaiting', labelPromises.length, 'label upsert operations');
         const transactionLabels = await Promise.all(labelPromises);
         console.log('[BULK] Label associations to insert:', JSON.stringify(transactionLabels, null, 2));
-        
+
         const { error: labelError } = await supabase.from('transaction_labels').insert(transactionLabels);
         if (labelError) {
           console.error('[BULK] Label insert error:', labelError);
@@ -521,6 +521,7 @@ app.get('/api/tasks', async (req, res) => {
     updatedAt: t.updated_at,
     completedAt: t.completed_at,
     progress: t.progress !== null && t.progress !== undefined ? t.progress : 0,
+    estimatedTime: t.estimated_time || null,
   }));
 
   console.log('[GET /api/tasks] Fetched', tasks.length, 'tasks');
@@ -543,20 +544,20 @@ app.post('/api/tasks', async (req, res) => {
   const {
     title, notes = '', status = 'new', priority = 'medium', allDay = false,
     start = null, end = null, due = null, repeat = null, color = null, labels = [],
-    subtasks = []
+    subtasks = [], estimatedTime = null
   } = req.body || {};
 
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
   }
 
-  console.log('[POST /api/tasks] Creating task:', { title, status, priority });
+  console.log('[POST /api/tasks] Creating task:', { title, status, priority, estimatedTime });
 
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .insert({
       title, notes, status, priority, all_day: allDay, start, end, due,
-      repeat_json: repeat, color
+      repeat_json: repeat, color, estimated_time: estimatedTime
     })
     .select('id, created_at')
     .single();
@@ -579,19 +580,9 @@ app.post('/api/tasks', async (req, res) => {
     await supabase.from('subtasks').insert(subtaskData);
   }
 
-  const oauth = await getOAuthClientWithTokens();
-  let gcalId = null;
-  let gtaskId = null;
-  if (oauth) {
-    if (start && end) {
-      try { gcalId = await ensureEventForTask({ id: task.id, title, notes, start, end, repeat, gcalEventId: null }, oauth); } catch {}
-    }
-    try { gtaskId = await ensureTaskOnGoogle({ id: task.id, title, notes, due, status, gtaskId: null }, oauth); } catch {}
-  }
-
-  if (gcalId || gtaskId) {
-    await supabase.from('tasks').update({ gcal_event_id: gcalId, gtask_id: gtaskId }).eq('id', task.id);
-  }
+  // Google Sync disabled by user request
+  // const oauth = await getOAuthClientWithTokens();
+  // ... sync logic removed ...
 
   res.json({ id: task.id });
 });
@@ -606,10 +597,10 @@ app.put('/api/tasks/:id', async (req, res) => {
     priority = existing.priority, allDay = existing.all_day,
     start = existing.start, end = existing.end, due = existing.due,
     repeat = existing.repeat_json, color = existing.color, labels = [], subtasks = [],
-    progress = existing.progress
+    progress = existing.progress, estimatedTime = existing.estimated_time
   } = req.body || {};
 
-  console.log('[PUT /api/tasks/:id] Updating task:', { id, oldStatus: existing.status, newStatus: status, progress });
+  console.log('[PUT /api/tasks/:id] Updating task:', { id, oldStatus: existing.status, newStatus: status, progress, estimatedTime });
 
   // Initialize progress to 0 when moving to in_progress if not already set
   let finalProgress = progress;
@@ -624,7 +615,8 @@ app.put('/api/tasks/:id', async (req, res) => {
   // Prepare update data
   const updateData = {
     title, notes, status, priority, all_day: allDay, start, end, due,
-    repeat_json: repeat, color, updated_at: new Date().toISOString(), progress: finalProgress
+    repeat_json: repeat, color, updated_at: new Date().toISOString(), progress: finalProgress,
+    estimated_time: estimatedTime
   };
 
   // Set completed_at when task is marked as completed
@@ -669,34 +661,9 @@ app.put('/api/tasks/:id', async (req, res) => {
     await supabase.from('subtasks').insert(subtaskData);
   }
 
-  const oauth = await getOAuthClientWithTokens();
-  let gcalId = existing.gcal_event_id || null;
-  let gtaskId = existing.gtask_id || null;
-  if (oauth) {
-    if (start && end) {
-      try { gcalId = await ensureEventForTask({ id, title, notes, start, end, repeat, gcalEventId: gcalId }, oauth); } catch {}
-    }
-    try { gtaskId = await ensureTaskOnGoogle({ id, title, notes, due, status, gtaskId }, oauth); } catch {}
-    
-    // Sync task completion status with Google Calendar event
-    if (gcalId && status !== existing.status) {
-      try {
-        const calendar = google.calendar({ version: 'v3', auth: oauth });
-        const eventStatus = status === 'completed' ? 'cancelled' : 'confirmed';
-        await calendar.events.patch({
-          calendarId: 'primary',
-          eventId: gcalId,
-          requestBody: { status: eventStatus }
-        });
-      } catch (err) {
-        console.error('Failed to sync task status to calendar:', err.message);
-      }
-    }
-  }
-
-  if ((gcalId && gcalId !== existing.gcal_event_id) || (gtaskId && gtaskId !== existing.gtask_id)) {
-    await supabase.from('tasks').update({ gcal_event_id: gcalId, gtask_id: gtaskId }).eq('id', id);
-  }
+  // Google Sync disabled by user request
+  // const oauth = await getOAuthClientWithTokens();
+  // ... sync logic removed ...
 
   res.json({ ok: true });
 });
@@ -714,10 +681,9 @@ app.delete('/api/tasks/:id', async (req, res) => {
     return res.status(500).json({ error: 'Failed to delete task' });
   }
 
-  const oauth = await getOAuthClientWithTokens();
-  if (oauth && existing?.gcal_event_id) {
-    try { await google.calendar({ version: 'v3', auth: oauth }).events.delete({ calendarId: 'primary', eventId: existing.gcal_event_id }); } catch {}
-  }
+  // Google Sync disabled by user request
+  // const oauth = await getOAuthClientWithTokens();
+  // ... sync logic removed ...
   res.json({ ok: true });
 });
 
@@ -820,7 +786,7 @@ app.put('/api/shopping-items/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const updateData = { ...req.body };
-    
+
     // Remove fields that shouldn't be updated
     delete updateData.id;
     delete updateData.createdAt;
@@ -846,7 +812,7 @@ app.put('/api/shopping-items/:id', async (req, res) => {
 app.delete('/api/shopping-items/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    
+
     const { error } = await supabase
       .from('shopping_items')
       .delete()
@@ -901,8 +867,25 @@ app.get('/api/calendar/callback', async (req, res) => {
 app.get('/api/calendar/events', withOAuth2(async (req, res, oauth) => {
   const calendar = google.calendar({ version: 'v3', auth: oauth });
   const { timeMin, timeMax } = req.query;
-  const r = await calendar.events.list({ calendarId: 'primary', timeMin: String(timeMin), timeMax: String(timeMax), singleEvents: true, orderBy: 'startTime' });
-  res.json(r.data.items || []);
+  console.log('[GCAL] Fetching events - timeMin:', timeMin, 'timeMax:', timeMax);
+  const r = await calendar.events.list({
+    calendarId: 'primary',
+    timeMin: String(timeMin),
+    timeMax: String(timeMax),
+    singleEvents: true,
+    orderBy: 'startTime'
+  });
+  const events = r.data.items || [];
+  console.log('[GCAL] Retrieved', events.length, 'events');
+  if (events.length > 0) {
+    console.log('[GCAL] First 3 events:', events.slice(0, 3).map(e => ({
+      id: e.id,
+      summary: e.summary,
+      start: e.start,
+      status: e.status
+    })));
+  }
+  res.json(events);
 }));
 
 app.get('/api/calendar/status', async (req, res) => {
@@ -947,16 +930,16 @@ app.put('/api/calendar/events/:id/toggle', withOAuth2(async (req, res, oauth) =>
   const calendar = google.calendar({ version: 'v3', auth: oauth });
   const { currentStatus } = req.body;
   const isCancelled = currentStatus === 'cancelled' || currentStatus === 'completed';
-  
+
   // Toggle: if currently cancelled/completed, restore to confirmed; otherwise mark as cancelled
   const newStatus = isCancelled ? 'confirmed' : 'cancelled';
-  
+
   const updated = await calendar.events.patch({
     calendarId: 'primary',
     eventId: req.params.id,
     requestBody: { status: newStatus }
   });
-  
+
   res.json(updated.data);
 }));
 
@@ -978,16 +961,16 @@ app.get('/api/google-tasks', withOAuth2(async (req, res, oauth) => {
 app.put('/api/google-tasks/:id/toggle', withOAuth2(async (req, res, oauth) => {
   const tasksApi = google.tasks({ version: 'v1', auth: oauth });
   const { currentStatus } = req.body;
-  
+
   // Google Tasks status: 'needsAction' or 'completed'
   const newStatus = currentStatus === 'completed' ? 'needsAction' : 'completed';
-  
+
   const updated = await tasksApi.tasks.patch({
     tasklist: '@default',
     task: req.params.id,
     requestBody: { status: newStatus, id: req.params.id }
   });
-  
+
   res.json(updated.data);
 }));
 
@@ -1012,7 +995,7 @@ app.post('/api/budgets/category', async (req, res) => {
 app.put('/api/budgets/:id', async (req, res) => {
   const { id } = req.params;
   const { amount } = req.body || {};
-  
+
   const { data: budget, error: fetchError } = await supabase.from('budgets').select('category').eq('id', id).single();
   if (fetchError) return res.status(404).json({ error: 'Budget not found' });
 
@@ -1035,7 +1018,7 @@ app.post('/api/budgets/overall', async (req, res) => {
     return res.status(500).json({ error: 'Failed to set overall budget' });
   }
 
-  await addActivity('UPDATE', `Updated overall budget for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
+  await addActivity('UPDATE', `Updated overall budget for ${new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })} to $${Number(amount).toFixed(2)}.`);
   res.json({ ...data, amount: toEuros(data.amount) });
 });
 
@@ -1243,7 +1226,7 @@ app.post('/api/savings/upsert', async (req, res) => {
     return res.status(500).json({ error: 'Failed to upsert savings' });
   }
 
-  await addActivity('UPDATE', `Updated savings for ${new Date(year, month).toLocaleString('default',{month:'long',year:'numeric'})} to $${Number(amount).toFixed(2)}.`);
+  await addActivity('UPDATE', `Updated savings for ${new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })} to $${Number(amount).toFixed(2)}.`);
   res.json({ ...data, amount: toEuros(data.amount) });
 });
 
@@ -1304,30 +1287,30 @@ app.post('/api/auth/verify-security-question', async (req, res) => {
   try {
     const { username, answer } = req.body || {};
     console.log('Security question verification for username:', username);
-    
+
     if (!username || !answer) {
       console.log('Verification failed: Missing data');
       return res.status(400).json({ error: 'Username and answer are required' });
     }
-    
+
     // Get user with security question/answer
     const { data: user, error } = await supabase
       .from('users')
       .select('id, username, security_question, security_answer')
       .eq('username', username)
       .single();
-    
+
     if (error || !user) {
       console.log('Verification failed: User not found');
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     // Check answer (case-insensitive)
     if (user.security_answer.toLowerCase() !== answer.toLowerCase()) {
       console.log('Verification failed: Incorrect answer');
       return res.status(401).json({ error: 'Incorrect answer' });
     }
-    
+
     console.log('Security question verified for user:', username);
     res.json({ success: true, securityQuestion: user.security_question });
   } catch (error) {
@@ -1340,23 +1323,23 @@ app.post('/api/auth/reset-password', async (req, res) => {
   try {
     const { username, newPassword } = req.body || {};
     console.log('Password reset attempt for username:', username);
-    
+
     if (!username || !newPassword) {
       console.log('Reset failed: Missing data');
       return res.status(400).json({ error: 'Username and new password are required' });
     }
-    
+
     // Update password
     const { error } = await supabase
       .from('users')
       .update({ password: newPassword })
       .eq('username', username);
-    
+
     if (error) {
       console.error('Password reset error:', error);
       return res.status(500).json({ error: 'Failed to reset password' });
     }
-    
+
     console.log('Password reset successful for user:', username);
     res.json({ success: true });
   } catch (error) {
@@ -1368,24 +1351,24 @@ app.post('/api/auth/reset-password', async (req, res) => {
 app.get('/api/settings', async (req, res) => {
   const theme = await getSetting('theme') || 'dark-blue';
   const color = await getSetting('customThemeColor') || '#5e258a';
-  
+
   // Get user data from users table
   const { data: user, error } = await supabase
     .from('users')
     .select('username, password')
     .limit(1)
     .single();
-  
+
   const username = user?.username || 'Mr and Mrs Pathania';
   const password = user?.password || '';
-  
+
   res.json({ theme, customThemeColor: color, username, password });
 });
 
 app.post('/api/settings', async (req, res) => {
   try {
     const { theme, customThemeColor, username, password } = req.body || {};
-    
+
     console.log('[POST /api/settings] Received settings update:', {
       theme,
       customThemeColor,
@@ -1393,7 +1376,7 @@ app.post('/api/settings', async (req, res) => {
       hasPassword: password !== undefined,
       passwordLength: password ? password.length : 0
     });
-    
+
     // Update theme settings
     if (theme !== undefined) {
       await setSetting('theme', theme);
@@ -1403,7 +1386,7 @@ app.post('/api/settings', async (req, res) => {
       await setSetting('customThemeColor', customThemeColor);
       console.log('[POST /api/settings] Custom theme color updated to:', customThemeColor);
     }
-    
+
     // Update user data in users table
     if (username !== undefined || password !== undefined) {
       // Check if user exists
@@ -1412,7 +1395,7 @@ app.post('/api/settings', async (req, res) => {
         .select('id')
         .limit(1)
         .single();
-      
+
       if (existingUser) {
         // Update existing user
         const updateData = {};
@@ -1427,14 +1410,14 @@ app.post('/api/settings', async (req, res) => {
         } else if (password === '') {
           console.warn('[POST /api/settings] WARNING: Attempted to set empty password - IGNORING');
         }
-        
+
         // Only update if there's something to update
         if (Object.keys(updateData).length > 0) {
           const { error } = await supabase
             .from('users')
             .update(updateData)
             .eq('id', existingUser.id);
-          
+
           if (error) throw error;
           console.log('[POST /api/settings] User data updated successfully');
         } else {
@@ -1449,17 +1432,139 @@ app.post('/api/settings', async (req, res) => {
             username: username || 'Mr and Mrs Pathania',
             password: password || ''
           });
-        
+
         if (error) throw error;
         console.log('[POST /api/settings] New user created');
       }
     }
-    
+
     res.json({ ok: true });
   } catch (error) {
     console.error('[POST /api/settings] Error saving settings:', error);
     res.status(500).json({ error: error.message });
   }
+});
+
+app.post('/api/sync-google', async (req, res) => {
+  console.log('[SYNC] Starting Google Sync...');
+  const oauth = await getOAuthClientWithTokens();
+  if (!oauth) {
+    console.log('[SYNC] Google not connected');
+    return res.status(400).json({ error: 'Google account not connected' });
+  }
+
+  let createdCount = 0;
+  let errors = [];
+
+  try {
+    // 1. Fetch Google Calendar Events (Past 30 days to Future 90 days)
+    const calendar = google.calendar({ version: 'v3', auth: oauth });
+    const timeMin = new Date();
+    timeMin.setDate(timeMin.getDate() - 30);
+    const timeMax = new Date();
+    timeMax.setDate(timeMax.getDate() + 90);
+
+    console.log('[SYNC] Fetching calendar events from', timeMin.toISOString(), 'to', timeMax.toISOString());
+    const eventsRes = await calendar.events.list({
+      calendarId: 'primary',
+      timeMin: timeMin.toISOString(),
+      timeMax: timeMax.toISOString(),
+      singleEvents: true,
+      orderBy: 'startTime'
+    });
+    const events = eventsRes.data.items || [];
+    console.log('[SYNC] Found', events.length, 'events');
+
+    // 2. Fetch Google Tasks
+    const tasksApi = google.tasks({ version: 'v1', auth: oauth });
+    console.log('[SYNC] Fetching Google Tasks...');
+    const tasksRes = await tasksApi.tasks.list({
+      tasklist: '@default',
+      showCompleted: true,
+      showHidden: true,
+    });
+    const gtasks = tasksRes.data.items || [];
+    console.log('[SYNC] Found', gtasks.length, 'tasks');
+
+    // 3. Get existing IDs to avoid duplicates
+    const { data: existingTasks, error: dbError } = await supabase
+      .from('tasks')
+      .select('gcal_event_id, gtask_id');
+
+    if (dbError) throw dbError;
+
+    const existingGcalIds = new Set(existingTasks.map(t => t.gcal_event_id).filter(Boolean));
+    const existingGtaskIds = new Set(existingTasks.map(t => t.gtask_id).filter(Boolean));
+
+    // 4. Import Events
+    for (const event of events) {
+      if (existingGcalIds.has(event.id)) continue;
+      if (!event.start) continue; // Cancelled or invalid
+
+      const start = event.start.dateTime || event.start.date;
+      const end = event.end.dateTime || event.end.date;
+      const allDay = !event.start.dateTime;
+
+      const newTask = {
+        title: event.summary || '(No Title)',
+        notes: event.description || '',
+        status: 'new', // Events are usually 'scheduled', map to 'new'
+        priority: 'medium',
+        all_day: allDay,
+        start: start,
+        end: end,
+        gcal_event_id: event.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      const { error } = await supabase.from('tasks').insert(newTask);
+      if (error) {
+        console.error('[SYNC] Error importing event:', event.summary, error);
+        errors.push(`Event: ${event.summary} - ${error.message}`);
+      } else {
+        createdCount++;
+        existingGcalIds.add(event.id);
+      }
+    }
+
+    // 5. Import Tasks
+    for (const task of gtasks) {
+      if (existingGtaskIds.has(task.id)) continue;
+      if (!task.title) continue;
+
+      const newTask = {
+        title: task.title,
+        notes: task.notes || '',
+        status: task.status === 'completed' ? 'completed' : 'new',
+        priority: 'medium',
+        due: task.due ? new Date(task.due).toISOString() : null,
+        gtask_id: task.id,
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+
+      if (task.completed) {
+        newTask.completed_at = new Date(task.completed).toISOString();
+      }
+
+      const { error } = await supabase.from('tasks').insert(newTask);
+      if (error) {
+        console.error('[SYNC] Error importing task:', task.title, error);
+        errors.push(`Task: ${task.title} - ${error.message}`);
+      } else {
+        createdCount++;
+        existingGtaskIds.add(task.id);
+      }
+    }
+
+  } catch (e) {
+    console.error('[SYNC] Sync failed:', e);
+    return res.status(500).json({ error: 'Sync failed', details: e.message });
+  }
+
+  console.log('[SYNC] Completed. Created', createdCount, 'new tasks.');
+  res.json({ ok: true, created: createdCount, errors });
 });
 
 app.listen(PORT, () => {

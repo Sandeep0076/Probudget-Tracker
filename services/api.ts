@@ -89,7 +89,7 @@ export const getTasks = () => get<Task[]>('/api/tasks');
 export const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'subtasks'> & { subtasks?: Subtask[] }) => post<{ id: string }>(`/api/tasks`, task);
 export const updateTask = (id: string, task: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>) => put<{ ok: boolean }>(`/api/tasks/${id}`, task);
 export const deleteTask = (id: string) => del<{ ok: boolean }>(`/api/tasks/${id}`);
-export const getAgenda = (range: 'today'|'week'|'overdue') => get<any[]>(`/api/tasks/agenda?range=${range}`);
+export const getAgenda = (range: 'today' | 'week' | 'overdue') => get<any[]>(`/api/tasks/agenda?range=${range}`);
 
 // Planner: Shopping List
 export const getShoppingItems = () => get<ShoppingItem[]>('/api/shopping-items');
@@ -104,6 +104,7 @@ export const listGoogleTasks = () => get<any[]>(`/api/google-tasks`);
 export const toggleGoogleTask = (taskId: string, currentStatus: string) => put<any>(`/api/google-tasks/${taskId}/toggle`, { currentStatus });
 export const disconnectCalendar = () => get<{ ok: boolean }>(`/api/calendar/disconnect`);
 export const toggleCalendarEvent = (eventId: string, currentStatus: string) => put<any>(`/api/calendar/events/${eventId}/toggle`, { currentStatus });
+export const syncGoogleData = () => post<{ ok: boolean; created: number; errors: string[] }>('/api/sync-google', {});
 
 // Authentication
 export const login = (username: string, password: string) => post<{ success: boolean; username: string }>('/api/auth/login', { username, password });

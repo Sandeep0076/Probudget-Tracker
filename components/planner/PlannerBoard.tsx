@@ -53,7 +53,14 @@ const SortableItem: React.FC<{
     <div ref={setNodeRef} style={style} className="group px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-card-hover hover:-translate-y-1 mb-3 transition-all duration-200">
       <div className="flex items-center justify-between gap-2">
         <div {...attributes} {...listeners} className="flex-1 cursor-grab active:cursor-grabbing">
-          <div className="text-sm text-text-primary font-semibold">{task.title}</div>
+          <div className="flex items-center justify-between gap-2">
+            <div className="text-sm text-text-primary font-semibold">{task.title}</div>
+            {task.estimatedTime && (
+              <div className="text-xs font-medium text-danger shrink-0">
+                {task.estimatedTime}
+              </div>
+            )}
+          </div>
         </div>
         <div className="flex items-center gap-1">
           <button

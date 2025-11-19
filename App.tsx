@@ -30,12 +30,12 @@ export type Theme = 'dark-blue' | 'light' | 'dark' | 'custom';
 const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
-  
+
   const [section, setSection] = useState<'budget' | 'planner'>('budget');
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
   const [plannerPage, setPlannerPage] = useState<PlannerPage>('dashboard');
   const [initialTransactionType, setInitialTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
-  
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [categoryBudgets, setCategoryBudgets] = useState<Budget[]>([]);
   const [overallBudget, setOverallBudget] = useState<Budget | null>(null);
@@ -51,7 +51,7 @@ const App: React.FC = () => {
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [isShoppingModalOpen, setIsShoppingModalOpen] = useState(false);
   const [editingShoppingItem, setEditingShoppingItem] = useState<ShoppingItem | null>(null);
-  
+
   const [receiptItemsToConfirm, setReceiptItemsToConfirm] = useState<TransactionFormData[]>([]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
 
@@ -66,10 +66,10 @@ const App: React.FC = () => {
     document.documentElement.className = '';
 
     if (theme === 'custom') {
-        applyCustomTheme(customThemeColor);
-        document.documentElement.classList.add(`theme-custom`); 
+      applyCustomTheme(customThemeColor);
+      document.documentElement.classList.add(`theme-custom`);
     } else {
-        document.documentElement.classList.add(`theme-${theme}`);
+      document.documentElement.classList.add(`theme-${theme}`);
     }
   }, [theme, customThemeColor]);
 
@@ -114,7 +114,7 @@ const App: React.FC = () => {
           hasPassword: !!settings.password,
           passwordLength: settings.password ? settings.password.length : 0
         });
-        setTheme((['dark-blue','light','dark','custom'] as Theme[]).includes(settings.theme as Theme) ? settings.theme as Theme : 'dark-blue');
+        setTheme((['dark-blue', 'light', 'dark', 'custom'] as Theme[]).includes(settings.theme as Theme) ? settings.theme as Theme : 'dark-blue');
         setCustomThemeColor(settings.customThemeColor || '#5e258a');
         setUsername(settings.username || 'Mr and Mrs Pathania');
         setPassword(settings.password || '');
@@ -137,7 +137,20 @@ const App: React.FC = () => {
           await loadData();
           await loadTasks();
           await loadShoppingItems();
+          await loadTasks();
+          await loadShoppingItems();
           await loadCalendarForWeek();
+
+          // Auto-sync Google Data
+          try {
+            console.log('[App] Auto-syncing Google data...');
+            await api.syncGoogleData();
+            console.log('[App] Auto-sync complete, reloading tasks...');
+            await loadTasks();
+          } catch (e) {
+            console.log('[App] Auto-sync failed (likely not connected):', e);
+          }
+
           console.log('[App] Application data loaded successfully');
         } catch (e) {
           console.error('[App] Failed to load application data:', e);
@@ -190,89 +203,42 @@ const App: React.FC = () => {
   };
 
   const loadCalendarForWeek = async () => {
-    const start = new Date();
-    start.setHours(0,0,0,0);
-    const end = new Date(start);
-    end.setDate(start.getDate() + 7);
-    try {
-      const events = await api.listCalendarEvents(start.toISOString(), end.toISOString());
-      let tasks: any[] = [];
-      try {
-        tasks = await api.listGoogleTasks();
-      } catch (taskError) {
-        console.log('Google Tasks not available - please reconnect your Google account');
-      }
-      const mappedTasks = tasks.map((t: any) => ({
-        id: `gtask-${t.id}`,
-        gtaskId: t.id,
-        title: t.title,
-        start: t.due,
-        end: t.due,
-        allDay: true,
-        status: t.status,
-        isGtask: true,
-      }));
-      setCalendarEvents([...events, ...mappedTasks]);
-    } catch (e) {
-      // not connected yet
-      setCalendarEvents([]);
-    }
+    // Google fetching disabled in favor of import sync
+    setCalendarEvents([]);
   };
 
   const handleCalendarDatesChange = async (start: Date, end: Date) => {
-    try {
-      const events = await api.listCalendarEvents(start.toISOString(), end.toISOString());
-      let tasks: any[] = [];
-      try {
-        tasks = await api.listGoogleTasks();
-      } catch (taskError) {
-        console.log('Google Tasks not available yet - please reconnect your Google account to enable Tasks integration');
-      }
-      const mappedTasks = tasks.map((t: any) => ({
-        id: `gtask-${t.id}`,
-        gtaskId: t.id,
-        title: t.title,
-        start: t.due,
-        end: t.due,
-        allDay: true,
-        status: t.status,
-        isGtask: true,
-        gcalEventId: null,
-      }));
-      setCalendarEvents([...events, ...mappedTasks]);
-    } catch (e) {
-      // not connected yet
-      setCalendarEvents([]);
-    }
+    // Google fetching disabled in favor of import sync
+    setCalendarEvents([]);
   };
-  
+
   const handleSaveTransaction = async (data: TransactionFormData) => {
     if (data.isRecurring) {
-        const recurringTx: Omit<RecurringTransaction, 'id'> = {
-            description: data.description,
-            amount: data.amount,
-            type: data.type,
-            category: data.category,
-            startDate: data.date,
-            frequency: 'monthly',
-            dayOfMonth: new Date(data.date).getUTCDate(),
-            labels: data.labels,
-        };
-        await api.addRecurringTransaction(recurringTx);
-        await api.generateDueRecurringTransactions();
+      const recurringTx: Omit<RecurringTransaction, 'id'> = {
+        description: data.description,
+        amount: data.amount,
+        type: data.type,
+        category: data.category,
+        startDate: data.date,
+        frequency: 'monthly',
+        dayOfMonth: new Date(data.date).getUTCDate(),
+        labels: data.labels,
+      };
+      await api.addRecurringTransaction(recurringTx);
+      await api.generateDueRecurringTransactions();
     } else {
-        const singleTx: Omit<Transaction, 'id'> = {
-            description: data.description,
-            amount: data.amount,
-            quantity: data.quantity,
-            type: data.type,
-            category: data.category,
-            date: data.date,
-            labels: data.labels,
-        };
-        await api.addTransaction(singleTx);
+      const singleTx: Omit<Transaction, 'id'> = {
+        description: data.description,
+        amount: data.amount,
+        quantity: data.quantity,
+        type: data.type,
+        category: data.category,
+        date: data.date,
+        labels: data.labels,
+      };
+      await api.addTransaction(singleTx);
     }
-    
+
     await loadData();
     setCurrentPage('dashboard');
   };
@@ -360,36 +326,36 @@ const App: React.FC = () => {
       };
     });
   };
-    
+
   const handleSaveAllTransactions = async (items: TransactionFormData[]) => {
-      try {
-          console.log('[App] handleSaveAllTransactions called with', items.length, 'items');
-          const transactionsToSave = items.map(item => ({
-             description: item.description,
-             amount: item.amount,
-             quantity: item.quantity,
-             date: item.date,
-             type: item.type,
-             category: item.category,
-             labels: item.labels,
-          }));
-          console.log('[App] Mapped transactions to save:', transactionsToSave.length);
-          console.log('[App] First transaction sample:', transactionsToSave.length > 0 ? JSON.stringify(transactionsToSave[0]) : 'none');
-          
-          await api.addMultipleTransactions(transactionsToSave);
-          console.log('[App] Bulk save successful, reloading data');
-          
-          await loadData();
-          setReceiptItemsToConfirm([]);
-          setCurrentPage('dashboard');
-          console.log('[App] Navigation to dashboard complete');
-      } catch (error) {
-          console.error('[App] Failed to save all transactions:', error);
-          console.error('[App] Error details:', error instanceof Error ? error.message : String(error));
-          const errorMessage = error instanceof Error ? error.message : String(error);
-          alert(`Error saving transactions: ${errorMessage}\n\nPlease check the console for more details and try again.`);
-          throw error; // Re-throw to prevent navigation away from confirmation page
-      }
+    try {
+      console.log('[App] handleSaveAllTransactions called with', items.length, 'items');
+      const transactionsToSave = items.map(item => ({
+        description: item.description,
+        amount: item.amount,
+        quantity: item.quantity,
+        date: item.date,
+        type: item.type,
+        category: item.category,
+        labels: item.labels,
+      }));
+      console.log('[App] Mapped transactions to save:', transactionsToSave.length);
+      console.log('[App] First transaction sample:', transactionsToSave.length > 0 ? JSON.stringify(transactionsToSave[0]) : 'none');
+
+      await api.addMultipleTransactions(transactionsToSave);
+      console.log('[App] Bulk save successful, reloading data');
+
+      await loadData();
+      setReceiptItemsToConfirm([]);
+      setCurrentPage('dashboard');
+      console.log('[App] Navigation to dashboard complete');
+    } catch (error) {
+      console.error('[App] Failed to save all transactions:', error);
+      console.error('[App] Error details:', error instanceof Error ? error.message : String(error));
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      alert(`Error saving transactions: ${errorMessage}\n\nPlease check the console for more details and try again.`);
+      throw error; // Re-throw to prevent navigation away from confirmation page
+    }
   };
 
   const wrapAction = <T extends any[]>(action: (...args: T) => Promise<any>) => {
@@ -407,14 +373,14 @@ const App: React.FC = () => {
   const handleUpdateCategory = wrapAction(api.updateCategory);
   const handleDeleteCategory = wrapAction(api.deleteCategory);
   const handleUpdateTransaction = wrapAction(api.updateTransaction);
-  
+
   const handleDeleteTransaction = async (transactionId: string) => {
     try {
-        await api.deleteTransaction(transactionId);
-        await loadData();
+      await api.deleteTransaction(transactionId);
+      await loadData();
     } catch (error) {
-        console.error("Failed to delete transaction:", error);
-        alert("Could not delete the transaction. Please try again.");
+      console.error("Failed to delete transaction:", error);
+      alert("Could not delete the transaction. Please try again.");
     }
   };
 
@@ -564,12 +530,12 @@ const App: React.FC = () => {
   const handleToggleShoppingItem = async (id: string) => {
     const item = shoppingItems.find(item => item.id === id);
     if (!item) return;
-    
+
     const updateData: Partial<ShoppingItem> = {
       completed: !item.completed,
       completedAt: !item.completed ? new Date().toISOString() : null
     };
-    
+
     await handleUpdateShoppingItem(id, updateData);
   };
 
@@ -622,19 +588,19 @@ const App: React.FC = () => {
     console.log('[App] User not authenticated, showing login page');
     return <LoginPage onLoginSuccess={handleLoginSuccess} />;
   }
-  
+
   console.log('[App] User authenticated, rendering main app');
 
   const renderPage = () => {
     switch (currentPage) {
       case 'dashboard':
         return <Dashboard
-            transactions={transactions}
-            onNavigate={navigate}
-            overallBudget={overallBudget}
-            onEditTransaction={handleEditTransactionClick}
-            onDeleteTransaction={handleDeleteTransaction}
-            username={username}
+          transactions={transactions}
+          onNavigate={navigate}
+          overallBudget={overallBudget}
+          onEditTransaction={handleEditTransactionClick}
+          onDeleteTransaction={handleDeleteTransaction}
+          username={username}
         />;
       case 'addTransaction':
         return <AddTransaction onCancel={() => navigate('dashboard')} initialType={initialTransactionType} onSave={handleSaveTransaction} categories={categories} onScanReceipt={handleScanReceipt} availableLabels={availableLabels} />;
@@ -650,16 +616,16 @@ const App: React.FC = () => {
         return <ReceiptConfirmationPage items={receiptItemsToConfirm} onSaveAll={handleSaveAllTransactions} onCancel={() => setCurrentPage('addTransaction')} categories={categories.filter(c => c.type === TransactionType.EXPENSE)} availableLabels={availableLabels} />;
       case 'settings':
         return <SettingsPage
-            activityLogs={activityLogs}
+          activityLogs={activityLogs}
         />;
       default:
         return <Dashboard
-            transactions={transactions}
-            onNavigate={navigate}
-            overallBudget={overallBudget}
-            onEditTransaction={handleEditTransactionClick}
-            onDeleteTransaction={handleDeleteTransaction}
-            username={username}
+          transactions={transactions}
+          onNavigate={navigate}
+          overallBudget={overallBudget}
+          onEditTransaction={handleEditTransactionClick}
+          onDeleteTransaction={handleDeleteTransaction}
+          username={username}
         />;
     }
   }
@@ -680,9 +646,9 @@ const App: React.FC = () => {
       />
       {section === 'budget' ? (
         <>
-          <Header 
-            onNavigate={navigate} 
-            currentPage={currentPage} 
+          <Header
+            onNavigate={navigate}
+            currentPage={currentPage}
             onAddTransactionClick={handleAddTransactionClick}
           />
           <main>
@@ -690,28 +656,38 @@ const App: React.FC = () => {
           </main>
           {editingTransaction && (
             <EditTransactionModal
-                isOpen={!!editingTransaction}
-                onClose={() => setEditingTransaction(null)}
-                onSave={async (updatedTx) => {
-                    await handleUpdateTransaction(updatedTx);
-                    setEditingTransaction(null);
-                }}
-                transaction={editingTransaction}
-                categories={categories}
-                availableLabels={availableLabels}
+              isOpen={!!editingTransaction}
+              onClose={() => setEditingTransaction(null)}
+              onSave={async (updatedTx) => {
+                await handleUpdateTransaction(updatedTx);
+                setEditingTransaction(null);
+              }}
+              transaction={editingTransaction}
+              categories={categories}
+              availableLabels={availableLabels}
             />
           )}
         </>
       ) : (
         <>
-          <PlannerHeader page={plannerPage} onNavigate={navigatePlanner} onNewTask={openNewTaskModal} />
+          <PlannerHeader page={plannerPage} onNavigate={navigatePlanner} onNewTask={openNewTaskModal} onSync={async () => {
+            try {
+              alert('Syncing with Google...');
+              const res = await api.syncGoogleData();
+              await loadTasks();
+              alert(`Sync Complete! Created ${res.created} new tasks.`);
+            } catch (e) {
+              alert('Sync failed. Please make sure Google Calendar is connected in Settings.');
+              console.error(e);
+            }
+          }} />
           <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             {plannerPage === 'dashboard' && (
               <PlannerDashboard
                 tasks={tasks}
                 events={calendarEvents}
                 onRefresh={() => { loadTasks(); loadCalendarForWeek(); }}
-                onToggleComplete={(t)=> handleUpdateTask(t.id, { status: t.status === 'completed' ? 'new' : 'completed' })}
+                onToggleComplete={(t) => handleUpdateTask(t.id, { status: t.status === 'completed' ? 'new' : 'completed' })}
                 onToggleEvent={handleToggleEvent}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
@@ -721,7 +697,7 @@ const App: React.FC = () => {
             {plannerPage === 'progress' && (
               <PlannerBoard
                 tasks={tasks}
-                onMove={(id, status)=> handleUpdateTask(id, { status })}
+                onMove={(id, status) => handleUpdateTask(id, { status })}
                 onEdit={handleEditTask}
                 onDelete={handleDeleteTask}
                 onProgressChange={handleProgressChange}
@@ -740,7 +716,7 @@ const App: React.FC = () => {
             {plannerPage === 'backlog' && (
               <PlannerBacklog
                 tasks={tasks}
-                onPlanToday={(id)=> handleUpdateTask(id, { due: new Date().toISOString().split('T')[0] })}
+                onPlanToday={(id) => handleUpdateTask(id, { due: new Date().toISOString().split('T')[0] })}
                 onEdit={handleEditTask}
                 onDelete={handleDeleteTask}
               />
@@ -758,7 +734,7 @@ const App: React.FC = () => {
           <TaskModal
             isOpen={isTaskModalOpen}
             initial={prefillTask || undefined}
-            onClose={()=> {
+            onClose={() => {
               setIsTaskModalOpen(false);
               setPrefillTask(null); // Clear prefill data when modal closes
             }}

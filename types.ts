@@ -110,6 +110,7 @@ export interface Task {
   completedAt?: string | null;
   subtasks?: Subtask[];
   progress?: number; // Progress percentage (0-100)
+  estimatedTime?: string | null; // Estimated time to complete (e.g., "5 min", "2 hours", "2-3 days")
 }
 
 export interface ShoppingItem {

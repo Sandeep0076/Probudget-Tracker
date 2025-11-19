@@ -74,7 +74,14 @@ const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday, onE
         {sortedBacklog.map(t => (
           <div key={t.id} className="group flex items-center justify-between px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5">
             <div className="flex-1">
-              <div className="text-sm text-text-primary font-semibold mb-1">{t.title}</div>
+              <div className="flex items-center justify-between gap-2 mb-1">
+                <div className="text-sm text-text-primary font-semibold">{t.title}</div>
+                {t.estimatedTime && (
+                  <div className="text-xs font-medium text-danger shrink-0">
+                    {t.estimatedTime}
+                  </div>
+                )}
+              </div>
               <div className="flex items-center gap-3 text-xs">
                 <span className={`font-medium ${getPriorityColor(t.priority)}`}>
                   {t.priority.charAt(0).toUpperCase() + t.priority.slice(1)} Priority
