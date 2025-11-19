@@ -124,17 +124,17 @@ export const applyCustomTheme = (baseColor: string) => {
     '--color-success': '#4ade80',
     '--color-danger': '#f87171',
     '--color-warning': '#facc15',
-    '--color-shadow-light': `hsla(${(h + 180) % 360}, 100%, 70%, 0.1)`,
-    '--color-shadow-dark': `hsla(0, 0%, 0%, 0.5)`,
-    '--color-shadow-light-inner': `hsla(${(h + 180) % 360}, 80%, 75%, 0.1)`,
-    '--color-shadow-dark-inner': `hsla(0, 0%, 0%, 0.3)`,
-    '--color-shadow-elevation-sm': `0 2px 4px -1px hsla(0, 0%, 0%, 0.3), 0 1px 2px -1px hsla(0, 0%, 0%, 0.2), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.1)`,
-    '--color-shadow-elevation-md': `0 4px 6px -1px hsla(0, 0%, 0%, 0.4), 0 2px 4px -1px hsla(0, 0%, 0%, 0.25), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.15)`,
-    '--color-shadow-elevation-lg': `0 10px 15px -3px hsla(0, 0%, 0%, 0.5), 0 4px 6px -2px hsla(0, 0%, 0%, 0.3), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.2)`,
-    '--color-shadow-elevation-xl': `0 20px 25px -5px hsla(0, 0%, 0%, 0.6), 0 10px 10px -5px hsla(0, 0%, 0%, 0.2), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.25)`,
-    '--color-shadow-hover': `0 25px 50px -12px hsla(0, 0%, 0%, 0.7), 0 0 0 1px hsla(${(h + 180) % 360}, 100%, 70%, 0.3), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.3)`,
-    '--color-shadow-3d': `0 8px 16px -4px var(--color-shadow-dark), 0 3px 6px -1px hsla(0, 0%, 0%, 0.2), inset 0 -1px 2px 0 hsla(0, 0%, 0%, 0.2), inset 0 1px 2px 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.1)`,
-    '--color-shadow-3d-hover': `0 16px 32px -8px var(--color-shadow-dark), 0 6px 12px -2px hsla(0, 0%, 0%, 0.3), inset 0 -2px 4px 0 hsla(0, 0%, 0%, 0.25), inset 0 2px 4px 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.15)`,
+    '--color-shadow-light': `hsla(${(h + 180) % 360}, 100%, 70%, 0.15)`,
+    '--color-shadow-dark': `hsla(0, 0%, 0%, 0.6)`,
+    '--color-shadow-light-inner': `hsla(${(h + 180) % 360}, 80%, 75%, 0.15)`,
+    '--color-shadow-dark-inner': `hsla(0, 0%, 0%, 0.4)`,
+    '--color-shadow-elevation-sm': `0 2px 4px -1px hsla(0, 0%, 0%, 0.4), 0 1px 2px -1px hsla(0, 0%, 0%, 0.2), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.1)`,
+    '--color-shadow-elevation-md': `0 4px 6px -1px hsla(0, 0%, 0%, 0.5), 0 2px 4px -1px hsla(0, 0%, 0%, 0.25), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.15)`,
+    '--color-shadow-elevation-lg': `0 10px 15px -3px hsla(0, 0%, 0%, 0.6), 0 4px 6px -2px hsla(0, 0%, 0%, 0.3), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.2)`,
+    '--color-shadow-elevation-xl': `0 20px 25px -5px hsla(0, 0%, 0%, 0.7), 0 10px 10px -5px hsla(0, 0%, 0%, 0.2), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.25)`,
+    '--color-shadow-hover': `0 25px 50px -12px hsla(0, 0%, 0%, 0.8), 0 0 0 1px hsla(${(h + 180) % 360}, 100%, 70%, 0.3), inset 0 1px 0 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.3)`,
+    '--color-shadow-3d': `0 8px 16px -4px hsla(0, 0%, 0%, 0.6), 0 3px 6px -1px hsla(0, 0%, 0%, 0.3), inset 0 -1px 2px 0 hsla(0, 0%, 0%, 0.2), inset 0 1px 2px 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.1)`,
+    '--color-shadow-3d-hover': `0 16px 32px -8px hsla(0, 0%, 0%, 0.7), 0 6px 12px -2px hsla(0, 0%, 0%, 0.3), inset 0 -2px 4px 0 hsla(0, 0%, 0%, 0.25), inset 0 2px 4px 0 hsla(${(h + 180) % 360}, 80%, 75%, 0.15)`,
     '--color-label-bg': `hsla(${h}, ${saturationPercent}%, ${labelBgLightnessPercent}%, 0.26)`,
     '--color-label-border': `hsla(${h}, ${saturationPercent}%, ${labelBorderLightnessPercent}%, 0.6)`,
     '--color-label-text': labelText,
@@ -146,7 +146,13 @@ export const applyCustomTheme = (baseColor: string) => {
     '--color-input-border': `hsla(${(h + 180) % 360}, 100%, 70%, 0.2)`,
   };
 
+  console.log('[Theme] Applying custom theme with base color:', baseColor);
+  console.log('[Theme] Generated shadow-3d:', theme['--color-shadow-3d']);
+  console.log('[Theme] Generated shadow-hover:', theme['--color-shadow-hover']);
+  
   for (const [key, value] of Object.entries(theme)) {
     document.documentElement.style.setProperty(key, value);
   }
+  
+  console.log('[Theme] Theme applied successfully. Total CSS variables set:', Object.keys(theme).length);
 };
