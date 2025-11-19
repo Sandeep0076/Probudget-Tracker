@@ -27,3 +27,97 @@ input::placeholder, textarea::placeholder { color: var(--color-text-muted); }
 
 /* Accessibility focus */
 button:focus, input:focus, textarea:focus, select:focus { outline: 2px solid var(--color-accent-light); outline-offset: 2px; }
+
+/* Enhanced 3D Utility Classes */
+.shadow-3d-sm {
+  box-shadow: var(--color-shadow-elevation-sm) !important;
+}
+
+.shadow-3d-md {
+  box-shadow: var(--color-shadow-elevation-md) !important;
+}
+
+.shadow-3d-lg {
+  box-shadow: var(--color-shadow-elevation-lg) !important;
+}
+
+.shadow-3d-xl {
+  box-shadow: var(--color-shadow-elevation-xl) !important;
+}
+
+.shadow-3d {
+  box-shadow: var(--color-shadow-3d) !important;
+}
+
+.shadow-3d-hover {
+  box-shadow: var(--color-shadow-3d-hover) !important;
+}
+
+.shadow-elevated {
+  box-shadow: var(--color-shadow-hover) !important;
+  transform: translateY(-2px);
+}
+
+/* Layered background effects */
+.bg-layered {
+  background: linear-gradient(135deg, var(--color-card-bg-lighter) 0%, var(--color-card-bg) 50%, var(--color-card-bg-dark) 100%);
+}
+
+.bg-layered-light {
+  background: linear-gradient(135deg, var(--color-card-bg-lighter) 0%, var(--color-card-bg-light) 100%);
+}
+
+.bg-layered-dark {
+  background: linear-gradient(135deg, var(--color-card-bg) 0%, var(--color-card-bg-darker) 100%);
+}
+
+/* Enhanced border effects - 3D borders */
+.border-3d {
+  border-top: 1px solid var(--color-border-highlight);
+  border-left: 1px solid var(--color-border-highlight);
+  border-bottom: 1px solid var(--color-border-shadow);
+  border-right: 1px solid var(--color-border-shadow);
+}
+
+.border-3d-inset {
+  border-top: 1px solid var(--color-border-shadow);
+  border-left: 1px solid var(--color-border-shadow);
+  border-bottom: 1px solid var(--color-border-highlight);
+  border-right: 1px solid var(--color-border-highlight);
+}
+
+/* Highlight overlay for important elements */
+.highlight-overlay::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: 30%;
+  background: linear-gradient(to bottom, var(--color-shadow-light-inner), transparent);
+  border-radius: inherit;
+  pointer-events: none;
+}
+
+/* Responsive 3D effects - reduce on mobile for performance */
+@media (max-width: 768px) {
+  .shadow-3d {
+    box-shadow: var(--color-shadow-elevation-sm) !important;
+  }
+  
+  .shadow-3d-hover {
+    box-shadow: var(--color-shadow-elevation-md) !important;
+  }
+  
+  .shadow-elevated {
+    box-shadow: var(--color-shadow-elevation-lg) !important;
+    transform: translateY(-1px);
+  }
+}
+
+/* Enhanced focus for 3D elements */
+.shadow-3d:focus-within,
+.shadow-3d-sm:focus-within,
+.shadow-3d-md:focus-within {
+  box-shadow: var(--color-shadow-3d-hover), 0 0 0 2px var(--color-accent-light) !important;
+}
