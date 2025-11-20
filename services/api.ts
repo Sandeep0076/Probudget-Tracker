@@ -70,6 +70,7 @@ export const getLabels = () => get<string[]>('/api/labels');
 // Recurring
 export const getRecurringTransactions = () => get<RecurringTransaction[]>('/api/recurring');
 export const addRecurringTransaction = (r: Omit<RecurringTransaction, 'id'>) => post<RecurringTransaction>('/api/recurring', r);
+export const updateRecurringTransaction = (r: RecurringTransaction) => put<RecurringTransaction>(`/api/recurring/${r.id}`, r);
 export const deleteRecurringTransaction = (id: string) => del<{ ok: boolean }>(`/api/recurring/${id}`);
 export const generateDueRecurringTransactions = () => post<{ generated: number }>(`/api/recurring/generate-due`, {});
 

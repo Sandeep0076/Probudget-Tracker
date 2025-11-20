@@ -1417,6 +1417,40 @@ app.post('/api/recurring', async (req, res) => {
   res.json({ id: recurring.id, description, amount, type, category, startDate, frequency, dayOfMonth, labels });
 });
 
+app.put('/api/recurring/:id', async (req, res) => {
+  const { id } = req.params;
+  const { description, amount, type, category, startDate, frequency = 'monthly', dayOfMonth, labels = [] } = req.body || {};
+  
+  const { data: existing, error: fetchError } = await supabase.from('recurring_transactions').select('description').eq('id', id).single();
+  if (fetchError) {
+    console.error('Error fetching recurring tx:', fetchError);
+    return res.status(404).json({ error: 'Recurring transaction not found' });
+  }
+
+  const { error: updateError } = await supabase
+    .from('recurring_transactions')
+    .update({ description, amount: toCents(amount), type, category, start_date: startDate, frequency, day_of_month: dayOfMonth })
+    .eq('id', id);
+
+  if (updateError) {
+    console.error('Error updating recurring tx:', updateError);
+    return res.status(500).json({ error: 'Failed to update recurring transaction' });
+  }
+
+  // Delete existing labels
+  await supabase.from('recurring_transaction_labels').delete().eq('recurring_transaction_id', id);
+
+  // Insert new labels
+  if (labels.length > 0) {
+    const labelIds = await Promise.all(labels.map(name => upsertLabelIdByName(name)));
+    const recurringLabels = labelIds.map(label_id => ({ recurring_transaction_id: id, label_id }));
+    await supabase.from('recurring_transaction_labels').insert(recurringLabels);
+  }
+
+  await addActivity('UPDATE', `Updated recurring transaction: "${description}".`);
+  res.json({ id, description, amount, type, category, startDate, frequency, dayOfMonth, labels });
+});
+
 app.delete('/api/recurring/:id', async (req, res) => {
   const { id } = req.params;
   const { data: recurring, error: fetchError } = await supabase.from('recurring_transactions').select('description').eq('id', id).single();
@@ -1458,8 +1492,23 @@ app.post('/api/recurring/generate-due', async (req, res) => {
       .limit(1)
       .single();
 
-    let cursor = new Date((lastTx?.date) || r.start_date);
-    if (lastTx) cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+    const startDate = new Date(r.start_date);
+    startDate.setUTCHours(0, 0, 0, 0);
+    let cursor;
+    if (lastTx) {
+      const lastTxDate = new Date(lastTx.date);
+      lastTxDate.setUTCHours(0, 0, 0, 0);
+      // If the start_date was changed to an earlier date, use the start_date
+      // Otherwise, start from the month after the last transaction
+      if (startDate < lastTxDate) {
+        cursor = new Date(startDate);
+      } else {
+        cursor = new Date(lastTxDate);
+        cursor.setUTCMonth(cursor.getUTCMonth() + 1);
+      }
+    } else {
+      cursor = new Date(startDate);
+    }
 
     while (cursor <= today) {
       const year = cursor.getUTCFullYear();
@@ -1467,7 +1516,11 @@ app.post('/api/recurring/generate-due', async (req, res) => {
       const dim = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
       const day = Math.min(r.day_of_month, dim);
       const genDate = new Date(Date.UTC(year, month, day));
+      genDate.setUTCHours(0, 0, 0, 0);
 
+      // Generate if the date is today or in the past, and either:
+      // - There's no last transaction, OR
+      // - The generated date is after the last transaction date
       if (genDate <= today && (!lastTx || genDate > new Date(lastTx.date))) {
         const newTxId = randomUUID();
         newTransactions.push({
