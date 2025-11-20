@@ -10,6 +10,7 @@ import ReportsPage from './components/ReportsPage';
 import ReceiptConfirmationPage from './components/ReceiptConfirmationPage';
 import SettingsPage from './components/SettingsPage';
 import EditTransactionModal from './components/EditTransactionModal';
+import EditRecurringTransactionModal from './components/EditRecurringTransactionModal';
 import LoginPage from './components/LoginPage';
 import { Transaction, TransactionType, Budget, Category, RecurringTransaction, TransactionFormData, Saving, ActivityLog, Task, ShoppingItem } from './types';
 import * as api from './services/api';
@@ -56,6 +57,7 @@ const App: React.FC = () => {
 
   const [receiptItemsToConfirm, setReceiptItemsToConfirm] = useState<TransactionFormData[]>([]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [editingRecurringTransaction, setEditingRecurringTransaction] = useState<RecurringTransaction | null>(null);
   const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   const [theme, setTheme] = useState<Theme>('dark-blue');
@@ -434,6 +436,27 @@ const App: React.FC = () => {
     setEditingTransaction(transaction);
   };
 
+  const handleEditRecurringTransactionClick = (transaction: RecurringTransaction) => {
+    setEditingRecurringTransaction(transaction);
+  };
+
+  const handleUpdateRecurringTransaction = async (transaction: RecurringTransaction) => {
+    try {
+      console.log('[App] Updating recurring transaction:', transaction);
+      await api.updateRecurringTransaction(transaction);
+      console.log('[App] Recurring transaction updated, generating due transactions...');
+      // Generate due transactions after updating (especially important if start date was changed to a past date)
+      const generateResult = await api.generateDueRecurringTransactions();
+      console.log('[App] Generated', generateResult.generated, 'due transactions');
+      await loadData();
+      setEditingRecurringTransaction(null);
+    } catch (error) {
+      console.error("Failed to update recurring transaction:", error);
+      const errorMessage = error instanceof Error ? error.message : "Could not update the recurring transaction. Please try again.";
+      alert(`Error: ${errorMessage}`);
+    }
+  };
+
   const handleAddTransactionClick = (type: TransactionType) => {
     setInitialTransactionType(type);
     setCurrentPage('addTransaction');
@@ -700,7 +723,7 @@ const App: React.FC = () => {
       case 'budgets':
         return <Budgets overallBudget={overallBudget} categoryBudgets={categoryBudgets} transactions={transactions} onSetOverallBudget={handleSetOverallBudget} onAddCategoryBudget={handleAddCategoryBudget} onEditCategoryBudget={handleEditCategoryBudget} categories={categories} savings={savings} onSetSaving={handleSetSaving} />;
       case 'transactions':
-        return <TransactionsPage transactions={transactions} recurringTransactions={recurringTransactions} categories={categories} onAddTransactionClick={handleAddTransactionClick} onEditTransaction={handleEditTransactionClick} onDeleteTransaction={handleDeleteTransaction} />;
+        return <TransactionsPage transactions={transactions} recurringTransactions={recurringTransactions} categories={categories} onAddTransactionClick={handleAddTransactionClick} onEditTransaction={handleEditTransactionClick} onDeleteTransaction={handleDeleteTransaction} onEditRecurringTransaction={handleEditRecurringTransactionClick} />;
       case 'categories':
         return <CategoriesPage categories={categories} transactions={transactions} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />;
       case 'reports':
@@ -760,6 +783,18 @@ const App: React.FC = () => {
                 setEditingTransaction(null);
               }}
               transaction={editingTransaction}
+              categories={categories}
+              availableLabels={availableLabels}
+            />
+          )}
+          {editingRecurringTransaction && (
+            <EditRecurringTransactionModal
+              isOpen={!!editingRecurringTransaction}
+              onClose={() => setEditingRecurringTransaction(null)}
+              onSave={async (updatedTx) => {
+                await handleUpdateRecurringTransaction(updatedTx);
+              }}
+              transaction={editingRecurringTransaction}
               categories={categories}
               availableLabels={availableLabels}
             />

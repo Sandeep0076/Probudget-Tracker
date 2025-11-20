@@ -408,27 +408,6 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
             </div>
 
             <div className="grid grid-cols-1 gap-8">
-                <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
-                    <h2 className="text-xl font-semibold text-text-primary mb-4">Savings Over Time</h2>
-                    {savingsChartData && savingsChartData.length > 0 ? (
-                        <div style={{ width: '100%', height: 300 }}>
-                            <ResponsiveContainer>
-                                <ComposedChart data={savingsChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-shadow)" />
-                                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={12} />
-                                    <YAxis yAxisId="left" stroke="var(--color-text-secondary)" fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
-                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface)' }} />
-                                    <Legend wrapperStyle={{fontSize: "12px", paddingTop: "15px", color: "var(--color-text-secondary)" }} />
-                                    <Bar yAxisId="left" dataKey="Monthly Savings" fill={COLORS[0]} />
-                                    <Line yAxisId="left" type="monotone" dataKey="Cumulative Savings" stroke={COLORS[1]} strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
-                                </ComposedChart>
-                            </ResponsiveContainer>
-                        </div>
-                    ) : (
-                        <div className="flex items-center justify-center h-[300px] text-text-secondary">No savings data for this period.</div>
-                    )}
-                </div>
-
                 <StackedBarChart 
                     data={categoryChartData}
                     keys={chartCategoryKeys}
@@ -449,6 +428,26 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
                     onFilterChange={setSelectedLabel}
                     filterLabel="All Labels"
                 />
+                <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
+                    <h2 className="text-xl font-semibold text-text-primary mb-4">Savings Over Time</h2>
+                    {savingsChartData && savingsChartData.length > 0 ? (
+                        <div style={{ width: '100%', height: 300 }}>
+                            <ResponsiveContainer>
+                                <ComposedChart data={savingsChartData} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                                    <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-shadow)" />
+                                    <XAxis dataKey="name" stroke="var(--color-text-secondary)" fontSize={12} />
+                                    <YAxis yAxisId="left" stroke="var(--color-text-secondary)" fontSize={12} tickFormatter={(value) => formatCurrency(value as number)} />
+                                    <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface)' }} />
+                                    <Legend wrapperStyle={{fontSize: "12px", paddingTop: "15px", color: "var(--color-text-secondary)" }} />
+                                    <Bar yAxisId="left" dataKey="Monthly Savings" fill={COLORS[0]} />
+                                    <Line yAxisId="left" type="monotone" dataKey="Cumulative Savings" stroke={COLORS[1]} strokeWidth={2} dot={{ r: 4 }} activeDot={{ r: 6 }} />
+                                </ComposedChart>
+                            </ResponsiveContainer>
+                        </div>
+                    ) : (
+                        <div className="flex items-center justify-center h-[300px] text-text-secondary">No savings data for this period.</div>
+                    )}
+                </div>
             </div>
 
             {isChatModalOpen && (

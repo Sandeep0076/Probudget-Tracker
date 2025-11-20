@@ -3,6 +3,7 @@ import { RecurringTransaction, TransactionType } from '../types';
 import { GroceriesIcon, IncomeSalaryIcon, TransportIcon, UtilitiesIcon, EntertainmentIcon, HealthIcon, RentIcon } from './icons/CategoryIcons';
 import { ShoppingIcon, FoodIcon, TravelIcon, HomeIcon, CarIcon, PetsIcon, GiftsIcon, EducationIcon, FitnessIcon, OtherIcon } from './icons/NewCategoryIcons';
 import { CloseIcon } from './icons/CloseIcon';
+import { EditIcon } from './icons/ActionIcons';
 import { formatCurrency } from '../utils/formatters';
 
 const categoryIcons: { [key:string]: React.ReactNode } = {
@@ -35,10 +36,11 @@ const getCategoryIcon = (category: string) => {
 
 interface RecurringTransactionListItemProps {
     transaction: RecurringTransaction;
+    onEdit?: (transaction: RecurringTransaction) => void;
     onDelete: (id: string) => void;
 }
 
-const RecurringTransactionListItem: React.FC<RecurringTransactionListItemProps> = ({ transaction, onDelete }) => {
+const RecurringTransactionListItem: React.FC<RecurringTransactionListItemProps> = ({ transaction, onEdit, onDelete }) => {
     const isIncome = transaction.type === TransactionType.INCOME;
     const amountColor = isIncome ? 'text-success' : 'text-text-primary';
     const amountPrefix = isIncome ? '+' : '-';
@@ -85,6 +87,15 @@ const RecurringTransactionListItem: React.FC<RecurringTransactionListItemProps> 
                 <p className={`text-sm font-semibold ${amountColor}`}>
                     {amountPrefix} {formatCurrency(transaction.amount)}
                 </p>
+                {onEdit && (
+                    <button
+                        onClick={() => onEdit(transaction)}
+                        className="p-1.5 rounded-full text-text-secondary hover:bg-surface/70 hover:text-text-primary transition-colors"
+                        aria-label={`Edit recurring transaction: ${transaction.description}`}
+                    >
+                        <EditIcon className="w-4 h-4" />
+                    </button>
+                )}
                 <button
                     onClick={handleDelete}
                     className="p-1.5 rounded-full text-text-secondary hover:bg-red-500/30 hover:text-red-300 transition-colors"
