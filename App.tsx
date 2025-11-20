@@ -727,7 +727,7 @@ const App: React.FC = () => {
       case 'categories':
         return <CategoriesPage categories={categories} transactions={transactions} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />;
       case 'reports':
-        return <ReportsPage transactions={transactions} savings={savings} />;
+        return <ReportsPage transactions={transactions} savings={savings} categoryBudgets={categoryBudgets} overallBudget={overallBudget} />;
       case 'confirmReceipt':
         return <ReceiptConfirmationPage items={receiptItemsToConfirm} onSaveAll={handleSaveAllTransactions} onCancel={() => setCurrentPage('addTransaction')} categories={categories.filter(c => c.type === TransactionType.EXPENSE)} availableLabels={availableLabels} />;
       case 'settings':
