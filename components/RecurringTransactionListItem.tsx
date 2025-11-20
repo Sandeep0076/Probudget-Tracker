@@ -60,7 +60,7 @@ const RecurringTransactionListItem: React.FC<RecurringTransactionListItemProps> 
     };
     
     return (
-        <li className="flex items-center justify-between py-4 border-b border-border-shadow last:border-b-0">
+        <li className="flex items-center justify-between py-2 border-b border-border-shadow last:border-b-0">
             <div className="flex items-center">
                 <div className="flex-shrink-0 h-10 w-10 flex items-center justify-center rounded-full bg-surface shadow-inner text-accent">
                     {getCategoryIcon(transaction.category)}
