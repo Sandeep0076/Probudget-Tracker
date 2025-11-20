@@ -35,7 +35,7 @@ const CategoryComparisonBarChart: React.FC<CategoryComparisonBarChartProps> = ({
         return Object.entries(categoryTotals)
             .map(([name, value]) => ({
                 name,
-                value: Math.max(value, 1),
+                logValue: Math.log10(Math.max(value, 1)),
                 realValue: value
             }))
             .sort((a, b) => b.realValue - a.realValue); // Sort by amount descending
@@ -74,15 +74,14 @@ const CategoryComparisonBarChart: React.FC<CategoryComparisonBarChartProps> = ({
                         <YAxis
                             stroke="var(--color-text-secondary)"
                             fontSize={12}
-                            tickFormatter={(value) => `$${value}`}
+                            tickFormatter={(value) => `$${Math.round(Math.pow(10, value)).toLocaleString()}`}
                             tickLine={false}
                             axisLine={false}
                             dx={-10}
-                            scale="log"
-                            domain={['auto', 'auto']}
+                            domain={[0, 'auto']}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface-light)' }} />
-                        <Bar dataKey="value" radius={[4, 4, 0, 0]} maxBarSize={60}>
+                        <Bar dataKey="logValue" radius={[4, 4, 0, 0]} maxBarSize={60}>
                             {chartData.map((entry, index) => (
                                 <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
                             ))}

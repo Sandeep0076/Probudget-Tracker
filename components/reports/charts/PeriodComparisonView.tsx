@@ -55,8 +55,8 @@ const PeriodComparisonView: React.FC<PeriodComparisonViewProps> = ({ data }) => 
 
         return Array.from(allCategories).map(cat => ({
             name: cat,
-            "This Month": Math.max(thisMonthData[cat] || 0, 1),
-            "Last Month": Math.max(lastMonthData[cat] || 0, 1),
+            logThisMonth: Math.log10(Math.max(thisMonthData[cat] || 0, 1)),
+            logLastMonth: Math.log10(Math.max(lastMonthData[cat] || 0, 1)),
             realThisMonth: thisMonthData[cat] || 0,
             realLastMonth: lastMonthData[cat] || 0
         })).sort((a, b) => (b.realThisMonth + b.realLastMonth) - (a.realThisMonth + a.realLastMonth));
@@ -91,20 +91,19 @@ const PeriodComparisonView: React.FC<PeriodComparisonViewProps> = ({ data }) => 
                         <YAxis
                             stroke="var(--color-text-secondary)"
                             fontSize={12}
-                            tickFormatter={(value) => `$${value}`}
+                            tickFormatter={(value) => `$${Math.round(Math.pow(10, value)).toLocaleString()}`}
                             tickLine={false}
                             axisLine={false}
                             dx={-10}
-                            scale="log"
-                            domain={['auto', 'auto']}
+                            domain={[0, 'auto']}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface-light)' }} />
                         <Legend
                             wrapperStyle={{ paddingTop: '20px', color: 'var(--color-text-secondary)' }}
                             iconType="circle"
                         />
-                        <Bar dataKey="Last Month" fill={COLORS[1]} radius={[4, 4, 0, 0]} maxBarSize={50} />
-                        <Bar dataKey="This Month" fill={COLORS[0]} radius={[4, 4, 0, 0]} maxBarSize={50} />
+                        <Bar dataKey="logLastMonth" name="Last Month" fill={COLORS[1]} radius={[4, 4, 0, 0]} maxBarSize={50} />
+                        <Bar dataKey="logThisMonth" name="This Month" fill={COLORS[0]} radius={[4, 4, 0, 0]} maxBarSize={50} />
                     </BarChart>
                 </ResponsiveContainer>
             </div>

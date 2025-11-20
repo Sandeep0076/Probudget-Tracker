@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from 'recharts';
+import { ComposedChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine } from 'recharts';
 import { Transaction } from '../../../types';
 import { formatCurrency } from '../../../utils/formatters';
 
@@ -8,30 +8,106 @@ interface TimeSeriesLineChartProps {
     range: string;
 }
 
-const CustomTooltip = ({ active, payload, label }: any) => {
+interface SpendingCandlestickData {
+    name: string;
+    high: number;      // Maximum single transaction amount
+    total: number;      // Total spending for the day
+    low: number;       // Always 0 for spending
+}
+
+// Separate tooltip component for spending trend
+const SpendingTrendTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
+        const data = payload[0].payload as SpendingCandlestickData;
         return (
             <div className="bg-surface/90 backdrop-blur-md p-3 rounded-lg border border-border-highlight shadow-neu-lg">
-                <p className="text-secondary text-xs mb-1">{label}</p>
-                <p className="text-brand font-bold">{formatCurrency(payload[0].payload.realValue)}</p>
+                <p className="text-text-secondary text-xs mb-2 font-semibold">{label}</p>
+                <div className="space-y-1">
+                    <p className="text-text-secondary text-xs">
+                        <span className="font-medium">High:</span> <span className="text-brand">{formatCurrency(data.high)}</span>
+                    </p>
+                    <p className="text-text-secondary text-xs">
+                        <span className="font-medium">Total:</span> <span className="text-brand font-bold">{formatCurrency(data.total)}</span>
+                    </p>
+                </div>
             </div>
         );
     }
     return null;
 };
 
+// Custom candlestick shape function for Recharts Bar
+const CandlestickShape = (props: any) => {
+    const { x, y, width, height, payload } = props;
+    const { high, total } = payload as SpendingCandlestickData;
+    
+    if (total === 0 && high === 0) {
+        return null;
+    }
+    
+    const candleColor = 'var(--color-brand)';
+    const wickColor = 'var(--color-text-secondary)';
+    const candleWidth = Math.max(width * 0.5, 12);
+    const candleX = x + (width - candleWidth) / 2;
+    
+    // Calculate wick position (only if high > total)
+    // height is the bar height (from 0 to total)
+    // We need to draw a wick above the bar if high > total
+    const domainMax = props.yAxis?.domain?.[1] || total;
+    const domainMin = props.yAxis?.domain?.[0] || 0;
+    const domainRange = domainMax - domainMin;
+    const chartHeight = props.height || 300;
+    
+    // Calculate the additional height needed for the wick
+    const wickAdditionalValue = Math.max(0, high - total);
+    const wickAdditionalHeight = (wickAdditionalValue / domainRange) * chartHeight;
+    const wickTopY = y - height - wickAdditionalHeight;
+    
+    return (
+        <g>
+            {/* High wick - vertical line above candle when high > total */}
+            {high > total && wickAdditionalHeight > 0 && (
+                <line
+                    x1={x + width / 2}
+                    y1={y - height}
+                    x2={x + width / 2}
+                    y2={wickTopY}
+                    stroke={wickColor}
+                    strokeWidth={1.5}
+                    opacity={0.7}
+                />
+            )}
+            {/* Candle body - rectangle showing total spending */}
+            {total > 0 && height > 0 && (
+                <rect
+                    x={candleX}
+                    y={y - height}
+                    width={candleWidth}
+                    height={height}
+                    fill={candleColor}
+                    stroke={candleColor}
+                    strokeWidth={1}
+                    rx={2}
+                />
+            )}
+        </g>
+    );
+};
+
 const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }) => {
-    const chartData = useMemo(() => {
-        const dailyTotals: { [key: string]: number } = {};
+    // Separate calculation logic for spending trend (completely independent from cumulative)
+    const { chartData, yAxisDomain } = useMemo(() => {
+        const dailySpending: { [key: string]: { transactions: number[], total: number } } = {};
 
         // Sort transactions by date
         const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        if (sortedData.length === 0) return [];
+        if (sortedData.length === 0) return { chartData: [], yAxisDomain: [0, 100] };
 
         // Determine grouping based on range
         const isMonthly = range === 'last-6-months' || range === 'this-year';
 
+        // Group transactions by date - separate logic for spending trend
         sortedData.forEach(t => {
             const date = new Date(t.date);
             let key = '';
@@ -42,14 +118,51 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
                 key = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
 
-            dailyTotals[key] = (dailyTotals[key] || 0) + t.amount;
+            if (!dailySpending[key]) {
+                dailySpending[key] = { transactions: [], total: 0 };
+            }
+            dailySpending[key].transactions.push(t.amount);
+            dailySpending[key].total += t.amount;
         });
 
-        return Object.entries(dailyTotals).map(([name, value]) => ({
-            name,
-            value: Math.max(value, 1),
-            realValue: value
-        }));
+        // Create candlestick data points - separate calculation
+        const dataPoints: SpendingCandlestickData[] = Object.entries(dailySpending)
+            .map(([name, dayData]) => {
+                const amounts = dayData.transactions;
+                const high = amounts.length > 0 ? Math.max(...amounts) : 0;
+                const total = dayData.total;
+                
+                return {
+                    name,
+                    high,
+                    total,
+                    low: 0 // Always 0 for spending
+                };
+            })
+            .sort((a, b) => {
+                // Sort by date for proper ordering
+                try {
+                    const dateA = new Date(a.name);
+                    const dateB = new Date(b.name);
+                    return dateA.getTime() - dateB.getTime();
+                } catch {
+                    return a.name.localeCompare(b.name);
+                }
+            });
+
+        // Calculate Y-axis domain separately for spending trend
+        const allSpendingValues = dataPoints.flatMap(d => [d.high, d.total]).filter(v => v > 0);
+        const maxSpendingValue = allSpendingValues.length > 0 ? Math.max(...allSpendingValues) : 100;
+        const minSpendingValue = 0;
+        
+        // Add padding for better visualization
+        const spendingPadding = maxSpendingValue * 0.15;
+        const spendingDomainMax = maxSpendingValue + spendingPadding;
+
+        return {
+            chartData: dataPoints,
+            yAxisDomain: [minSpendingValue, spendingDomainMax]
+        };
     }, [data, range]);
 
     if (chartData.length === 0) {
@@ -65,16 +178,10 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
             <h3 className="text-lg font-semibold text-text-primary mb-4">Spending Trend</h3>
             <div className="h-[300px] w-full">
                 <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart
+                    <ComposedChart
                         data={chartData}
                         margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
                     >
-                        <defs>
-                            <linearGradient id="colorValue" x1="0" y1="0" x2="0" y2="1">
-                                <stop offset="5%" stopColor="var(--color-brand)" stopOpacity={0.3} />
-                                <stop offset="95%" stopColor="var(--color-brand)" stopOpacity={0} />
-                            </linearGradient>
-                        </defs>
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-shadow)" vertical={false} />
                         <XAxis
                             dataKey="name"
@@ -85,25 +192,23 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
                             dy={10}
                         />
                         <YAxis
+                            domain={yAxisDomain}
                             stroke="var(--color-text-secondary)"
                             fontSize={12}
-                            tickFormatter={(value) => `$${value}`}
+                            tickFormatter={(value) => formatCurrency(value)}
                             tickLine={false}
                             axisLine={false}
                             dx={-10}
-                            scale="log"
-                            domain={['auto', 'auto']}
                         />
-                        <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1, strokeDasharray: '5 5' }} />
-                        <Area
-                            type="linear"
-                            dataKey="value"
-                            stroke="var(--color-brand)"
-                            strokeWidth={3}
-                            fillOpacity={1}
-                            fill="url(#colorAmount)"
+                        <Tooltip content={<SpendingTrendTooltip />} cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1, strokeDasharray: '5 5' }} />
+                        <ReferenceLine y={0} stroke="var(--color-border-shadow)" />
+                        <Bar
+                            dataKey="total"
+                            fill="var(--color-brand)"
+                            shape={<CandlestickShape />}
+                            barSize={20}
                         />
-                    </AreaChart>
+                    </ComposedChart>
                 </ResponsiveContainer>
             </div>
         </div>

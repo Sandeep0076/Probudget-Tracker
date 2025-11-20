@@ -12,7 +12,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
         return (
             <div className="bg-surface/90 backdrop-blur-md p-3 rounded-lg border border-border-highlight shadow-neu-lg">
                 <p className="text-text-secondary text-xs mb-1">{label}</p>
-                <p className="text-brand font-bold">{formatCurrency(payload[0].payload.realValue)}</p>
+                <p className="text-brand font-bold">{formatCurrency(payload[0].value)}</p>
             </div>
         );
     }
@@ -20,8 +20,10 @@ const CustomTooltip = ({ active, payload, label }: any) => {
 };
 
 const CumulativeAreaChart: React.FC<CumulativeAreaChartProps> = ({ data }) => {
-    const chartData = useMemo(() => {
+    const { chartData, yAxisDomain } = useMemo(() => {
         const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+
+        if (sortedData.length === 0) return { chartData: [], yAxisDomain: [0, 100] };
 
         let cumulativeTotal = 0;
         const dailyCumulative: { [date: string]: number } = {};
@@ -32,11 +34,37 @@ const CumulativeAreaChart: React.FC<CumulativeAreaChartProps> = ({ data }) => {
             dailyCumulative[dateKey] = cumulativeTotal;
         });
 
-        return Object.entries(dailyCumulative).map(([name, value]) => ({
+        const dataPoints = Object.entries(dailyCumulative).map(([name, value]) => ({
             name,
-            value: Math.max(value, 1),
-            realValue: value
+            value: value
         }));
+
+        // Calculate min and max cumulative values for proper Y-axis scaling
+        const values = dataPoints.map(d => d.value);
+        const minValue = Math.min(...values);
+        const maxValue = Math.max(...values);
+        
+        // For cumulative charts, adjust domain to show growth variations better
+        let domainMin = 0;
+        let domainMax = maxValue;
+        
+        if (maxValue > 0 && minValue >= 0) {
+            const range = maxValue - minValue;
+            // If there's significant growth, adjust domain to show variations
+            if (range > 0 && maxValue / Math.max(minValue, 1) > 1.1) {
+                // Start from a value closer to min to show growth better
+                // But still show 0 if min is close to 0
+                domainMin = minValue > maxValue * 0.1 ? minValue * 0.95 : 0;
+            }
+            // Add padding for better visualization
+            const padding = range > 0 ? range * 0.1 : maxValue * 0.1;
+            domainMax = maxValue + padding;
+        }
+
+        return {
+            chartData: dataPoints,
+            yAxisDomain: [domainMin, domainMax]
+        };
     }, [data]);
 
     if (chartData.length === 0) {
@@ -73,14 +101,13 @@ const CumulativeAreaChart: React.FC<CumulativeAreaChartProps> = ({ data }) => {
                             interval="preserveStartEnd"
                         />
                         <YAxis
+                            domain={yAxisDomain}
                             stroke="var(--color-text-secondary)"
                             fontSize={12}
-                            tickFormatter={(value) => `$${value}`}
+                            tickFormatter={(value) => formatCurrency(value)}
                             tickLine={false}
                             axisLine={false}
                             dx={-10}
-                            scale="log"
-                            domain={['auto', 'auto']}
                         />
                         <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1, strokeDasharray: '5 5' }} />
                         <Area

@@ -10,8 +10,8 @@ interface BudgetVarianceChartProps {
 
 const CustomTooltip = ({ active, payload, label }: any) => {
     if (active && payload && payload.length) {
-        const actual = payload.find((p: any) => p.dataKey === 'actual')?.payload.realActual || 0;
-        const budget = payload.find((p: any) => p.dataKey === 'budget')?.payload.realBudget || 0;
+        const actual = payload.find((p: any) => p.dataKey === 'logActual')?.payload.realActual || 0;
+        const budget = payload.find((p: any) => p.dataKey === 'logBudget')?.payload.realBudget || 0;
         const variance = budget - actual;
         const isOverBudget = variance < 0;
 
@@ -52,8 +52,8 @@ const BudgetVarianceChart: React.FC<BudgetVarianceChartProps> = ({ transactions,
             const actual = categorySpending[b.category] || 0;
             return {
                 name: b.category,
-                budget: Math.max(b.amount, 1),
-                actual: Math.max(actual, 1),
+                logBudget: Math.log10(Math.max(b.amount, 1)),
+                logActual: Math.log10(Math.max(actual, 1)),
                 realBudget: b.amount,
                 realActual: actual,
                 variance: b.amount - actual,
@@ -66,8 +66,8 @@ const BudgetVarianceChart: React.FC<BudgetVarianceChartProps> = ({ transactions,
             if (!budgets.find(b => b.category === cat)) {
                 data.push({
                     name: cat,
-                    budget: 1, // Log scale min
-                    actual: Math.max(categorySpending[cat], 1),
+                    logBudget: 0, // log10(1) = 0
+                    logActual: Math.log10(Math.max(categorySpending[cat], 1)),
                     realBudget: 0,
                     realActual: categorySpending[cat],
                     variance: -categorySpending[cat],
@@ -98,7 +98,12 @@ const BudgetVarianceChart: React.FC<BudgetVarianceChartProps> = ({ transactions,
                         margin={{ top: 5, right: 30, left: 40, bottom: 5 }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-shadow)" horizontal={false} />
-                        <XAxis type="number" hide scale="log" domain={['auto', 'auto']} />
+                        <XAxis
+                            type="number"
+                            hide
+                            domain={[0, 'auto']}
+                            tickFormatter={(value) => `$${Math.round(Math.pow(10, value)).toLocaleString()}`}
+                        />
                         <YAxis
                             dataKey="name"
                             type="category"
@@ -111,10 +116,10 @@ const BudgetVarianceChart: React.FC<BudgetVarianceChartProps> = ({ transactions,
                         <Tooltip content={<CustomTooltip />} cursor={{ fill: 'var(--color-surface-light)' }} />
                         <Legend wrapperStyle={{ color: 'var(--color-text-secondary)' }} />
 
-                        <Bar dataKey="budget" name="Budget" fill="var(--color-surface-light)" radius={[0, 4, 4, 0]} barSize={20} />
-                        <Bar dataKey="actual" name="Actual" radius={[0, 4, 4, 0]} barSize={20}>
+                        <Bar dataKey="logBudget" name="Budget" fill="var(--color-surface-light)" radius={[0, 4, 4, 0]} barSize={20} />
+                        <Bar dataKey="logActual" name="Actual" radius={[0, 4, 4, 0]} barSize={20}>
                             {chartData.map((entry, index) => (
-                                <Cell key={`cell-${index}`} fill={entry.actual > entry.budget ? 'var(--color-danger)' : 'var(--color-success)'} />
+                                <Cell key={`cell-${index}`} fill={entry.realActual > entry.realBudget ? 'var(--color-danger)' : 'var(--color-success)'} />
                             ))}
                         </Bar>
                     </BarChart>
