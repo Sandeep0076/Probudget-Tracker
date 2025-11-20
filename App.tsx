@@ -22,6 +22,7 @@ import PlannerBoard from './components/planner/PlannerBoard';
 import PlannerCalendar from './components/planner/PlannerCalendar';
 import PlannerBacklog from './components/planner/PlannerBacklog';
 import PlannerToBuy from './components/planner/PlannerToBuy';
+import TrashboxPage from './components/planner/TrashboxPage';
 import ShoppingItemModal from './components/ShoppingItemModal';
 
 export type Page = 'dashboard' | 'addTransaction' | 'budgets' | 'transactions' | 'categories' | 'reports' | 'confirmReceipt' | 'settings';
@@ -33,7 +34,7 @@ const App: React.FC = () => {
 
   const [section, setSection] = useState<'budget' | 'planner'>('budget');
   const [currentPage, setCurrentPage] = useState<Page>('dashboard');
-  const [plannerPage, setPlannerPage] = useState<PlannerPage>('dashboard');
+  const [plannerPage, setPlannerPage] = useState<PlannerPage>('todo');
   const [initialTransactionType, setInitialTransactionType] = useState<TransactionType>(TransactionType.EXPENSE);
 
   const [transactions, setTransactions] = useState<Transaction[]>([]);
@@ -48,12 +49,14 @@ const App: React.FC = () => {
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
   const [prefillTask, setPrefillTask] = useState<any | null>(null);
+  const [newTaskType, setNewTaskType] = useState<'todo' | 'schedule'>('todo');
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
   const [isShoppingModalOpen, setIsShoppingModalOpen] = useState(false);
   const [editingShoppingItem, setEditingShoppingItem] = useState<ShoppingItem | null>(null);
 
   const [receiptItemsToConfirm, setReceiptItemsToConfirm] = useState<TransactionFormData[]>([]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
+  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   const [theme, setTheme] = useState<Theme>('dark-blue');
   const [customThemeColor, setCustomThemeColor] = useState<string>('#5e258a');
@@ -140,6 +143,7 @@ const App: React.FC = () => {
           await loadTasks();
           await loadShoppingItems();
           await loadCalendarForWeek();
+          await checkGoogleConnection();
 
           // Auto-sync Google Data
           try {
@@ -186,10 +190,12 @@ const App: React.FC = () => {
 
   const loadTasks = async () => {
     try {
+      console.log('[App] Loading tasks...');
       const list = await api.getTasks();
+      console.log('[App] Loaded', list.length, 'tasks');
       setTasks(list);
     } catch (e) {
-      console.error('Failed to load tasks', e);
+      console.error('[App] Failed to load tasks:', e);
     }
   };
 
@@ -205,6 +211,45 @@ const App: React.FC = () => {
   const loadCalendarForWeek = async () => {
     // Google fetching disabled in favor of import sync
     setCalendarEvents([]);
+  };
+
+  const checkGoogleConnection = async () => {
+    try {
+      const status = await api.getCalendarStatus();
+      setIsGoogleConnected(status.connected);
+    } catch (e) {
+      console.error('Failed to check google status', e);
+      setIsGoogleConnected(false);
+    }
+  };
+
+  const handleConnectCalendar = async () => {
+    try {
+      const { url } = await api.getCalendarAuthUrl();
+      const popup = window.open(url, '_blank', 'width=480,height=640');
+      if (popup) {
+        const poll = window.setInterval(() => {
+          if (popup.closed) {
+            window.clearInterval(poll);
+            checkGoogleConnection();
+            // Trigger sync after connection
+            api.syncGoogleData().then(() => loadTasks()).catch(console.error);
+          }
+        }, 1500);
+      }
+    } catch (err) {
+      console.error('Failed to connect calendar', err);
+    }
+  };
+
+  const handleDisconnectCalendar = async () => {
+    try {
+      await api.disconnectCalendar();
+      setIsGoogleConnected(false);
+      alert('Google Calendar disconnected.');
+    } catch (err) {
+      console.error('Failed to disconnect calendar', err);
+    }
   };
 
   const handleCalendarDatesChange = async (start: Date, end: Date) => {
@@ -412,21 +457,27 @@ const App: React.FC = () => {
     if (s === 'budget') {
       setCurrentPage('dashboard');
     } else {
-      setPlannerPage('dashboard');
+      setPlannerPage('todo');
     }
   };
 
-  const openNewTaskModal = () => {
-    setPrefillTask(null);
+  const openNewTaskModal = (taskType: 'todo' | 'schedule') => {
+    setNewTaskType(taskType);
+    setPrefillTask({ taskType });
     setIsTaskModalOpen(true);
   };
 
   const openNewTaskModalWithSlot = (start: string, end: string) => {
-    setPrefillTask({ start, end });
+    setNewTaskType('schedule');
+    setPrefillTask({ start, end, taskType: 'schedule' });
     setIsTaskModalOpen(true);
   };
 
   const handleSaveTask = async (payload: any, id?: string) => {
+    // Ensure taskType is included in the payload
+    if (!id && !payload.taskType) {
+      payload.taskType = newTaskType;
+    }
     if (id) {
       await api.updateTask(id, payload);
     } else {
@@ -435,20 +486,29 @@ const App: React.FC = () => {
     await loadTasks();
     await loadCalendarForWeek();
     setPrefillTask(null); // Clear the prefill data after saving
+    setNewTaskType('todo'); // Reset to default
   };
 
   const handleUpdateTask = async (id: string, patch: any) => {
-    console.log('[App] handleUpdateTask called:', { id, patch });
+    const existing = tasks.find(t => t.id === id);
+    console.log('[App] handleUpdateTask called:', { id, patch, prevStatus: existing?.status, prevProgress: existing?.progress });
     if (patch.status === 'in_progress') {
       const task = tasks.find(t => t.id === id);
       if (task && task.progress === null) {
         patch.progress = 0;
       }
     }
-    await api.updateTask(id, patch);
+    try {
+      const res = await api.updateTask(id, patch);
+      console.log('[App] updateTask API response ok:', res?.ok, 'patch applied:', patch);
+    } catch (e) {
+      console.error('[App] updateTask API error:', e);
+      throw e;
+    }
     await loadTasks();
     await loadCalendarForWeek();
-    console.log('[App] handleUpdateTask completed');
+    const updated = tasks.find(t => t.id === id);
+    console.log('[App] handleUpdateTask completed. After reload:', { id, newStatus: updated?.status, newProgress: updated?.progress });
   };
 
   const handleToggleEvent = async (event: any) => {
@@ -465,6 +525,7 @@ const App: React.FC = () => {
   };
 
   const handleEditTask = (task: Task) => {
+    console.log('[App] handleEditTask called with task:', { id: task.id, title: task.title, status: task.status, progress: task.progress });
     setPrefillTask({
       title: task.title,
       notes: task.notes,
@@ -477,19 +538,28 @@ const App: React.FC = () => {
       color: task.color,
       labels: task.labels,
       subtasks: task.subtasks,
+      status: task.status, // Ensure modal receives current status to avoid unintended reset
+      progress: task.progress,
+      estimatedTime: task.estimatedTime,
+      taskType: task.taskType || 'todo', // Include taskType
       id: task.id
     });
     setIsTaskModalOpen(true);
-  };
-
-  const handleDeleteTask = async (taskId: string) => {
-    if (!confirm('Are you sure you want to delete this task?')) return;
+  }; const handleDeleteTask = async (taskId: string) => {
+    console.log('[App] handleDeleteTask called for task ID:', taskId);
+    if (!confirm('Are you sure you want to delete this task?')) {
+      console.log('[App] Task deletion cancelled by user');
+      return;
+    }
     try {
+      console.log('[App] Calling api.deleteTask for:', taskId);
       await api.deleteTask(taskId);
+      console.log('[App] Task successfully deleted, reloading tasks...');
       await loadTasks();
       await loadCalendarForWeek();
+      console.log('[App] Tasks reloaded after deletion');
     } catch (err) {
-      console.error('Failed to delete task', err);
+      console.error('[App] Failed to delete task:', err);
       alert('Failed to delete task');
     }
   };
@@ -570,6 +640,29 @@ const App: React.FC = () => {
     setEditingShoppingItem(null);
   };
 
+  const handleRepairDatabase = async () => {
+    try {
+      console.log('[App] Running database repair...');
+      const res = await api.runMigration();
+      console.log('[App] Repair response:', res);
+
+      if (res.ok) {
+        const failures = res.results?.filter((r: any) => !r.success) || [];
+        if (failures.length > 0) {
+          const msg = failures.map((f: any) => f.error).join('\n');
+          alert(`Database repair encountered errors:\n${msg}\n\nPlease check the server logs.`);
+        } else {
+          alert('Database repair successful! The progress column has been added.');
+        }
+      } else {
+        alert('Database repair failed. Please run this SQL in your Supabase Dashboard:\n\nALTER TABLE tasks ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;');
+      }
+    } catch (error) {
+      console.error('[App] Database repair error:', error);
+      alert('Database repair failed. Please run this SQL in your Supabase Dashboard:\n\nALTER TABLE tasks ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;');
+    }
+  };
+
   const handleLoginSuccess = (loggedInUsername: string) => {
     console.log('[App] Login successful for user:', loggedInUsername);
     setUsername(loggedInUsername);
@@ -617,6 +710,10 @@ const App: React.FC = () => {
       case 'settings':
         return <SettingsPage
           activityLogs={activityLogs}
+          isGoogleConnected={isGoogleConnected}
+          onConnectGoogle={handleConnectCalendar}
+          onDisconnectGoogle={handleDisconnectCalendar}
+          onRepairDatabase={handleRepairDatabase}
         />;
       default:
         return <Dashboard
@@ -682,43 +779,37 @@ const App: React.FC = () => {
             }
           }} />
           <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-            {plannerPage === 'dashboard' && (
+            {plannerPage === 'todo' && (
               <PlannerDashboard
-                tasks={tasks}
+                tasks={tasks.filter(t => (t.taskType || 'todo') === 'todo')}
                 events={calendarEvents}
                 onRefresh={() => { loadTasks(); loadCalendarForWeek(); }}
                 onToggleComplete={(t) => handleUpdateTask(t.id, { status: t.status === 'completed' ? 'new' : 'completed' })}
                 onToggleEvent={handleToggleEvent}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
+                onConvertToSchedule={(taskId) => handleUpdateTask(taskId, { taskType: 'schedule' })}
                 username={username}
               />
             )}
-            {plannerPage === 'progress' && (
+            {plannerPage === 'schedule' && (
               <PlannerBoard
-                tasks={tasks}
+                tasks={tasks.filter(t => (t.taskType || 'todo') === 'schedule')}
                 onMove={(id, status) => handleUpdateTask(id, { status })}
                 onEdit={handleEditTask}
                 onDelete={handleDeleteTask}
                 onProgressChange={handleProgressChange}
+                onConvertToTodo={(taskId) => handleUpdateTask(taskId, { taskType: 'todo' })}
               />
             )}
             {plannerPage === 'calendar' && (
               <PlannerCalendar
-                tasks={tasks}
+                tasks={tasks.filter(t => (t.taskType || 'todo') === 'schedule')}
                 externalEvents={calendarEvents}
                 onCreateSlot={openNewTaskModalWithSlot}
                 onDatesChange={handleCalendarDatesChange}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
-              />
-            )}
-            {plannerPage === 'backlog' && (
-              <PlannerBacklog
-                tasks={tasks}
-                onPlanToday={(id) => handleUpdateTask(id, { due: new Date().toISOString().split('T')[0] })}
-                onEdit={handleEditTask}
-                onDelete={handleDeleteTask}
               />
             )}
             {plannerPage === 'toBuy' && (
@@ -729,6 +820,9 @@ const App: React.FC = () => {
                 onEdit={handleEditShoppingItem}
                 onDelete={handleDeleteShoppingItem}
               />
+            )}
+            {plannerPage === 'trash' && (
+              <TrashboxPage />
             )}
           </main>
           <TaskModal

@@ -20,7 +20,7 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overall
   const currentYear = new Date().getFullYear();
 
   const monthlyExpenses = transactions
-    .filter(t => t.type === TransactionType.EXPENSE && new Date(t.date).getMonth() === currentMonth && new Date(t.date).getFullYear() === currentYear)
+    .filter(t => t.type === TransactionType.EXPENSE && new Date(t.date + 'T00:00:00.000Z').getMonth() === currentMonth && new Date(t.date + 'T00:00:00.000Z').getFullYear() === currentYear)
     .reduce((sum, t) => sum + t.amount, 0);
   
   console.log('[Dashboard] Monthly expenses (raw from DB):', monthlyExpenses);

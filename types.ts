@@ -111,6 +111,7 @@ export interface Task {
   subtasks?: Subtask[];
   progress?: number; // Progress percentage (0-100)
   estimatedTime?: string | null; // Estimated time to complete (e.g., "5 min", "2 hours", "2-3 days")
+  taskType?: 'todo' | 'schedule'; // Type of task: 'todo' (short-term) or 'schedule' (long-term)
 }
 
 export interface ShoppingItem {

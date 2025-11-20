@@ -49,7 +49,7 @@ const TransactionListItem: React.FC<TransactionListItemProps> = ({ transaction, 
     const amountColor = isIncome ? 'text-success' : 'text-text-primary';
     const amountPrefix = isIncome ? '+' : '-';
     
-    const formattedDate = new Date(transaction.date).toLocaleDateString('en-US', {
+    const formattedDate = new Date(transaction.date + 'T00:00:00.000Z').toLocaleDateString('en-US', {
         month: 'long',
         day: 'numeric',
         year: 'numeric',

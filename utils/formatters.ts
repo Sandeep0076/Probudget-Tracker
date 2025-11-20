@@ -9,22 +9,59 @@ export const formatCurrency = (amount: number): string => {
     }).format(amount).replace(/^[A-Za-z]/, '€'); // Ensure € symbol is used
 };
 
+/**
+ * Converts a Date object to DATE format (YYYY-MM-DD) for database storage
+ */
+export const toDateString = (date: Date): string => {
+    return date.toISOString().split('T')[0];
+};
+
+/**
+ * Converts DATE format (YYYY-MM-DD) to Date object
+ */
+export const fromDateString = (dateString: string): Date => {
+    return new Date(dateString + 'T00:00:00.000Z');
+};
+
+/**
+ * Gets today's date in DATE format (YYYY-MM-DD)
+ */
+export const getTodayDateString = (): string => {
+    return toDateString(new Date());
+};
+
 export const formatDate = (dateString: string): string => {
-    const date = new Date(dateString);
+    // Handle DATE format (YYYY-MM-DD) - no time component
+    const date = new Date(dateString + 'T00:00:00.000Z'); // Ensure UTC interpretation for DATE format
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
+    now.setHours(0, 0, 0, 0); // Reset time for date comparison
+    
+    const dateOnly = new Date(date);
+    dateOnly.setHours(0, 0, 0, 0); // Reset time for date comparison
+    
+    const diffTime = Math.abs(now.getTime() - dateOnly.getTime());
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
     
-    // If today, show time
+    // If today, show "Today"
     if (diffDays === 0) {
-        return date.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+        return 'Today';
+    }
+    
+    // If yesterday, show "Yesterday"
+    if (diffDays === 1 && dateOnly < now) {
+        return 'Yesterday';
+    }
+    
+    // If tomorrow, show "Tomorrow"
+    if (diffDays === 1 && dateOnly > now) {
+        return 'Tomorrow';
     }
     
     // If within a week, show day name
     if (diffDays < 7) {
-        return date.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+        return dateOnly.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
     }
     
     // Otherwise show full date
-    return date.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+    return dateOnly.toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 };

@@ -51,8 +51,8 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
 
     const { spendingByCategory, totalMonthlyExpenses } = useMemo(() => {
         const monthlyTransactions = transactions.filter(t => 
-            new Date(t.date).getMonth() === currentMonth && 
-            new Date(t.date).getFullYear() === currentYear
+            new Date(t.date + 'T00:00:00.000Z').getMonth() === currentMonth && 
+            new Date(t.date + 'T00:00:00.000Z').getFullYear() === currentYear
         );
 
         const expenses = monthlyTransactions

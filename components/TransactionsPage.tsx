@@ -100,7 +100,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, recur
 
             if (!typeMatch || !categoryMatch || !labelMatch) return false;
 
-            const transactionDate = new Date(t.date);
+            const transactionDate = new Date(t.date + 'T00:00:00.000Z');
             const now = new Date();
             let startRange: Date | null = null;
             let endRange: Date | null = null;

@@ -4,43 +4,47 @@ import { LogoIcon } from '../icons/LogoIcon';
 import { MenuIcon } from '../icons/MenuIcon';
 import { CloseIcon } from '../icons/CloseIcon';
 import { SyncIcon } from '../icons/SyncIcon';
+import { TrashIcon } from '../icons/TrashIcon';
 import { Page } from '../../App';
 
-export type PlannerPage = 'dashboard' | 'progress' | 'calendar' | 'backlog' | 'toBuy';
+export type PlannerPage = 'todo' | 'schedule' | 'calendar' | 'toBuy' | 'trash';
 
 interface PlannerHeaderProps {
   page: PlannerPage;
   onNavigate: (p: PlannerPage | Page) => void;
-  onNewTask: () => void;
+  onNewTask: (taskType: 'todo' | 'schedule') => void;
   onSync: () => void;
 }
 
-const Item: React.FC<{ active: boolean; label: string; onClick: () => void }> = ({
+const Item: React.FC<{ active: boolean; label: string; onClick: () => void; icon?: React.ReactNode }> = ({
   active,
   label,
   onClick,
+  icon
 }) => (
   <a
     href="#"
     onClick={(e) => { e.preventDefault(); onClick(); }}
-    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 ${active
+    className={`px-3 py-2 rounded-md text-sm font-medium transition-all duration-200 flex items-center gap-2 ${active
         ? 'bg-surface shadow-inner text-text-primary'
         : 'text-text-secondary hover:bg-surface/70 hover:text-text-primary'
       }`}
+    title={label}
   >
-    {label}
+    {icon || label}
   </a>
 );
 
 const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTask, onSync }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
+  const [isNewDropdownOpen, setIsNewDropdownOpen] = useState(false);
 
-  const navItems: { name: string, page: PlannerPage }[] = [
-    { name: 'Dashboard', page: 'dashboard' },
-    { name: 'Progressing Tasks', page: 'progress' },
+  const navItems: { name: string, page: PlannerPage, icon?: React.ReactNode }[] = [
+    { name: 'To Do', page: 'todo' },
+    { name: 'Schedule', page: 'schedule' },
     { name: 'Calendar', page: 'calendar' },
-    { name: 'Backlogs', page: 'backlog' },
-    { name: 'To Buy', page: 'toBuy' }
+    { name: 'To Buy', page: 'toBuy' },
+    { name: 'Trashbox', page: 'trash', icon: <TrashIcon className="w-5 h-5" /> },
   ];
 
   const handleMobileNavClick = (p: PlannerPage | Page) => {
@@ -67,6 +71,7 @@ const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTa
                       active={page === item.page}
                       label={item.name}
                       onClick={() => onNavigate(item.page)}
+                      icon={item.icon}
                     />
                   ))}
                 </div>
@@ -80,13 +85,46 @@ const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTa
               >
                 <SyncIcon className="w-5 h-5" />
               </button>
-              <button
-                onClick={onNewTask}
-                className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md text-white bg-brand hover:bg-brand/90 transition-all transform hover:scale-105 shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
-              >
-                <span className="hidden sm:inline">New Task</span>
-                <span className="sm:hidden">+</span>
-              </button>
+              <div className="relative">
+                <button
+                  onClick={() => setIsNewDropdownOpen(!isNewDropdownOpen)}
+                  className="flex items-center gap-1.5 px-3 py-2 text-sm font-medium rounded-md text-white bg-brand hover:bg-brand/90 transition-all transform hover:scale-105 shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
+                >
+                  <span className="hidden sm:inline">New</span>
+                  <span className="sm:hidden">+</span>
+                  <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+                {isNewDropdownOpen && (
+                  <>
+                    <div
+                      className="fixed inset-0 z-10"
+                      onClick={() => setIsNewDropdownOpen(false)}
+                    />
+                    <div className="absolute right-0 mt-2 w-48 bg-card-bg backdrop-blur-xl rounded-lg shadow-neu-3d border border-border-shadow z-20">
+                      <button
+                        onClick={() => {
+                          onNewTask('todo');
+                          setIsNewDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-surface/70 transition-colors rounded-t-lg"
+                      >
+                        Tasks
+                      </button>
+                      <button
+                        onClick={() => {
+                          onNewTask('schedule');
+                          setIsNewDropdownOpen(false);
+                        }}
+                        className="w-full text-left px-4 py-2 text-sm text-text-primary hover:bg-surface/70 transition-colors rounded-b-lg"
+                      >
+                        Schedule
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
 
               <div className="hidden md:flex items-center gap-2">
                 <div className="h-6 w-px bg-border-shadow mx-2"></div>
@@ -147,10 +185,15 @@ const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTa
                   key={item.name}
                   href="#"
                   onClick={(e) => { e.preventDefault(); handleMobileNavClick(item.page); }}
-                  className={`block px-4 py-3 rounded-md text-base font-medium transition-all duration-200 ${isActive ? 'bg-surface shadow-inner text-text-primary' : 'text-text-secondary hover:bg-surface/70 hover:text-text-primary'
+                  className={`block px-4 py-3 rounded-md text-base font-medium transition-all duration-200 flex items-center gap-2 ${isActive ? 'bg-surface shadow-inner text-text-primary' : 'text-text-secondary hover:bg-surface/70 hover:text-text-primary'
                     }`}
                 >
-                  {item.name}
+                  {item.icon ? (
+                    <>
+                      {item.icon}
+                      <span>{item.name}</span>
+                    </>
+                  ) : item.name}
                 </a>
               )
             })}

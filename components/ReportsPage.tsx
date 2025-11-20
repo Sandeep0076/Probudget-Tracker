@@ -220,7 +220,7 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
         }
 
         const filteredTransactions = transactions.filter(t => {
-            const txDate = new Date(t.date);
+            const txDate = new Date(t.date + 'T00:00:00.000Z');
             if (t.type !== TransactionType.EXPENSE) return false;
             if (startDate && txDate < startDate) return false;
             if (endDate && txDate > endDate) return false;
@@ -253,7 +253,7 @@ const ReportsPage: React.FC<{ transactions: Transaction[], savings: Saving[] }> 
         const labMonthlyData: { [month: string]: { [label: string]: number } } = {};
 
         filteredTransactions.forEach(t => {
-            const month = new Date(t.date).toLocaleString('default', { month: 'short', year: '2-digit', timeZone: 'UTC' });
+            const month = new Date(t.date + 'T00:00:00.000Z').toLocaleString('default', { month: 'short', year: '2-digit', timeZone: 'UTC' });
             
             // By Category
             if (selectedCategory === 'all' || t.category === selectedCategory) {
