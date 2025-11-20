@@ -3,9 +3,13 @@ import { ActivityLog } from '../types';
 
 interface SettingsPageProps {
     activityLogs: ActivityLog[];
+    isGoogleConnected: boolean;
+    onConnectGoogle: () => void;
+    onDisconnectGoogle: () => void;
+    onRepairDatabase: () => void;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ activityLogs }) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ activityLogs, isGoogleConnected, onConnectGoogle, onDisconnectGoogle, onRepairDatabase }) => {
 
     const formatTimestamp = (timestamp: string) => {
         return new Date(timestamp).toLocaleString('en-US', {
@@ -16,8 +20,58 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ activityLogs }) => {
 
     return (
         <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8">
-            <h1 className="text-2xl font-bold text-text-primary mb-8">Activity Log</h1>
-            <div className="grid grid-cols-1 lg:grid-cols-1 gap-8">
+            <h1 className="text-2xl font-bold text-text-primary mb-8">Settings</h1>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                {/* Integrations */}
+                <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow h-fit">
+                    <h2 className="text-xl font-semibold text-text-primary mb-4">Integrations</h2>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-surface rounded-lg shadow-inner">
+                            <div className="flex items-center gap-3">
+                                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
+                                    <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png" alt="Google Calendar" className="w-6 h-6" />
+                                </div>
+                                <div>
+                                    <h3 className="font-medium text-text-primary">Google Calendar & Tasks</h3>
+                                    <p className="text-xs text-text-secondary">{isGoogleConnected ? 'Connected' : 'Not connected'}</p>
+                                </div>
+                            </div>
+                            {isGoogleConnected ? (
+                                <button
+                                    onClick={onDisconnectGoogle}
+                                    className="px-3 py-1.5 text-sm text-danger hover:bg-danger/10 rounded-md transition-colors"
+                                >
+                                    Disconnect
+                                </button>
+                            ) : (
+                                <button
+                                    onClick={onConnectGoogle}
+                                    className="px-3 py-1.5 text-sm text-white bg-brand hover:bg-brand/90 rounded-md shadow-neu-sm transition-transform transform hover:scale-105"
+                                >
+                                    Connect
+                                </button>
+                            )}
+                        </div>
+                    </div>
+                </div>
+                {/* System Maintenance */}
+                <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow h-fit mt-8">
+                    <h2 className="text-xl font-semibold text-text-primary mb-4">System Maintenance</h2>
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between p-4 bg-surface rounded-lg shadow-inner">
+                            <div>
+                                <h3 className="font-medium text-text-primary">Database Integrity</h3>
+                                <p className="text-xs text-text-secondary">Fix missing columns or schema issues.</p>
+                            </div>
+                            <button
+                                onClick={onRepairDatabase}
+                                className="px-3 py-1.5 text-sm text-white bg-warning hover:bg-warning/90 rounded-md shadow-neu-sm transition-transform transform hover:scale-105"
+                            >
+                                Repair Database
+                            </button>
+                        </div>
+                    </div>
+                </div>
                 {/* Activity Log */}
                 <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
                     <h2 className="text-xl font-semibold text-text-primary mb-4">Activity Log</h2>

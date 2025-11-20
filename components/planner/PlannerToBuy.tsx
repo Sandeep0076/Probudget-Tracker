@@ -49,7 +49,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
     } else if (sortBy === 'category') {
       sorted.sort((a, b) => (a.category || '').localeCompare(b.category || ''));
     } else {
-      sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      sorted.sort((a, b) => new Date(b.createdAt + 'T00:00:00.000Z').getTime() - new Date(a.createdAt + 'T00:00:00.000Z').getTime());
     }
     
     return sorted;

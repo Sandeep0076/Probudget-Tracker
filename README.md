@@ -23,6 +23,7 @@ ProBudget Tracker is a comprehensive personal finance and productivity platform 
 - **Smart Task Management:** Tasks with priorities, due dates, notes, subtasks, labels, and recurring patterns
 - **Project Backlog:** Organize and prioritize future tasks and ideas
 - **Shopping List (To Buy):** Dedicated shopping list management with categories, priorities, and completion tracking
+ - **Trashbox (Soft Delete):** Recover tasks deleted within the last 30 days before automatic purge
 
 ### 🎨 Customization & Themes
 - **Advanced Theme System:** Four built-in themes (Dark Blue, Light, Dark, Custom) with instant switching
@@ -138,6 +139,7 @@ ProBudget Tracker is a comprehensive personal finance and productivity platform 
 - **Kanban Board:** Visual task management with drag-and-drop status updates
 - **Calendar Integration:** Google Calendar sync with two-way event synchronization
 - **Google Tasks:** Import and manage Google Tasks within the application
+- **Auto-Cleanup:** Completed tasks automatically deleted after 30 days to keep workspace clean
 
 **AI-Powered Features:**
 - **Receipt Scanning:** Gemini AI extracts items, amounts, quantities, and suggests categories
@@ -267,8 +269,13 @@ Note: The production build expects the backend to be running and reachable at th
 - `GET /api/tasks` — List all tasks with subtasks
 - `POST /api/tasks` — Create task with subtasks and labels
 - `PUT /api/tasks/:id` — Update task (syncs with Google Calendar/Tasks)
-- `DELETE /api/tasks/:id` — Delete task
+- `DELETE /api/tasks/:id` — Soft delete task (moves to Trashbox for 30 days)
 - `GET /api/tasks/agenda` — Get agenda view (today/week/overdue)
+ - `GET /api/tasks/trash` — List trashed tasks (soft deleted)
+ - `POST /api/tasks/:id/restore` — Restore a soft deleted task
+ - `DELETE /api/tasks/:id/permanent` — Permanently delete a trashed task
+ - `POST /api/tasks/purge-old` — Purge trashed tasks older than 30 days
+ - `POST /api/tasks/purge-completed` — Purge completed tasks older than 30 days
 
 ### Google Services Integration
 - `GET /api/calendar/auth-url` — Get OAuth authorization URL

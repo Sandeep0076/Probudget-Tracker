@@ -13,26 +13,42 @@ type SortOption = 'priority' | 'createdAt';
 
 const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday, onEdit, onDelete }) => {
   const [sortBy, setSortBy] = useState<SortOption>('createdAt');
-  
-  const backlog = tasks.filter(t => !t.start && !t.due && t.status !== 'completed');
-  console.log('[PlannerBacklog] Filtering backlog tasks - total tasks:', tasks.length, 'backlog tasks:', backlog.length);
-  console.log('[PlannerBacklog] Backlog tasks:', backlog.map(t => ({ id: t.id, title: t.title, status: t.status, priority: t.priority, createdAt: t.createdAt })));
+  const [search, setSearch] = useState('');
+  const [statusFilter, setStatusFilter] = useState<'all' | Task['status']>('all');
+
+  // Defensive: ensure no deleted tasks show (deleted tasks should not be in array after API delete)
+  // Filter backlog: tasks without start/due & not completed; optionally status filter (allow user to narrow by status new/backlog/in_progress)
+  const rawBacklog = tasks.filter(t => !t.start && !t.due && t.status !== 'completed');
+  console.log('[PlannerBacklog] Raw backlog size:', rawBacklog.length, 'from total:', tasks.length);
+
+  const filteredBacklog = useMemo(() => {
+    let list = rawBacklog;
+    if (statusFilter !== 'all') {
+      list = list.filter(t => t.status === statusFilter);
+    }
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter(t => t.title.toLowerCase().includes(q) || (t.notes || '').toLowerCase().includes(q));
+    }
+    console.log('[PlannerBacklog] Filters applied:', { statusFilter, search, resulting: list.length });
+    return list;
+  }, [rawBacklog, statusFilter, search]);
 
   const sortedBacklog = useMemo(() => {
-    const sorted = [...backlog];
-    console.log('[PlannerBacklog] Sorting by:', sortBy);
+    const sorted = [...filteredBacklog];
+    console.log('[PlannerBacklog] Sorting filtered backlog by:', sortBy, 'count:', filteredBacklog.length);
     
     if (sortBy === 'priority') {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       sorted.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
       console.log('[PlannerBacklog] Sorted by priority:', sorted.map(t => ({ title: t.title, priority: t.priority })));
     } else {
-      sorted.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+      sorted.sort((a, b) => new Date(b.createdAt + 'T00:00:00.000Z').getTime() - new Date(a.createdAt + 'T00:00:00.000Z').getTime());
       console.log('[PlannerBacklog] Sorted by creation date:', sorted.map(t => ({ title: t.title, createdAt: t.createdAt })));
     }
     
     return sorted;
-  }, [backlog, sortBy]);
+  }, [filteredBacklog, sortBy]);
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
@@ -47,31 +63,71 @@ const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday, onE
     }
   };
 
+  console.log('[PlannerBacklog] Total filtered/sorted:', sortedBacklog.length);
+
   return (
-    <div className="bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
-      <div className="flex items-center justify-between mb-3">
-        <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">Backlogs</h3>
+    <div className="bg-card-bg backdrop-blur-xl rounded-xl p-4 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 h-[450px] flex flex-col">
+      <div className="flex flex-col gap-3 mb-3">
+        <div className="flex items-center justify-between">
+          <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">Backlogs</h3>
+          <div className="flex items-center gap-2">
+            <span className="text-xs text-text-secondary">Sort by:</span>
+            <select
+              value={sortBy}
+              onChange={(e) => {
+                const newSort = e.target.value as SortOption;
+                console.log('[PlannerBacklog] Sort option changed to:', newSort);
+                setSortBy(newSort);
+              }}
+              className="text-xs px-2 py-1 rounded-lg bg-card-bg-dark backdrop-blur-sm border border-input-border text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/50 transition-all"
+            >
+              <option value="createdAt">Creation Date</option>
+              <option value="priority">Priority</option>
+            </select>
+          </div>
+        </div>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-text-secondary">Sort by:</span>
-          <select
-            value={sortBy}
+          <input
+            type="text"
+            placeholder="Search backlog..."
+            value={search}
             onChange={(e) => {
-              const newSort = e.target.value as SortOption;
-              console.log('[PlannerBacklog] Sort option changed to:', newSort);
-              setSortBy(newSort);
+              const v = e.target.value;
+              console.log('[PlannerBacklog] Search changed:', v);
+              setSearch(v);
             }}
-            className="text-xs px-2 py-1 rounded-lg bg-card-bg-dark backdrop-blur-sm border border-input-border text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/50 transition-all"
+            className="flex-1 text-xs px-2 py-1 rounded-lg bg-card-bg-dark backdrop-blur-sm border border-input-border text-text-primary placeholder:text-text-muted focus:outline-none focus:ring-2 focus:ring-brand/40 transition-all"
+          />
+          <select
+            value={statusFilter}
+            onChange={(e) => {
+              const v = e.target.value as typeof statusFilter;
+              console.log('[PlannerBacklog] Status filter changed:', v);
+              setStatusFilter(v);
+            }}
+            className="text-xs px-2 py-1 rounded-lg bg-card-bg-dark backdrop-blur-sm border border-input-border text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/40 transition-all"
           >
-            <option value="createdAt">Creation Date</option>
-            <option value="priority">Priority</option>
+            <option value="all">All Statuses</option>
+            <option value="new">New</option>
+            <option value="backlog">Backlog</option>
+            <option value="in_progress">In Progress</option>
+            <option value="scheduled">Scheduled</option>
           </select>
         </div>
       </div>
-      {sortedBacklog.length === 0 && (
-        <div className="relative text-sm text-text-secondary">No backlog tasks.</div>
-      )}
-      <div className="relative space-y-2">
-        {sortedBacklog.map(t => (
+      <div className="flex-1 overflow-y-auto pr-1 scrollbar-thin scrollbar-thumb-brand-dark scrollbar-track-transparent">
+        {sortedBacklog.length === 0 ? (
+          <div className="flex items-center justify-center h-full text-sm text-text-secondary">
+            <div className="text-center">
+              <svg className="w-12 h-12 mx-auto mb-2 text-text-muted opacity-50" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+              </svg>
+              <p className="text-text-muted">No backlog tasks</p>
+            </div>
+          </div>
+        ) : (
+          <div className="relative space-y-2">
+            {sortedBacklog.map(t => (
           <div key={t.id} className="group flex items-center justify-between px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5">
             <div className="flex-1">
               <div className="flex items-center justify-between gap-2 mb-1">
@@ -89,6 +145,9 @@ const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday, onE
                 <span className="text-text-secondary">
                   Created: {formatDate(t.createdAt)}
                 </span>
+                {t.status && (
+                  <span className="text-text-muted capitalize">{t.status.replace('_', ' ')}</span>
+                )}
               </div>
             </div>
             <div className="flex items-center gap-2 ml-4">
@@ -128,6 +187,8 @@ const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday, onE
             </div>
           </div>
         ))}
+          </div>
+        )}
       </div>
     </div>
   );

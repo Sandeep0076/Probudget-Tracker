@@ -4,6 +4,12 @@ import { supabase } from './supabaseClient.js';
 import { randomUUID, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
 import { google } from 'googleapis';
 import dotenv from 'dotenv';
+import { readFileSync } from 'fs';
+import { join, dirname } from 'path';
+import { fileURLToPath } from 'url';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = dirname(__filename);
 
 dotenv.config();
 
@@ -190,11 +196,16 @@ async function ensureEventForTask(task, oauth) {
   if (!oauth) return null;
   if (!task.start || !task.end) return null;
   const calendar = google.calendar({ version: 'v3', auth: oauth });
+
+  // Convert DATE format to datetime for Google Calendar API
+  const startDateTime = task.start + 'T00:00:00.000Z';
+  const endDateTime = task.end + 'T23:59:59.000Z';
+
   const event = {
     summary: task.title,
     description: task.notes || '',
-    start: { dateTime: new Date(task.start).toISOString() },
-    end: { dateTime: new Date(task.end).toISOString() },
+    start: { dateTime: startDateTime },
+    end: { dateTime: endDateTime },
     colorId: undefined,
   };
   if (task.repeat && task.repeat.type && task.repeat.type !== 'none') {
@@ -231,7 +242,8 @@ async function ensureTaskOnGoogle(task, oauth) {
     status: task.status === 'completed' ? 'completed' : 'needsAction',
   };
   if (task.due) {
-    taskBody.due = new Date(task.due).toISOString();
+    // Convert DATE format to ISO datetime for Google Tasks API
+    taskBody.due = task.due + 'T00:00:00.000Z';
   }
 
   try {
@@ -504,6 +516,7 @@ app.get('/api/tasks', async (req, res) => {
       labels:task_labels ( label:labels (name) ),
       subtasks (*)
     `)
+    .is('deleted_at', null) // Only get non-deleted tasks
     .order('updated_at', { ascending: false });
 
   if (error) {
@@ -522,6 +535,7 @@ app.get('/api/tasks', async (req, res) => {
     completedAt: t.completed_at,
     progress: t.progress !== null && t.progress !== undefined ? t.progress : 0,
     estimatedTime: t.estimated_time || null,
+    taskType: t.task_type || 'todo', // Default to 'todo' if not set
   }));
 
   console.log('[GET /api/tasks] Fetched', tasks.length, 'tasks');
@@ -544,20 +558,20 @@ app.post('/api/tasks', async (req, res) => {
   const {
     title, notes = '', status = 'new', priority = 'medium', allDay = false,
     start = null, end = null, due = null, repeat = null, color = null, labels = [],
-    subtasks = [], estimatedTime = null
+    subtasks = [], estimatedTime = null, taskType = 'todo'
   } = req.body || {};
 
   if (!title) {
     return res.status(400).json({ error: 'Title is required' });
   }
 
-  console.log('[POST /api/tasks] Creating task:', { title, status, priority, estimatedTime });
+  console.log('[POST /api/tasks] Creating task:', { title, status, priority, estimatedTime, taskType });
 
   const { data: task, error: taskError } = await supabase
     .from('tasks')
     .insert({
       title, notes, status, priority, all_day: allDay, start, end, due,
-      repeat_json: repeat, color, estimated_time: estimatedTime
+      repeat_json: repeat, color, estimated_time: estimatedTime, task_type: taskType
     })
     .select('id, created_at')
     .single();
@@ -597,7 +611,8 @@ app.put('/api/tasks/:id', async (req, res) => {
     priority = existing.priority, allDay = existing.all_day,
     start = existing.start, end = existing.end, due = existing.due,
     repeat = existing.repeat_json, color = existing.color, labels = [], subtasks = [],
-    progress = existing.progress, estimatedTime = existing.estimated_time
+    progress = existing.progress, estimatedTime = existing.estimated_time,
+    taskType = existing.task_type || 'todo'
   } = req.body || {};
 
   console.log('[PUT /api/tasks/:id] Updating task:', { id, oldStatus: existing.status, newStatus: status, progress, estimatedTime });
@@ -612,17 +627,24 @@ app.put('/api/tasks/:id', async (req, res) => {
     }
   }
 
-  // Prepare update data
+  // Prepare update data - using DATE format instead of timestamp
   const updateData = {
-    title, notes, status, priority, all_day: allDay, start, end, due,
-    repeat_json: repeat, color, updated_at: new Date().toISOString(), progress: finalProgress,
-    estimated_time: estimatedTime
+    title, notes, status, priority, all_day: allDay,
+    start: start ? new Date(start).toISOString().split('T')[0] : start,
+    end: end ? new Date(end).toISOString().split('T')[0] : end,
+    due: due ? new Date(due).toISOString().split('T')[0] : due,
+    repeat_json: repeat, color,
+    updated_at: new Date().toISOString().split('T')[0], // DATE format
+    progress: finalProgress,
+    estimated_time: estimatedTime,
+    task_type: taskType
   };
 
-  // Set completed_at when task is marked as completed
+  // Set completed_at when task is marked as completed - using DATE format
   if (status === 'completed' && existing.status !== 'completed') {
-    updateData.completed_at = new Date().toISOString();
+    updateData.completed_at = new Date().toISOString().split('T')[0]; // DATE format
     console.log('[PUT /api/tasks/:id] Task marked as completed, setting completed_at:', updateData.completed_at);
+    console.log('[PUT /api/tasks/:id] Auto-purge trigger will activate to clean up tasks completed >30 days ago');
   }
   // Clear completed_at if task is unmarked from completed
   else if (status !== 'completed' && existing.status === 'completed') {
@@ -636,8 +658,49 @@ app.put('/api/tasks/:id', async (req, res) => {
     .eq('id', id);
 
   if (updateError) {
-    console.error('[PUT /api/tasks/:id] Error updating task:', updateError);
-    return res.status(500).json({ error: 'Failed to update task' });
+    // Fallback: If 'progress' column is missing (migration hasn't run)
+    if (updateError.code === 'PGRST204' && updateError.message.includes("'progress' column")) {
+      console.warn('[PUT /api/tasks/:id] Progress column missing. Attempting auto-migration...');
+
+      // 1. Try to auto-migrate
+      const migrationSql = 'ALTER TABLE tasks ADD COLUMN IF NOT EXISTS progress INTEGER DEFAULT 0;';
+      const { error: migrationError } = await supabase.rpc('exec_sql', { sql: migrationSql });
+
+      if (!migrationError) {
+        console.log('[PUT /api/tasks/:id] Auto-migration successful. Retrying update...');
+        // 2. Retry original update
+        const { error: retryError } = await supabase
+          .from('tasks')
+          .update(updateData)
+          .eq('id', id);
+
+        if (!retryError) {
+          console.log('[PUT /api/tasks/:id] Retry update successful');
+          return res.json({ ok: true });
+        }
+        console.error('[PUT /api/tasks/:id] Retry update failed:', retryError);
+      } else {
+        console.error('[PUT /api/tasks/:id] Auto-migration failed (likely missing exec_sql function):', migrationError);
+        console.warn('[PUT /api/tasks/:id] Please run this SQL in Supabase Dashboard: ' + migrationSql);
+      }
+
+      // 3. Fallback to updating without progress
+      console.warn('[PUT /api/tasks/:id] Falling back to update without progress field...');
+      const { progress, ...fallbackData } = updateData;
+      const { error: fallbackError } = await supabase
+        .from('tasks')
+        .update(fallbackData)
+        .eq('id', id);
+
+      if (fallbackError) {
+        console.error('[PUT /api/tasks/:id] Error updating task (fallback):', fallbackError);
+        return res.status(500).json({ error: 'Failed to update task' });
+      }
+      console.log('[PUT /api/tasks/:id] Fallback update successful');
+    } else {
+      console.error('[PUT /api/tasks/:id] Error updating task:', updateError);
+      return res.status(500).json({ error: 'Failed to update task' });
+    }
   }
 
   console.log('[PUT /api/tasks/:id] Task updated successfully with data:', {
@@ -668,23 +731,248 @@ app.put('/api/tasks/:id', async (req, res) => {
   res.json({ ok: true });
 });
 
+// Soft delete (move to Trashbox) - using DATE format
 app.delete('/api/tasks/:id', async (req, res) => {
   const { id } = req.params;
-  const { data: existing } = await supabase.from('tasks').select('gcal_event_id').eq('id', id).single();
-
-  await supabase.from('subtasks').delete().eq('task_id', id);
-  await supabase.from('task_labels').delete().eq('task_id', id);
-  const { error } = await supabase.from('tasks').delete().eq('id', id);
-
-  if (error) {
-    console.error('Error deleting task:', error);
+  console.log('[DELETE /api/tasks/:id] Soft deleting task id:', id);
+  // Ensure task exists
+  const { data: existing, error: fetchErr } = await supabase.from('tasks').select('id, title, deleted_at').eq('id', id).single();
+  if (fetchErr || !existing) {
+    console.error('[DELETE /api/tasks/:id] Task not found for soft delete:', id, fetchErr);
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  if (existing.deleted_at) {
+    console.warn('[DELETE /api/tasks/:id] Task already in trash:', id);
+    return res.json({ ok: true, alreadyDeleted: true });
+  }
+  const today = new Date().toISOString().split('T')[0]; // DATE format
+  const { error: updateErr } = await supabase.from('tasks').update({
+    deleted_at: today,
+    updated_at: today
+  }).eq('id', id);
+  if (updateErr) {
+    console.error('[DELETE /api/tasks/:id] Failed soft delete:', updateErr);
     return res.status(500).json({ error: 'Failed to delete task' });
   }
+  console.log('[DELETE /api/tasks/:id] Task moved to trash:', id);
+  res.json({ ok: true, trashedAt: today });
+});
 
-  // Google Sync disabled by user request
-  // const oauth = await getOAuthClientWithTokens();
-  // ... sync logic removed ...
+// List trashed tasks (within retention window)
+app.get('/api/tasks/trash', async (req, res) => {
+  const { data, error } = await supabase
+    .from('tasks')
+    .select(`*, labels:task_labels ( label:labels (name) ), subtasks(*)`)
+    .not('deleted_at', 'is', null)
+    .order('deleted_at', { ascending: false });
+  if (error) {
+    console.error('[GET /api/tasks/trash] Error fetching trash:', error);
+    return res.status(500).json({ error: 'Failed to fetch trashed tasks' });
+  }
+  const out = data.map(t => ({
+    ...t,
+    labels: t.labels.map(l => l.label.name),
+    allDay: t.all_day,
+    repeat: t.repeat_json,
+    gcalEventId: t.gcal_event_id,
+    createdAt: t.created_at,
+    updatedAt: t.updated_at,
+    completedAt: t.completed_at,
+    deletedAt: t.deleted_at,
+    progress: t.progress !== null && t.progress !== undefined ? t.progress : 0,
+    estimatedTime: t.estimated_time || null,
+  }));
+  res.json(out);
+});
+
+// Restore a trashed task
+app.post('/api/tasks/:id/restore', async (req, res) => {
+  const { id } = req.params;
+  console.log('[POST /api/tasks/:id/restore] Restoring task id:', id);
+  const { data: existing, error: fetchErr } = await supabase.from('tasks').select('id, deleted_at').eq('id', id).single();
+  if (fetchErr || !existing) {
+    console.error('[POST /api/tasks/:id/restore] Task not found:', id, fetchErr);
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  if (!existing.deleted_at) {
+    console.warn('[POST /api/tasks/:id/restore] Task not in trash:', id);
+    return res.json({ ok: true, notInTrash: true });
+  }
+  const { error: updateErr } = await supabase.from('tasks').update({
+    deleted_at: null,
+    updated_at: new Date().toISOString().split('T')[0] // DATE format
+  }).eq('id', id);
+  if (updateErr) {
+    console.error('[POST /api/tasks/:id/restore] Failed restore:', updateErr);
+    return res.status(500).json({ error: 'Failed to restore task' });
+  }
+  console.log('[POST /api/tasks/:id/restore] Task restored:', id);
   res.json({ ok: true });
+});
+
+// Permanently delete a trashed task (including related subtasks & labels)
+app.delete('/api/tasks/:id/permanent', async (req, res) => {
+  const { id } = req.params;
+  console.log('[DELETE /api/tasks/:id/permanent] Permanently deleting task id:', id);
+  const { data: existing, error: fetchErr } = await supabase.from('tasks').select('id, deleted_at').eq('id', id).single();
+  if (fetchErr || !existing) {
+    console.error('[DELETE /api/tasks/:id/permanent] Task not found:', id, fetchErr);
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  if (!existing.deleted_at) {
+    console.warn('[DELETE /api/tasks/:id/permanent] Task not in trash (refusing).', id);
+    return res.status(400).json({ error: 'Task must be in trash first' });
+  }
+  await supabase.from('subtasks').delete().eq('task_id', id);
+  await supabase.from('task_labels').delete().eq('task_id', id);
+  const { error: delErr } = await supabase.from('tasks').delete().eq('id', id);
+  if (delErr) {
+    console.error('[DELETE /api/tasks/:id/permanent] Delete failed:', delErr);
+    return res.status(500).json({ error: 'Failed to permanently delete task' });
+  }
+  console.log('[DELETE /api/tasks/:id/permanent] Task permanently deleted:', id);
+  res.json({ ok: true, permanent: true });
+});
+
+// Admin: Run Migration
+app.post('/api/admin/run-migration', async (req, res) => {
+  console.log('[ADMIN] Received request to run migration');
+  try {
+    const migrationPath = join(__dirname, 'migrations', 'add-task-progress.sql');
+    console.log('[ADMIN] Reading migration file from:', migrationPath);
+
+    let migrationSql;
+    try {
+      migrationSql = readFileSync(migrationPath, 'utf8');
+    } catch (err) {
+      console.error('[ADMIN] Failed to read migration file:', err);
+      return res.status(500).json({ error: 'Migration file not found', details: err.message });
+    }
+
+    const statements = migrationSql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('--'));
+
+    console.log(`[ADMIN] Found ${statements.length} statements to execute`);
+    const results = [];
+
+    for (let i = 0; i < statements.length; i++) {
+      const statement = statements[i];
+      console.log(`[ADMIN] Executing statement ${i + 1}: ${statement.substring(0, 50)}...`);
+
+      // Try using rpc 'exec_sql'
+      const { error } = await supabase.rpc('exec_sql', { sql: statement });
+
+      if (error) {
+        console.error(`[ADMIN] Error executing statement ${i + 1}:`, error);
+        results.push({ success: false, error: error.message, statement });
+        // Continue or break? Let's continue to try other statements if possible, 
+        // but usually migrations should be atomic. However, this is a patch.
+      } else {
+        console.log(`[ADMIN] Statement ${i + 1} success`);
+        results.push({ success: true });
+      }
+    }
+
+    res.json({ ok: true, results });
+  } catch (error) {
+    console.error('[ADMIN] Unexpected error running migration:', error);
+    res.status(500).json({ error: 'Internal server error', message: error.message });
+  }
+});
+
+// Purge tasks older than retention (30 days) - can be called manually or scheduled
+app.post('/api/tasks/purge-old', async (req, res) => {
+  const retentionDays = 30;
+  console.log('[POST /api/tasks/purge-old] Purging tasks older than', retentionDays, 'days');
+  const { error } = await supabase.rpc('purge_old_tasks');
+  if (error) {
+    // Fallback manual purge if RPC not defined - using DATE comparison
+    console.warn('[POST /api/tasks/purge-old] RPC purge_old_tasks not available, running manual delete. Error:', error.message);
+    const retentionDate = new Date();
+    retentionDate.setDate(retentionDate.getDate() - retentionDays);
+    const cutoffDate = retentionDate.toISOString().split('T')[0]; // DATE format
+
+    const { error: manualErr } = await supabase
+      .from('tasks')
+      .delete()
+      .lt('deleted_at', cutoffDate)
+      .not('deleted_at', 'is', null);
+    if (manualErr) {
+      console.error('[POST /api/tasks/purge-old] Manual purge failed:', manualErr);
+      return res.status(500).json({ error: 'Failed to purge old trashed tasks' });
+    }
+    console.log('[POST /api/tasks/purge-old] Manual purge completed');
+    return res.json({ ok: true, method: 'manual' });
+  }
+  console.log('[POST /api/tasks/purge-old] RPC purge_old_tasks executed');
+  res.json({ ok: true, method: 'rpc' });
+});
+
+// Purge completed tasks older than 30 days - can be called manually
+app.post('/api/tasks/purge-completed', async (req, res) => {
+  const retentionDays = 30;
+  console.log('[POST /api/tasks/purge-completed] Purging completed tasks older than', retentionDays, 'days');
+
+  try {
+    // Try using the RPC function first
+    const { data, error } = await supabase.rpc('purge_old_completed_tasks');
+
+    if (error) {
+      // Fallback manual purge if RPC not defined
+      console.warn('[POST /api/tasks/purge-completed] RPC purge_old_completed_tasks not available, running manual delete. Error:', error.message);
+      const retentionDate = new Date();
+      retentionDate.setDate(retentionDate.getDate() - retentionDays);
+      const cutoffDate = retentionDate.toISOString().split('T')[0]; // DATE format
+
+      // First get count of tasks to be deleted
+      const { data: tasksToDelete, error: countErr } = await supabase
+        .from('tasks')
+        .select('id')
+        .eq('status', 'completed')
+        .not('completed_at', 'is', null)
+        .lt('completed_at', cutoffDate);
+
+      if (countErr) {
+        console.error('[POST /api/tasks/purge-completed] Error counting tasks to delete:', countErr);
+        return res.status(500).json({ error: 'Failed to count completed tasks for purging' });
+      }
+
+      const taskIds = tasksToDelete.map(t => t.id);
+      console.log('[POST /api/tasks/purge-completed] Found', taskIds.length, 'completed tasks to delete');
+
+      if (taskIds.length > 0) {
+        // Delete related records first
+        await supabase.from('subtasks').delete().in('task_id', taskIds);
+        await supabase.from('task_labels').delete().in('task_id', taskIds);
+
+        // Delete the tasks
+        const { error: deleteErr } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('status', 'completed')
+          .not('completed_at', 'is', null)
+          .lt('completed_at', cutoffDate);
+
+        if (deleteErr) {
+          console.error('[POST /api/tasks/purge-completed] Manual purge failed:', deleteErr);
+          return res.status(500).json({ error: 'Failed to purge old completed tasks' });
+        }
+      }
+
+      console.log('[POST /api/tasks/purge-completed] Manual purge completed, deleted', taskIds.length, 'tasks');
+      return res.json({ ok: true, method: 'manual', deleted: taskIds.length });
+    }
+
+    const deletedCount = data || 0;
+    console.log('[POST /api/tasks/purge-completed] RPC purge_old_completed_tasks executed, deleted', deletedCount, 'tasks');
+    res.json({ ok: true, method: 'rpc', deleted: deletedCount });
+
+  } catch (err) {
+    console.error('[POST /api/tasks/purge-completed] Unexpected error:', err);
+    res.status(500).json({ error: 'Failed to purge completed tasks' });
+  }
 });
 
 app.get('/api/tasks/board', async (req, res) => {
@@ -709,11 +997,16 @@ app.get('/api/tasks/agenda', async (req, res) => {
   const end = new Date(today);
   if (range === 'week') end.setDate(start.getDate() + 7);
 
+  // Convert dates to DATE format (YYYY-MM-DD)
+  const startDate = start.toISOString().split('T')[0];
+  const endDate = end.toISOString().split('T')[0];
+  const todayDate = today.toISOString().split('T')[0];
+
   let query = supabase.from('tasks');
   if (range === 'overdue') {
-    query = query.select('*').not('due', 'is', null).lt('due', today.toISOString()).order('due', { ascending: true });
+    query = query.select('*').not('due', 'is', null).lt('due', todayDate).order('due', { ascending: true });
   } else {
-    query = query.select('*').or(`and(start.gte.${start.toISOString()},start.lte.${end.toISOString()}),and(due.gte.${start.toISOString()},due.lte.${end.toISOString()})`).order('start', { nullsFirst: true }).order('due', { nullsFirst: true });
+    query = query.select('*').or(`and(start.gte.${startDate},start.lte.${endDate}),and(due.gte.${startDate},due.lte.${endDate})`).order('start', { nullsFirst: true }).order('due', { nullsFirst: true });
   }
 
   const { data, error } = await query;
@@ -759,8 +1052,8 @@ app.post('/api/shopping-items', async (req, res) => {
       notes: notes?.trim() || null,
       priority: priority || 'medium',
       completed: completed || false,
-      completedAt: completedAt || null,
-      createdAt: new Date().toISOString()
+      completedAt: completedAt ? new Date(completedAt).toISOString().split('T')[0] : null, // DATE format
+      createdAt: new Date().toISOString().split('T')[0] // DATE format
     };
 
     const { data, error } = await supabase
@@ -1505,17 +1798,21 @@ app.post('/api/sync-google', async (req, res) => {
       const end = event.end.dateTime || event.end.date;
       const allDay = !event.start.dateTime;
 
+      // Convert to DATE format (YYYY-MM-DD)
+      const startDate = start ? new Date(start).toISOString().split('T')[0] : null;
+      const endDate = end ? new Date(end).toISOString().split('T')[0] : null;
+
       const newTask = {
         title: event.summary || '(No Title)',
         notes: event.description || '',
         status: 'new', // Events are usually 'scheduled', map to 'new'
         priority: 'medium',
         all_day: allDay,
-        start: start,
-        end: end,
+        start: startDate,
+        end: endDate,
         gcal_event_id: event.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: new Date().toISOString().split('T')[0], // DATE format
+        updated_at: new Date().toISOString().split('T')[0]  // DATE format
       };
 
       const { error } = await supabase.from('tasks').insert(newTask);
@@ -1538,14 +1835,14 @@ app.post('/api/sync-google', async (req, res) => {
         notes: task.notes || '',
         status: task.status === 'completed' ? 'completed' : 'new',
         priority: 'medium',
-        due: task.due ? new Date(task.due).toISOString() : null,
+        due: task.due ? new Date(task.due).toISOString().split('T')[0] : null, // DATE format
         gtask_id: task.id,
-        created_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
+        created_at: new Date().toISOString().split('T')[0], // DATE format
+        updated_at: new Date().toISOString().split('T')[0]  // DATE format
       };
 
       if (task.completed) {
-        newTask.completed_at = new Date(task.completed).toISOString();
+        newTask.completed_at = new Date(task.completed).toISOString().split('T')[0]; // DATE format
       }
 
       const { error } = await supabase.from('tasks').insert(newTask);
@@ -1567,6 +1864,51 @@ app.post('/api/sync-google', async (req, res) => {
   res.json({ ok: true, created: createdCount, errors });
 });
 
-app.listen(PORT, () => {
-  console.log(`Server listening on http://localhost:${PORT}`);
+// Temporary endpoint to run migration via API
+app.post('/api/admin/run-migration', async (req, res) => {
+  console.log('[ADMIN] Request to run migration');
+  try {
+    const { readFileSync } = await import('fs');
+    const { join, dirname } = await import('path');
+    const { fileURLToPath } = await import('url');
+
+    const __filename = fileURLToPath(import.meta.url);
+    const __dirname = dirname(__filename);
+    const migrationPath = join(__dirname, 'migrations', 'add-task-progress.sql');
+
+    console.log(`[ADMIN] Reading migration file: ${migrationPath}`);
+    const migrationSql = readFileSync(migrationPath, 'utf8');
+
+    const statements = migrationSql
+      .split(';')
+      .map(s => s.trim())
+      .filter(s => s.length > 0 && !s.startsWith('--'));
+
+    console.log(`[ADMIN] Executing ${statements.length} statements`);
+
+    const results = [];
+    for (const statement of statements) {
+      console.log(`[ADMIN] Executing: ${statement}`);
+      // Try using the 'exec_sql' RPC if it exists (it seems to be used in run-migration.js)
+      const { error } = await supabase.rpc('exec_sql', { sql: statement });
+
+      if (error) {
+        console.error('[ADMIN] RPC exec_sql failed:', error);
+        // Fallback: Try to just run it as a raw query if possible, but supabase-js doesn't support raw query easily without RPC.
+        // However, the error might be because 'exec_sql' doesn't exist.
+        results.push({ statement, error: error.message });
+      } else {
+        results.push({ statement, success: true });
+      }
+    }
+
+    res.json({ ok: true, results });
+  } catch (e) {
+    console.error('[ADMIN] Migration failed:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+const server = app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
 });

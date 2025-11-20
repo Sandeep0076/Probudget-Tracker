@@ -54,8 +54,8 @@ const ExpenseChart: React.FC<{transactions: Transaction[], className?: string}> 
 
   const monthlyExpenses = transactions.filter(
     t => t.type === TransactionType.EXPENSE && 
-    new Date(t.date).getMonth() === currentMonth && 
-    new Date(t.date).getFullYear() === currentYear
+    new Date(t.date + 'T00:00:00.000Z').getMonth() === currentMonth && 
+    new Date(t.date + 'T00:00:00.000Z').getFullYear() === currentYear
   );
 
   const totalMonthlyExpenses = monthlyExpenses.reduce((sum, t) => sum + t.amount, 0);

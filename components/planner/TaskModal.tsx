@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Subtask, TaskPriority, TaskRepeat, Task, TaskStatus } from '../../types';
+import { Subtask, TaskPriority, TaskRepeat, TaskStatus } from '../../types';
 
 interface TaskModalProps {
   isOpen: boolean;
@@ -17,6 +17,9 @@ interface TaskModalProps {
     labels?: string[];
     subtasks?: Subtask[];
     estimatedTime?: string | null;
+    status?: TaskStatus; // Added to preserve existing status on edit
+    progress?: number | null; // For potential future conditional logic
+    taskType?: 'todo' | 'schedule'; // Type of task
   };
   onClose: () => void;
   onSave: (data: any, id?: string) => Promise<void> | void;
@@ -30,6 +33,9 @@ const LabeledRow: React.FC<{ label: string; children: React.ReactNode }>=({label
 );
 
 const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave }) => {
+  const taskType = initial?.taskType || 'todo';
+  const isTodo = taskType === 'todo';
+  
   const [title, setTitle] = useState(initial?.title || '');
   const [notes, setNotes] = useState(initial?.notes || '');
   const [priority, setPriority] = useState<TaskPriority>(initial?.priority || 'medium');
@@ -51,12 +57,16 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   const formatDateTimeForInput = (dateString?: string | null, isDateOnly: boolean = false): string => {
     if (!dateString) return '';
     try {
-      const date = new Date(dateString);
+      // For DATE format (YYYY-MM-DD), create date with UTC timezone to avoid timezone issues
+      const date = isDateOnly || dateString.length === 10 
+        ? new Date(dateString + 'T00:00:00.000Z') 
+        : new Date(dateString);
+      
       if (isNaN(date.getTime())) return '';
       
       if (isDateOnly) {
-        // For date input: yyyy-MM-dd
-        return date.toISOString().split('T')[0];
+        // For date input: yyyy-MM-dd (return as-is for DATE format)
+        return dateString.length === 10 ? dateString : date.toISOString().split('T')[0];
       } else {
         // For datetime-local input: yyyy-MM-ddThh:mm
         const year = date.getFullYear();
@@ -76,12 +86,14 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
   useEffect(() => {
     if (isOpen) {
       console.log('[TaskModal] Modal opened with initial data:', initial);
+      console.log('[TaskModal] Initial status from data:', initial?.status);
+      console.log('[TaskModal] Initial has id?:', !!initial?.id);
       setTitle(initial?.title || '');
       setNotes(initial?.notes || '');
       setPriority(initial?.priority || 'medium');
       setAllDay(!!initial?.allDay);
-      setStart(formatDateTimeForInput(initial?.start, false));
-      setEnd(formatDateTimeForInput(initial?.end, false));
+      setStart(formatDateTimeForInput(initial?.start, true));  // Use DATE format
+      setEnd(formatDateTimeForInput(initial?.end, true));    // Use DATE format
       setDue(formatDateTimeForInput(initial?.due, true));
       setRepeat(initial?.repeat || null);
       setColor(initial?.color || '#f59e0b');
@@ -107,30 +119,60 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
     console.log('[TaskModal] Saving task with data:', { title, notes, priority, allDay, start, end, due });
     setSaving(true);
     try {
-      // Determine status: if editing existing task, keep its status; otherwise set based on schedule
+      // Determine status intelligently:
+      // - New task: scheduled if it has start/due, else backlog
+      // - Existing task: NEVER downgrade in_progress or completed back to scheduled
+      //   just because it has start/due. Only auto-set to scheduled if prior status was
+      //   backlog/new and user added schedule info. Otherwise preserve existing.
       let taskStatus: TaskStatus;
-      if (initial?.id) {
-        // Editing existing task - keep current status unless it has schedule info
-        taskStatus = (start || due) ? 'scheduled' : ((initial as any).status || 'backlog');
-      } else {
-        // New task - default to backlog unless it has schedule info
+      console.log('[TaskModal] Status determination - isEdit:', !!initial?.id, 'initial.status:', initial?.status, 'hasSchedule:', Boolean(start || due));
+      
+      if (!initial?.id) {
         taskStatus = (start || due) ? 'scheduled' : 'backlog';
+        console.log('[TaskModal] New task status:', taskStatus);
+      } else {
+        const prevStatus = initial.status as TaskStatus | undefined;
+        const hasSchedule = Boolean(start || due);
+        if (!prevStatus) {
+          taskStatus = hasSchedule ? 'scheduled' : 'backlog';
+          console.log('[TaskModal] No prev status, defaulting to:', taskStatus);
+        } else if (['in_progress', 'completed'].includes(prevStatus)) {
+          // Preserve active/finished states regardless of schedule fields
+          taskStatus = prevStatus;
+          console.log('[TaskModal] Preserving active/completed status:', taskStatus);
+        } else if (['backlog', 'new'].includes(prevStatus)) {
+          // Upgrade backlog/new to scheduled if schedule added, else keep
+          taskStatus = hasSchedule ? 'scheduled' : prevStatus;
+          console.log('[TaskModal] Upgrading backlog/new status:', taskStatus);
+        } else {
+          // For any other custom status, preserve it
+          taskStatus = prevStatus;
+          console.log('[TaskModal] Preserving custom status:', taskStatus);
+        }
+        console.log('[TaskModal] Status resolution for edit:', {
+          prevStatus,
+          hasSchedule,
+          chosenStatus: taskStatus,
+          start,
+          due
+        });
       }
       
       const payload: any = {
         title: title.trim(),
         notes: notes.trim(),
         priority,
-        allDay,
-        start: start || null,
-        end: end || null,
+        allDay: isTodo ? false : allDay, // All day only for schedule tasks
+        start: isTodo ? null : (start || null), // No start date for todo tasks
+        end: isTodo ? null : (end || null), // No end date for todo tasks
         due: due || null,
-        repeat: repeat || null,
+        repeat: isTodo ? null : (repeat || null), // No repeat for todo tasks
         color,
-        labels: labels.split(',').map(s=>s.trim()).filter(Boolean),
+        labels: isTodo ? [] : labels.split(',').map(s=>s.trim()).filter(Boolean), // No labels for todo tasks
         subtasks: subtasks.map(s=>({ title: s.title, done: s.done })),
         status: taskStatus,
-        estimatedTime: estimatedTime.trim() || null
+        estimatedTime: estimatedTime.trim() || null,
+        taskType: taskType
       };
       console.log('[TaskModal] Task will be saved with status:', taskStatus, 'payload:', payload);
       await onSave(payload, initial?.id);
@@ -148,7 +190,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
       <div className="absolute inset-0 bg-black/60" onClick={onClose} />
       <div className="relative w-full max-w-[95vw] sm:max-w-md md:max-w-lg lg:max-w-xl modal-content bg-modal-bg backdrop-blur-xl rounded-xl p-4 sm:p-6 shadow-neu-3d max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-xl font-semibold text-text-primary">{initial?.id ? 'Edit Task' : 'New Task'}</h3>
+          <h3 className="text-xl font-semibold text-text-primary">{initial?.id ? 'Edit Task' : (isTodo ? 'New Task' : 'New Schedule')}</h3>
           <button className="text-gray-400 hover:text-gray-600 transition-colors" onClick={onClose}>✕</button>
         </div>
 
@@ -177,54 +219,60 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
             />
           </LabeledRow>
 
-          <details className="bg-input-bg rounded-lg p-4 border border-input-border shadow-inner">
-            <summary className="cursor-pointer select-none text-text-primary">Schedule</summary>
-            <div className="mt-3 space-y-3">
-              <label className="flex items-center gap-2 text-sm">
-                <input type="checkbox" checked={allDay} onChange={(e)=>setAllDay(e.target.checked)} /> All Day
-              </label>
-              <LabeledRow label="From">
-                <input type="datetime-local" value={start} onChange={(e)=>setStart(e.target.value)} className={commonInputClasses} />
-              </LabeledRow>
-              <LabeledRow label="To">
-                <input type="datetime-local" value={end} onChange={(e)=>setEnd(e.target.value)} className={commonInputClasses} />
-              </LabeledRow>
-              <LabeledRow label="Deadline">
-                <input type="date" value={due} onChange={(e)=>setDue(e.target.value)} className={commonInputClasses} />
-              </LabeledRow>
-              <LabeledRow label="Repeat">
-                <select
-                  value={repeat?.type || 'none'}
-                  onChange={(e)=>{
-                    const t = e.target.value;
-                    if (t==='none') setRepeat(null);
-                    else setRepeat({ type: t as any, interval: 1 });
-                  }}
-                  className={commonSelectClasses}
-                >
-                  <option value="none">None</option>
-                  <option value="daily">Daily</option>
-                  <option value="weekly">Weekly</option>
-                  <option value="monthly">Monthly</option>
-                </select>
-              </LabeledRow>
-              {repeat?.type==='monthly' && (
-                <div className="flex gap-3">
+          {isTodo ? (
+            <LabeledRow label="Deadline">
+              <input type="date" value={due} onChange={(e)=>setDue(e.target.value)} className={commonInputClasses} />
+            </LabeledRow>
+          ) : (
+            <details className="bg-input-bg rounded-lg p-4 border border-input-border shadow-inner">
+              <summary className="cursor-pointer select-none text-text-primary">Schedule</summary>
+              <div className="mt-3 space-y-3">
+                <label className="flex items-center gap-2 text-sm">
+                  <input type="checkbox" checked={allDay} onChange={(e)=>setAllDay(e.target.checked)} /> All Day
+                </label>
+                <LabeledRow label="From">
+                  <input type="date" value={start} onChange={(e)=>setStart(e.target.value)} className={commonInputClasses} />
+                </LabeledRow>
+                <LabeledRow label="To">
+                  <input type="date" value={end} onChange={(e)=>setEnd(e.target.value)} className={commonInputClasses} />
+                </LabeledRow>
+                <LabeledRow label="Deadline">
+                  <input type="date" value={due} onChange={(e)=>setDue(e.target.value)} className={commonInputClasses} />
+                </LabeledRow>
+                <LabeledRow label="Repeat">
                   <select
-                    value={(repeat as any).monthlyMode || 'on_day'}
-                    onChange={(e)=>setRepeat({ ...(repeat as any), monthlyMode: e.target.value as any })}
+                    value={repeat?.type || 'none'}
+                    onChange={(e)=>{
+                      const t = e.target.value;
+                      if (t==='none') setRepeat(null);
+                      else setRepeat({ type: t as any, interval: 1 });
+                    }}
                     className={commonSelectClasses}
                   >
-                    <option value="on_day">On day</option>
-                    <option value="last_day">Last day</option>
+                    <option value="none">None</option>
+                    <option value="daily">Daily</option>
+                    <option value="weekly">Weekly</option>
+                    <option value="monthly">Monthly</option>
                   </select>
-                  {(repeat as any).monthlyMode!=='last_day' && (
-                    <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e)=>setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} />
-                  )}
-                </div>
-              )}
-            </div>
-          </details>
+                </LabeledRow>
+                {repeat?.type==='monthly' && (
+                  <div className="flex gap-3">
+                    <select
+                      value={(repeat as any).monthlyMode || 'on_day'}
+                      onChange={(e)=>setRepeat({ ...(repeat as any), monthlyMode: e.target.value as any })}
+                      className={commonSelectClasses}
+                    >
+                      <option value="on_day">On day</option>
+                      <option value="last_day">Last day</option>
+                    </select>
+                    {(repeat as any).monthlyMode!=='last_day' && (
+                      <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e)=>setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} />
+                    )}
+                  </div>
+                )}
+              </div>
+            </details>
+          )}
 
           <LabeledRow label="Color">
             <input type="color" value={color} onChange={(e)=>setColor(e.target.value)} />
@@ -237,9 +285,11 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
             className={commonInputClasses}
           />
 
-          <LabeledRow label="Labels">
-            <input value={labels} onChange={(e)=>setLabels(e.target.value)} placeholder="comma,separated" className={commonInputClasses} />
-          </LabeledRow>
+          {!isTodo && (
+            <LabeledRow label="Labels">
+              <input value={labels} onChange={(e)=>setLabels(e.target.value)} placeholder="comma,separated" className={commonInputClasses} />
+            </LabeledRow>
+          )}
 
           <div>
             <div className="flex items-center justify-between mb-2">

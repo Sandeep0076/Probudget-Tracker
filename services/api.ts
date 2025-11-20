@@ -90,6 +90,12 @@ export const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'sub
 export const updateTask = (id: string, task: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>) => put<{ ok: boolean }>(`/api/tasks/${id}`, task);
 export const deleteTask = (id: string) => del<{ ok: boolean }>(`/api/tasks/${id}`);
 export const getAgenda = (range: 'today' | 'week' | 'overdue') => get<any[]>(`/api/tasks/agenda?range=${range}`);
+// Trashbox (Tasks)
+export const getTrashedTasks = () => get<any[]>(`/api/tasks/trash`);
+export const restoreTask = (id: string) => post<{ ok: boolean }>(`/api/tasks/${id}/restore`, {});
+export const permanentlyDeleteTask = (id: string) => del<{ ok: boolean }>(`/api/tasks/${id}/permanent`);
+export const purgeOldTasks = () => post<{ ok: boolean }>(`/api/tasks/purge-old`, {});
+export const purgeCompletedTasks = () => post<{ ok: boolean; deleted: number }>(`/api/tasks/purge-completed`, {});
 
 // Planner: Shopping List
 export const getShoppingItems = () => get<ShoppingItem[]>('/api/shopping-items');
@@ -99,6 +105,7 @@ export const deleteShoppingItem = (id: string) => del<{ ok: boolean }>(`/api/sho
 
 // Calendar integration
 export const getCalendarAuthUrl = () => get<{ url: string }>(`/api/calendar/auth-url`);
+export const getCalendarStatus = () => get<{ connected: boolean; needs_refresh: boolean }>(`/api/calendar/status`);
 export const listCalendarEvents = (timeMin: string, timeMax: string) => get<any[]>(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`);
 export const listGoogleTasks = () => get<any[]>(`/api/google-tasks`);
 export const toggleGoogleTask = (taskId: string, currentStatus: string) => put<any>(`/api/google-tasks/${taskId}/toggle`, { currentStatus });
@@ -110,3 +117,6 @@ export const syncGoogleData = () => post<{ ok: boolean; created: number; errors:
 export const login = (username: string, password: string) => post<{ success: boolean; username: string }>('/api/auth/login', { username, password });
 export const verifySecurityQuestion = (username: string, answer: string) => post<{ success: boolean; securityQuestion: string }>('/api/auth/verify-security-question', { username, answer });
 export const resetPassword = (username: string, newPassword: string) => post<{ success: boolean }>('/api/auth/reset-password', { username, newPassword });
+
+// Admin
+export const runMigration = () => post<{ ok: boolean; results: any[] }>('/api/admin/run-migration', {});

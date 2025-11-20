@@ -13,14 +13,13 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
   dueDate,
   onProgressChange
 }) => {
-  console.log('[ProgressBar] Rendering with:', { progress, startDate, dueDate });
   const segments = 10;
   const filledSegments = Math.round((progress / 100) * segments);
 
   const handleSegmentClick = (index: number) => {
     // Clicking on segment sets progress to that percentage
+    // index 0 -> 10%, index 9 -> 100%
     const newProgress = ((index + 1) / segments) * 100;
-    console.log('[ProgressBar] Segment clicked:', index, 'New progress:', newProgress);
     onProgressChange(newProgress);
   };
 
@@ -43,14 +42,8 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
       </div>
 
       {/* Progress bar with 10 segments */}
-      <div 
-        className="relative rounded-lg overflow-hidden border-2 border-brand/30 shadow-neu-sm"
-        style={{ 
-          background: 'var(--color-card-bg-light)',
-          backdropFilter: 'blur(8px)'
-        }}
-      >
-        <div className="flex h-8">
+      <div className="relative">
+        <div className="flex h-8 gap-1.5">
           {Array.from({ length: segments }).map((_, index) => {
             const isFilled = index < filledSegments;
             return (
@@ -61,58 +54,50 @@ const ProgressBar: React.FC<ProgressBarProps> = ({
                   handleSegmentClick(index);
                 }}
                 className={`
-                  flex-1 relative transition-all duration-200
-                  ${index !== 0 ? 'border-l border-border-highlight/20' : ''}
-                  ${isFilled 
-                    ? 'bg-gradient-to-b from-brand-light to-brand hover:from-brand hover:to-brand-dark shadow-inner' 
-                    : 'bg-transparent hover:bg-accent-lighter/20'
+                  flex-1 relative transition-all duration-300 rounded-md
+                  ${isFilled
+                    ? 'bg-gradient-to-br from-brand to-brand-dark shadow-neu-sm border-t border-white/20'
+                    : 'bg-card-bg-darker shadow-inner border border-white/5 opacity-60 hover:opacity-100'
                   }
-                  group cursor-pointer
+                  group cursor-pointer overflow-hidden
                 `}
-                style={{
-                  boxShadow: isFilled 
-                    ? 'inset 0 2px 4px rgba(0,0,0,0.15), inset 0 -1px 2px rgba(255,255,255,0.1)' 
-                    : 'none'
-                }}
                 title={`Set progress to ${((index + 1) / segments) * 100}%`}
               >
-                {/* Hover indicator */}
-                <div className={`
-                  absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity
-                  ${isFilled ? 'bg-white/10' : 'bg-accent/10'}
-                `} />
-                
-                {/* 3D effect highlight */}
+                {/* Glossy highlight for 3D effect */}
                 {isFilled && (
-                  <div 
-                    className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-b from-white/30 to-transparent"
-                  />
+                  <div className="absolute inset-x-0 top-0 h-[1px] bg-white/30" />
                 )}
+
+                {/* Hover glow */}
+                <div className={`
+                  absolute inset-0 opacity-0 group-hover:opacity-100 transition-opacity duration-300
+                  ${isFilled ? 'bg-white/10' : 'bg-white/5'}
+                `} />
               </button>
             );
           })}
         </div>
 
-        {/* Progress percentage overlay */}
-        <div 
+        {/* Progress percentage overlay - centered */}
+        <div
           className="absolute inset-0 flex items-center justify-center pointer-events-none"
         >
-          <span 
-            className="text-xs font-bold px-2 py-0.5 rounded-full shadow-lg"
+          <span
+            className="text-xs font-bold px-2 py-0.5 rounded-full shadow-lg backdrop-blur-sm"
             style={{
-              background: 'var(--color-modal-bg)',
-              color: 'var(--color-text-primary)',
-              textShadow: '0 1px 2px rgba(0,0,0,0.3)'
+              background: 'rgba(255, 255, 255, 0.8)',
+              color: 'var(--color-brand-dark)',
+              boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
             }}
           >
-            {progress}%
+            {Math.round(progress)}%
           </span>
         </div>
       </div>
 
       {/* Helper text */}
-      <div className="text-xs text-center text-text-muted italic">
-        Click on segments to update progress
+      <div className="text-[10px] text-center text-text-muted italic">
+        Click bars to update progress
       </div>
     </div>
   );
