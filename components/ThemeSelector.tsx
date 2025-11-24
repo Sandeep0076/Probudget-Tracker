@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Theme } from '../App';
 import { PaletteIcon } from './icons/PaletteIcon';
+import { CloseIcon } from './icons/CloseIcon';
 import { clearStoredCredentials } from './LoginPage';
 
 interface ThemeSelectorProps {
@@ -31,7 +32,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   const [saveTimeout, setSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [passwordSaveTimeout, setPasswordSaveTimeout] = useState<NodeJS.Timeout | null>(null);
   const [showPasswordSaved, setShowPasswordSaved] = useState(false);
-  
+
   const themes: { id: Theme, name: string, bg: string }[] = [
     { id: 'dark-blue', name: 'Blue', bg: 'bg-gradient-to-br from-[#2563eb] to-[#1e3a8a]' },
     { id: 'light', name: 'White', bg: 'bg-gradient-to-br from-[#f8f9fa] to-[#e9ecef]' },
@@ -39,7 +40,7 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
   ];
 
   const getModalBg = () => {
-    switch(currentTheme) {
+    switch (currentTheme) {
       case 'dark-blue':
         return 'rgba(37, 99, 235, 0.98)';
       case 'light':
@@ -59,33 +60,33 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
 
   const handleUsernameChange = (value: string) => {
     setLocalUsername(value);
-    
+
     if (saveTimeout) {
       clearTimeout(saveTimeout);
     }
-    
+
     const timeout = setTimeout(() => {
       onUsernameChange(value);
       setShowSaved(true);
       setTimeout(() => setShowSaved(false), 2000);
     }, 500);
-    
+
     setSaveTimeout(timeout);
   };
 
   const handlePasswordChange = (value: string) => {
     setLocalPassword(value);
-    
+
     if (passwordSaveTimeout) {
       clearTimeout(passwordSaveTimeout);
     }
-    
+
     const timeout = setTimeout(() => {
       onPasswordChange(value);
       setShowPasswordSaved(true);
       setTimeout(() => setShowPasswordSaved(false), 2000);
     }, 500);
-    
+
     setPasswordSaveTimeout(timeout);
   };
 
@@ -121,8 +122,18 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
       {isModalOpen && (
         <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-start justify-center pt-24 z-50" onClick={() => setIsModalOpen(false)}>
           <div className="p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow max-w-2xl w-full mx-4" style={{ backgroundColor: getModalBg() }} onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-xl font-semibold mb-4" style={{ color: getTextColor() }}>Settings</h2>
-            
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-semibold" style={{ color: getTextColor() }}>Settings</h2>
+              <button
+                onClick={() => setIsModalOpen(false)}
+                className="p-1 rounded-full hover:bg-black/10 transition-colors"
+                style={{ color: getTextColor() }}
+                aria-label="Close settings"
+              >
+                <CloseIcon className="w-6 h-6" />
+              </button>
+            </div>
+
             <div className="mb-4">
               <div className="flex items-center justify-between mb-2">
                 <label className="block text-sm font-medium" style={{ color: getTextColor() }}>Username</label>
@@ -164,18 +175,16 @@ const ThemeSelector: React.FC<ThemeSelectorProps> = ({
                     onThemeChange(theme.id);
                     setIsModalOpen(false);
                   }}
-                  className={`flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all duration-200 border-2 ${
-                    currentTheme === theme.id ? 'border-accent scale-105 shadow-neu-lg' : 'border-transparent hover:scale-105 bg-surface shadow-inner'
-                  }`}
+                  className={`flex flex-col items-center justify-center p-4 rounded-lg cursor-pointer transition-all duration-200 border-2 ${currentTheme === theme.id ? 'border-accent scale-105 shadow-neu-lg' : 'border-transparent hover:scale-105 bg-surface shadow-inner'
+                    }`}
                 >
                   <div className={`w-16 h-10 rounded-md ${theme.bg} mb-2 border border-border-shadow`}></div>
                   <span className={`text-sm font-medium ${currentTheme === theme.id ? 'text-accent' : ''}`} style={{ color: currentTheme === theme.id ? undefined : getTextColor() }}>{theme.name}</span>
                 </button>
               ))}
               <div
-                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-200 border-2 ${
-                  currentTheme === 'custom' ? 'border-accent scale-105 shadow-neu-lg' : 'border-transparent hover:scale-105 bg-surface shadow-inner'
-                }`}
+                className={`flex flex-col items-center justify-center p-4 rounded-lg transition-all duration-200 border-2 ${currentTheme === 'custom' ? 'border-accent scale-105 shadow-neu-lg' : 'border-transparent hover:scale-105 bg-surface shadow-inner'
+                  }`}
               >
                 <label htmlFor="color-picker" className="cursor-pointer">
                   <div className={`w-16 h-10 rounded-md mb-2 border border-border-shadow`} style={{ background: customThemeColor }}></div>
