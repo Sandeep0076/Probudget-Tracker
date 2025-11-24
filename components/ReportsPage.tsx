@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Transaction, TransactionType, Saving, ChatMessage, Budget } from '../types';
+import { Transaction, TransactionType, Saving, ChatMessage, Budget, Category } from '../types';
 import { ChatIcon } from './icons/ChatIcon';
 import ChatModal from './ChatModal';
 import InteractiveReportDashboard from './reports/InteractiveReportDashboard';
@@ -11,9 +11,10 @@ interface ReportsPageProps {
     savings: Saving[];
     categoryBudgets: Budget[];
     overallBudget: Budget | null;
+    categories: Category[];
 }
 
-const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, savings, categoryBudgets, overallBudget }) => {
+const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, savings, categoryBudgets, overallBudget, categories }) => {
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [isChatModalOpen, setIsChatModalOpen] = useState(false);
@@ -61,6 +62,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, savings, catego
             Savings: ${JSON.stringify(savings)}
             Budgets: ${JSON.stringify(categoryBudgets)}
             Overall Budget: ${JSON.stringify(overallBudget)}
+            Categories: ${JSON.stringify(categories)}
             --- END DATA ---
 
             --- CONVERSATION HISTORY ---
@@ -100,6 +102,7 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, savings, catego
                 savings={savings}
                 categoryBudgets={categoryBudgets}
                 overallBudget={overallBudget}
+                categories={categories}
             />
 
             {/* Floating Chat Button */}

@@ -717,6 +717,7 @@ const App: React.FC = () => {
           onEditTransaction={handleEditTransactionClick}
           onDeleteTransaction={handleDeleteTransaction}
           username={username}
+          categories={categories}
         />;
       case 'addTransaction':
         return <AddTransaction onCancel={() => navigate('dashboard')} initialType={initialTransactionType} onSave={handleSaveTransaction} categories={categories} onScanReceipt={handleScanReceipt} availableLabels={availableLabels} />;
@@ -727,7 +728,7 @@ const App: React.FC = () => {
       case 'categories':
         return <CategoriesPage categories={categories} transactions={transactions} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />;
       case 'reports':
-        return <ReportsPage transactions={transactions} savings={savings} categoryBudgets={categoryBudgets} overallBudget={overallBudget} />;
+        return <ReportsPage transactions={transactions} savings={savings} categoryBudgets={categoryBudgets} overallBudget={overallBudget} categories={categories} />;
       case 'confirmReceipt':
         return <ReceiptConfirmationPage items={receiptItemsToConfirm} onSaveAll={handleSaveAllTransactions} onCancel={() => setCurrentPage('addTransaction')} categories={categories.filter(c => c.type === TransactionType.EXPENSE)} availableLabels={availableLabels} />;
       case 'settings':
@@ -746,6 +747,7 @@ const App: React.FC = () => {
           onEditTransaction={handleEditTransactionClick}
           onDeleteTransaction={handleDeleteTransaction}
           username={username}
+          categories={categories}
         />;
     }
   }

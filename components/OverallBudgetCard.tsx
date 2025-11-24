@@ -5,19 +5,22 @@ import { formatCurrency } from '../utils/formatters';
 interface OverallBudgetCardProps {
     budget: Budget | null;
     totalSpent: number;
+    totalOutflow?: number;
     onSetBudget: () => void;
 }
 
-const OverallBudgetCard: React.FC<OverallBudgetCardProps> = ({ budget, totalSpent, onSetBudget }) => {
+const OverallBudgetCard: React.FC<OverallBudgetCardProps> = ({ budget, totalSpent, totalOutflow, onSetBudget }) => {
 
     const budgetAmount = budget?.amount || 0;
-    const remainingAmount = budgetAmount - totalSpent;
-    const percentageSpent = budgetAmount > 0 ? (totalSpent / budgetAmount) * 100 : 0;
-    
+    // Use totalOutflow if available (holistic view), otherwise fallback to totalSpent
+    const usedAmount = totalOutflow ?? totalSpent;
+    const remainingAmount = budgetAmount - usedAmount;
+    const percentageSpent = budgetAmount > 0 ? (usedAmount / budgetAmount) * 100 : 0;
+
     console.log('[OverallBudgetCard] Budget amount (raw):', budgetAmount);
-    console.log('[OverallBudgetCard] Total spent (raw):', totalSpent);
+    console.log('[OverallBudgetCard] Used amount (raw):', usedAmount);
     console.log('[OverallBudgetCard] Remaining (raw):', remainingAmount);
-    
+
     let progressBarColor = 'bg-accent';
     if (percentageSpent > 100) {
         progressBarColor = 'bg-danger';
@@ -33,8 +36,8 @@ const OverallBudgetCard: React.FC<OverallBudgetCardProps> = ({ budget, totalSpen
                     <p className="text-text-secondary text-sm">Your total spending plan for the month.</p>
                 </div>
                 <button
-                  onClick={onSetBudget}
-                  className="mt-3 md:mt-0 px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all shadow-neu-sm"
+                    onClick={onSetBudget}
+                    className="mt-3 md:mt-0 px-4 py-2 text-sm font-medium rounded-md text-gray-700 bg-gray-100 hover:bg-gray-200 transition-all shadow-neu-sm"
                 >
                     {budget ? 'Edit Budget' : 'Set Budget'}
                 </button>
@@ -43,13 +46,13 @@ const OverallBudgetCard: React.FC<OverallBudgetCardProps> = ({ budget, totalSpen
             {budget ? (
                 <div>
                     <div className="flex items-baseline gap-2 mb-4">
-                        <span className="text-4xl font-bold text-text-primary">{formatCurrency(totalSpent)}</span>
+                        <span className="text-4xl font-bold text-text-primary">{formatCurrency(usedAmount)}</span>
                         <span className="text-text-secondary">spent of {formatCurrency(budgetAmount)}</span>
                     </div>
 
                     <div className="w-full bg-surface shadow-inner rounded-full h-3 mb-2">
-                        <div 
-                            className={`${progressBarColor} h-3 rounded-full transition-all duration-500`} 
+                        <div
+                            className={`${progressBarColor} h-3 rounded-full transition-all duration-500`}
                             style={{ width: `${Math.min(percentageSpent, 100)}%` }}
                         ></div>
                     </div>

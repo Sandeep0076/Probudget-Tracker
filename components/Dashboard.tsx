@@ -3,7 +3,7 @@ import React from 'react';
 import RecentTransactions from './RecentTransactions';
 import ExpenseChart from './ExpenseChart';
 import BudgetSummaryCard from './BudgetSummaryCard';
-import { Transaction, TransactionType, Budget } from '../types';
+import { Transaction, TransactionType, Budget, Category } from '../types';
 import { Page } from '../App';
 
 interface DashboardProps {
@@ -13,16 +13,33 @@ interface DashboardProps {
   onEditTransaction: (transaction: Transaction) => void;
   onDeleteTransaction: (transactionId: string) => Promise<void>;
   username: string;
+  categories: Category[];
 }
 
-const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overallBudget, onEditTransaction, onDeleteTransaction, username }) => {
+const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overallBudget, onEditTransaction, onDeleteTransaction, username, categories }) => {
   const currentMonth = new Date().getMonth();
   const currentYear = new Date().getFullYear();
 
+  const categoryMap = categories.reduce((acc, c) => {
+    acc[c.name] = c.affectsBudget !== false;
+    return acc;
+  }, {} as Record<string, boolean>);
+
   const monthlyExpenses = transactions
-    .filter(t => t.type === TransactionType.EXPENSE && new Date(t.date + 'T00:00:00.000Z').getMonth() === currentMonth && new Date(t.date + 'T00:00:00.000Z').getFullYear() === currentYear)
+    .filter(t => t.type === TransactionType.EXPENSE &&
+      new Date(t.date + 'T00:00:00.000Z').getMonth() === currentMonth &&
+      new Date(t.date + 'T00:00:00.000Z').getFullYear() === currentYear &&
+      categoryMap[t.category] !== false
+    )
     .reduce((sum, t) => sum + t.amount, 0);
-  
+
+  const totalOutflow = transactions
+    .filter(t => t.type === TransactionType.EXPENSE &&
+      new Date(t.date + 'T00:00:00.000Z').getMonth() === currentMonth &&
+      new Date(t.date + 'T00:00:00.000Z').getFullYear() === currentYear
+    )
+    .reduce((sum, t) => sum + t.amount, 0);
+
   console.log('[Dashboard] Monthly expenses (raw from DB):', monthlyExpenses);
   console.log('[Dashboard] Overall budget (raw from DB):', overallBudget?.amount);
   console.log('[Dashboard] Sample transaction amounts:', transactions.slice(0, 3).map(t => ({ desc: t.description, amount: t.amount })));
@@ -36,10 +53,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overall
 
       {/* Top Section */}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
-        <BudgetSummaryCard 
+        <BudgetSummaryCard
           className="lg:col-span-2"
           budget={overallBudget}
           totalSpent={monthlyExpenses}
+          totalOutflow={totalOutflow}
           onSetBudget={() => onNavigate('budgets')}
         />
         <ExpenseChart className="lg:col-span-3" transactions={transactions} />
@@ -47,11 +65,11 @@ const Dashboard: React.FC<DashboardProps> = ({ transactions, onNavigate, overall
 
       {/* Main Content Area */}
       <div className="mt-8 grid grid-cols-1 gap-8">
-        <RecentTransactions 
-            transactions={transactions} 
-            onNavigate={onNavigate} 
-            onEditTransaction={onEditTransaction} 
-            onDeleteTransaction={onDeleteTransaction} 
+        <RecentTransactions
+          transactions={transactions}
+          onNavigate={onNavigate}
+          onEditTransaction={onEditTransaction}
+          onDeleteTransaction={onDeleteTransaction}
         />
       </div>
     </div>

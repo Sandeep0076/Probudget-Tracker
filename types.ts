@@ -17,7 +17,7 @@ export interface Transaction {
 }
 
 export interface RecurringTransaction {
-  id:string;
+  id: string;
   description: string;
   amount: number;
   type: TransactionType;
@@ -48,6 +48,7 @@ export interface Category {
   name: string;
   type: TransactionType;
   isDefault: boolean;
+  affectsBudget: boolean;
 }
 
 export interface TransactionFormData {
