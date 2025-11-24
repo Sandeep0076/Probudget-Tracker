@@ -30,6 +30,26 @@ export const getTodayDateString = (): string => {
     return toDateString(new Date());
 };
 
+// Capitalize first letter of a single label (preserves rest of string)
+export const capitalizeLabel = (label: string): string => {
+    if (!label) return label;
+    const trimmed = label.trim();
+    return trimmed.charAt(0).toUpperCase() + trimmed.slice(1);
+};
+
+// Normalize an array of labels ensuring first letter capitalized and remove duplicates (case-insensitive)
+export const normalizeLabels = (labels: string[]): string[] => {
+    const seen = new Set<string>();
+    return labels
+        .map(l => capitalizeLabel(l))
+        .filter(l => {
+            const key = l.toLowerCase();
+            if (seen.has(key)) return false;
+            seen.add(key);
+            return true;
+        });
+};
+
 export const formatDate = (dateString: string): string => {
     // Handle DATE format (YYYY-MM-DD) - no time component
     const date = new Date(dateString + 'T00:00:00.000Z'); // Ensure UTC interpretation for DATE format

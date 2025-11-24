@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Transaction, TransactionType, Category } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import LabelAutocomplete from './LabelAutocomplete';
+import { normalizeLabels } from '../utils/formatters';
 
 interface EditTransactionModalProps {
     isOpen: boolean;
@@ -43,7 +44,8 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
             alert('Please fill all fields');
             return;
         }
-        onSave(formData);
+    const normalized = normalizeLabels(formData.labels);
+    onSave({ ...formData, labels: normalized });
     };
 
     const commonInputClasses = "w-full px-4 py-3 bg-surface border border-border-shadow shadow-inner rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors";

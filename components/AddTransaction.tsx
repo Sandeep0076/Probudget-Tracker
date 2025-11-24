@@ -4,6 +4,7 @@ import { CloseIcon } from './icons/CloseIcon';
 import { SparklesIcon } from './icons/SparklesIcon';
 import { SpinnerIcon } from './icons/SpinnerIcon';
 import LabelAutocomplete from './LabelAutocomplete';
+import { normalizeLabels } from '../utils/formatters';
 
 interface AddTransactionProps {
     onCancel: () => void;
@@ -64,6 +65,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
         console.log('[AddTransaction] Starting save process');
         
         try {
+            const normalized = normalizeLabels(labels);
             await onSave({
                 amount: parseFloat(amount),
                 quantity: parseInt(quantity, 10) || 1,
@@ -71,7 +73,7 @@ const AddTransaction: React.FC<AddTransactionProps> = ({ onCancel, initialType, 
                 category,
                 date,
                 type: transactionType,
-                labels: labels,
+                labels: normalized,
                 isRecurring,
             });
         } catch (error) {

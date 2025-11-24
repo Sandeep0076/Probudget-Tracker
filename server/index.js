@@ -69,10 +69,12 @@ async function addActivity(action, description) {
 }
 
 async function upsertLabelIdByName(name) {
-  let { data: label, error } = await supabase.from('labels').select('id').eq('name', name).single();
+  const normalized = typeof name === 'string' && name.length > 0
+    ? name.trim().charAt(0).toUpperCase() + name.trim().slice(1)
+    : name;
+  let { data: label } = await supabase.from('labels').select('id').eq('name', normalized).single();
   if (label) return label.id;
-
-  const { data: newLabel, error: insertError } = await supabase.from('labels').insert({ name }).select('id').single();
+  const { data: newLabel, error: insertError } = await supabase.from('labels').insert({ name: normalized }).select('id').single();
   if (insertError) throw insertError;
   return newLabel.id;
 }
@@ -1327,9 +1329,14 @@ app.get('/api/categories', async (req, res) => {
 });
 
 app.get('/api/labels', async (req, res) => {
-  const { data, error } = await supabase.from('labels').select('name').order('name');
+  const { data, error } = await supabase.from('labels').select('id,name').order('name');
   if (error) return res.status(500).json({ error: 'Failed to fetch labels' });
-  res.json(data.map(label => label.name));
+  // Normalize capitalization in-memory (defensive in case legacy rows exist)
+  const normalized = data.map(l => {
+    if (!l.name) return l.name;
+    return l.name.charAt(0).toUpperCase() + l.name.slice(1);
+  });
+  res.json(normalized);
 });
 
 app.post('/api/categories', async (req, res) => {
@@ -1972,6 +1979,37 @@ app.post('/api/admin/run-migration', async (req, res) => {
     res.json({ ok: true, results });
   } catch (e) {
     console.error('[ADMIN] Migration failed:', e);
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// Admin: Capitalize existing labels migration
+app.post('/api/admin/migrate-capitalize-labels', async (req, res) => {
+  console.log('[ADMIN] Running capitalize labels migration');
+  try {
+    const migrationPath = join(__dirname, 'migrations', 'capitalize-existing-labels.sql');
+    let migrationSql;
+    try {
+      migrationSql = readFileSync(migrationPath, 'utf8');
+    } catch (e) {
+      console.error('[ADMIN] Could not read capitalize-existing-labels.sql:', e.message);
+      return res.status(500).json({ error: 'Migration file not found' });
+    }
+    const statements = migrationSql.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
+    const results = [];
+    for (const statement of statements) {
+      console.log('[ADMIN] Executing label migration statement:', statement.slice(0,60) + (statement.length>60?'...':''));
+      const { error } = await supabase.rpc('exec_sql', { sql: statement });
+      if (error) {
+        console.error('[ADMIN] Statement failed:', error.message);
+        results.push({ statement, success: false, error: error.message });
+      } else {
+        results.push({ statement, success: true });
+      }
+    }
+    res.json({ ok: true, results });
+  } catch (e) {
+    console.error('[ADMIN] Capitalize labels migration failed:', e.message);
     res.status(500).json({ error: e.message });
   }
 });
