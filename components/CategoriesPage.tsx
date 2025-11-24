@@ -7,7 +7,7 @@ interface CategoriesPageProps {
     categories: Category[];
     transactions: Transaction[];
     onAddCategory: (category: Omit<Category, 'id' | 'isDefault'>) => void;
-    onUpdateCategory: (id: string, newName: string, oldName: string) => void;
+    onUpdateCategory: (id: string, newName: string, oldName: string, affectsBudget?: boolean) => void;
     onDeleteCategory: (id: string) => void;
 }
 
@@ -17,10 +17,10 @@ const CategoryManager: React.FC<{
     categories: Category[];
     transactions: Transaction[];
     onAddCategory: (category: Omit<Category, 'id' | 'isDefault'>) => void;
-    onUpdateCategory: (id: string, newName: string, oldName: string) => void;
+    onUpdateCategory: (id: string, newName: string, oldName: string, affectsBudget?: boolean) => void;
     onDeleteCategory: (id: string) => void;
 }> = ({ title, type, categories, transactions, onAddCategory, onUpdateCategory, onDeleteCategory }) => {
-    
+
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
 
@@ -33,7 +33,7 @@ const CategoryManager: React.FC<{
         setEditingCategory(category);
         setIsModalOpen(true);
     };
-    
+
     const handleDeleteClick = (category: Category) => {
         const isUsed = transactions.some(t => t.category === category.name);
         if (isUsed) {
@@ -44,12 +44,12 @@ const CategoryManager: React.FC<{
             onDeleteCategory(category.id);
         }
     };
-    
-    const handleModalSubmit = (name: string) => {
+
+    const handleModalSubmit = (name: string, affectsBudget: boolean) => {
         if (editingCategory) {
-            onUpdateCategory(editingCategory.id, name, editingCategory.name);
+            onUpdateCategory(editingCategory.id, name, editingCategory.name, affectsBudget);
         } else {
-            onAddCategory({ name, type });
+            onAddCategory({ name, type, affectsBudget });
         }
     };
 
@@ -57,7 +57,7 @@ const CategoryManager: React.FC<{
         <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
             <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xl font-semibold text-text-primary">{title}</h2>
-                <button 
+                <button
                     onClick={handleAddClick}
                     className="flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-md text-white bg-brand hover:bg-brand/90 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
                 >
@@ -69,7 +69,12 @@ const CategoryManager: React.FC<{
                 {categories.map(cat => (
                     <li key={cat.id} className="flex items-center justify-between p-3 bg-surface rounded-lg shadow-inner">
                         <div className="flex items-center gap-3">
-                           <span className="text-text-primary">{cat.name}</span>
+                            <span className="text-text-primary">{cat.name}</span>
+                            {!cat.affectsBudget && (
+                                <span className="text-xs px-2 py-0.5 rounded-full bg-surface-highlight text-text-secondary border border-border-shadow">
+                                    Excluded from Budget
+                                </span>
+                            )}
                         </div>
                         <div className="flex items-center gap-3">
                             <button onClick={() => handleEditClick(cat)} className="text-sm font-medium text-accent hover:text-accent/[0.8]">Edit</button>
@@ -82,9 +87,9 @@ const CategoryManager: React.FC<{
                         </div>
                     </li>
                 ))}
-                 {categories.length === 0 && <p className="text-text-secondary text-center py-4">No categories defined.</p>}
+                {categories.length === 0 && <p className="text-text-secondary text-center py-4">No categories defined.</p>}
             </ul>
-             {isModalOpen && (
+            {isModalOpen && (
                 <CategoryModal
                     isOpen={isModalOpen}
                     onClose={() => setIsModalOpen(false)}

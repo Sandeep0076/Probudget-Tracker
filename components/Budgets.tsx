@@ -27,50 +27,62 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
     const [isOverallModalOpen, setIsOverallModalOpen] = useState(false);
     const [isSavingsModalOpen, setIsSavingsModalOpen] = useState(false);
     const [editingBudget, setEditingBudget] = useState<Budget | null>(null);
-    
+
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-    
+
     const [selectedMonthYear, setSelectedMonthYear] = useState(`${currentYear}-${String(currentMonth + 1).padStart(2, '0')}`);
 
     const [selectedYear, selectedMonth] = useMemo(() => {
         const [year, month] = selectedMonthYear.split('-').map(Number);
         return [year, month - 1]; // month is 0-indexed
     }, [selectedMonthYear]);
-    
+
     const selectedMonthName = useMemo(() => {
         return new Date(selectedYear, selectedMonth).toLocaleString('default', { month: 'long', year: 'numeric' });
     }, [selectedYear, selectedMonth]);
 
     const monthlyCategoryBudgets = categoryBudgets.filter(b => b.month === currentMonth && b.year === currentYear);
-    
+
     const selectedSaving = useMemo(() => {
         return savings.find(s => s.month === selectedMonth && s.year === selectedYear);
     }, [savings, selectedMonth, selectedYear]);
 
-    const { spendingByCategory, totalMonthlyExpenses } = useMemo(() => {
-        const monthlyTransactions = transactions.filter(t => 
-            new Date(t.date + 'T00:00:00.000Z').getMonth() === currentMonth && 
+    const { spendingByCategory, totalMonthlyExpenses, totalMonthlyOutflow } = useMemo(() => {
+        const monthlyTransactions = transactions.filter(t =>
+            new Date(t.date + 'T00:00:00.000Z').getMonth() === currentMonth &&
             new Date(t.date + 'T00:00:00.000Z').getFullYear() === currentYear
         );
 
+        const categoryMap = categories.reduce((acc, c) => {
+            acc[c.name] = c.affectsBudget !== false;
+            return acc;
+        }, {} as Record<string, boolean>);
+
         const expenses = monthlyTransactions
             .filter(t => t.type === TransactionType.EXPENSE)
+            .filter(t => categoryMap[t.category] !== false)
             .reduce((sum, t) => sum + t.amount, 0);
-        
+
+        const totalOutflow = monthlyTransactions
+            .filter(t => t.type === TransactionType.EXPENSE)
+            .reduce((sum, t) => sum + t.amount, 0);
+
         const spending = monthlyTransactions
             .filter(t => t.type === TransactionType.EXPENSE)
+            .filter(t => categoryMap[t.category] !== false)
             .reduce((acc, t) => {
                 acc[t.category] = (acc[t.category] || 0) + t.amount;
                 return acc;
             }, {} as { [key: string]: number });
 
-        return { 
-            spendingByCategory: spending, 
+        return {
+            spendingByCategory: spending,
             totalMonthlyExpenses: expenses,
+            totalMonthlyOutflow: totalOutflow,
         };
-    }, [transactions, currentMonth, currentYear]);
+    }, [transactions, currentMonth, currentYear, categories]);
 
     return (
         <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8">
@@ -78,12 +90,13 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
                 <h1 className="text-2xl font-bold text-text-primary mb-2">Monthly Budgets & Savings</h1>
                 <p className="text-text-secondary">Track your spending for the current month and manage your savings history.</p>
             </div>
-            
+
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-                <OverallBudgetCard 
-                  budget={overallBudget} 
-                  totalSpent={totalMonthlyExpenses} 
-                  onSetBudget={() => setIsOverallModalOpen(true)} 
+                <OverallBudgetCard
+                    budget={overallBudget}
+                    totalSpent={totalMonthlyExpenses}
+                    totalOutflow={totalMonthlyOutflow}
+                    onSetBudget={() => setIsOverallModalOpen(true)}
                 />
                 <div className="bg-card-bg backdrop-blur-xl p-6 rounded-xl shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300 flex flex-col justify-between">
                     <div>
@@ -107,7 +120,7 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
                         </div>
                     </div>
                     <div className="mt-4 text-right">
-                        <button 
+                        <button
                             onClick={() => setIsSavingsModalOpen(true)}
                             className="px-4 py-2 text-sm font-medium rounded-md text-text-primary bg-surface hover:bg-surface/80 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
                         >
@@ -120,16 +133,16 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
 
             <div className="flex justify-between items-center mt-12 mb-6">
                 <h2 className="text-xl font-semibold text-text-primary">Category Budgets (Current Month)</h2>
-                <button 
-                  onClick={() => setIsCategoryModalOpen(true)}
-                  className="flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-brand hover:bg-brand/90 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
-                  <PlusCircleIcon className="w-5 h-5 mr-2" />
-                  Create Category Budget
+                <button
+                    onClick={() => setIsCategoryModalOpen(true)}
+                    className="flex items-center justify-center px-4 py-2 text-sm font-medium rounded-md shadow-sm text-white bg-brand hover:bg-brand/90 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
+                    <PlusCircleIcon className="w-5 h-5 mr-2" />
+                    Create Category Budget
                 </button>
             </div>
 
             {monthlyCategoryBudgets.length > 0 ? (
-                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                     {monthlyCategoryBudgets.map(budget => (
                         <BudgetCard
                             key={budget.id}
@@ -145,10 +158,10 @@ const Budgets: React.FC<BudgetsProps> = ({ overallBudget, categoryBudgets, trans
                     <p className="mt-2">Click 'Create Category Budget' to get started!</p>
                 </div>
             )}
-           
+
             {isCategoryModalOpen && (
-                <AddBudgetModal 
-                    onClose={() => setIsCategoryModalOpen(false)} 
+                <AddBudgetModal
+                    onClose={() => setIsCategoryModalOpen(false)}
                     onAddBudget={onAddCategoryBudget}
                     existingCategories={monthlyCategoryBudgets.map(b => b.category)}
                     categories={categories.filter(c => c.type === TransactionType.EXPENSE)}

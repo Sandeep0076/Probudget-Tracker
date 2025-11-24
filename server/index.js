@@ -1318,7 +1318,12 @@ app.post('/api/budgets/overall', async (req, res) => {
 app.get('/api/categories', async (req, res) => {
   const { data, error } = await supabase.from('categories').select('*').order('name');
   if (error) return res.status(500).json({ error: 'Failed to fetch categories' });
-  res.json(data);
+  // Map affects_budget to affectsBudget for frontend
+  const out = data.map(c => ({
+    ...c,
+    affectsBudget: c.affects_budget !== false // Default to true if undefined
+  }));
+  res.json(out);
 });
 
 app.get('/api/labels', async (req, res) => {
@@ -1328,30 +1333,39 @@ app.get('/api/labels', async (req, res) => {
 });
 
 app.post('/api/categories', async (req, res) => {
-  const { name, type } = req.body || {};
-  const { data, error } = await supabase.from('categories').insert({ name, type }).select().single();
+  const { name, type, affectsBudget = true } = req.body || {};
+  const { data, error } = await supabase.from('categories').insert({ name, type, affects_budget: affectsBudget }).select().single();
   if (error) {
     console.error('Error creating category:', error);
     return res.status(500).json({ error: 'Failed to create category' });
   }
   await addActivity('CREATE', `Created new ${String(type).toLowerCase()} category: "${name}".`);
-  res.json(data);
+  res.json({ ...data, affectsBudget: data.affects_budget });
 });
 
 app.put('/api/categories/:id', async (req, res) => {
   const { id } = req.params;
-  const { newName, oldName } = req.body || {};
+  const { newName, oldName, affectsBudget } = req.body || {};
 
-  const { error: catErr } = await supabase.from('categories').update({ name: newName }).eq('id', id);
-  if (catErr) return res.status(500).json({ error: 'Failed to update category name' });
+  const updateData = {};
+  if (newName) updateData.name = newName;
+  if (affectsBudget !== undefined) updateData.affects_budget = affectsBudget;
 
-  const { error: txErr } = await supabase.from('transactions').update({ category: newName }).eq('category', oldName);
-  if (txErr) console.error('Failed to update transactions category');
+  const { error: catErr } = await supabase.from('categories').update(updateData).eq('id', id);
+  if (catErr) return res.status(500).json({ error: 'Failed to update category' });
 
-  const { error: budErr } = await supabase.from('budgets').update({ category: newName }).eq('category', oldName);
-  if (budErr) console.error('Failed to update budgets category');
+  if (newName && oldName && newName !== oldName) {
+    const { error: txErr } = await supabase.from('transactions').update({ category: newName }).eq('category', oldName);
+    if (txErr) console.error('Failed to update transactions category');
 
-  await addActivity('UPDATE', `Updated category "${oldName}" to "${newName}".`);
+    const { error: budErr } = await supabase.from('budgets').update({ category: newName }).eq('category', oldName);
+    if (budErr) console.error('Failed to update budgets category');
+
+    await addActivity('UPDATE', `Updated category "${oldName}" to "${newName}".`);
+  } else {
+    await addActivity('UPDATE', `Updated category "${oldName || id}".`);
+  }
+
   res.json({ ok: true });
 });
 
@@ -1420,7 +1434,7 @@ app.post('/api/recurring', async (req, res) => {
 app.put('/api/recurring/:id', async (req, res) => {
   const { id } = req.params;
   const { description, amount, type, category, startDate, frequency = 'monthly', dayOfMonth, labels = [] } = req.body || {};
-  
+
   const { data: existing, error: fetchError } = await supabase.from('recurring_transactions').select('description').eq('id', id).single();
   if (fetchError) {
     console.error('Error fetching recurring tx:', fetchError);

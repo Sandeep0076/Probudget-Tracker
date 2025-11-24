@@ -5,20 +5,23 @@ import { CloseIcon } from './icons/CloseIcon';
 interface CategoryModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSubmit: (name: string) => void;
+    onSubmit: (name: string, affectsBudget: boolean) => void;
     category: Category | null;
     existingCategoryNames: string[];
 }
 
 const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSubmit, category, existingCategoryNames }) => {
     const [name, setName] = useState('');
+    const [affectsBudget, setAffectsBudget] = useState(true);
     const [error, setError] = useState('');
 
     useEffect(() => {
         if (category) {
             setName(category.name);
+            setAffectsBudget(category.affectsBudget !== false);
         } else {
             setName('');
+            setAffectsBudget(true);
         }
         setError('');
     }, [category, isOpen]);
@@ -42,7 +45,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSubmit
             return;
         }
 
-        onSubmit(trimmedName);
+        onSubmit(trimmedName, affectsBudget);
         onClose();
     };
 
@@ -55,7 +58,7 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSubmit
                 <h2 className="text-2xl font-bold text-text-primary mb-6 text-center">
                     {category ? 'Edit Category' : 'Add New Category'}
                 </h2>
-                
+
                 <form className="space-y-4" onSubmit={handleSubmit}>
                     <div>
                         <label htmlFor="category-name" className="block text-sm font-medium text-text-secondary mb-1">Category Name</label>
@@ -67,18 +70,31 @@ const CategoryModal: React.FC<CategoryModalProps> = ({ isOpen, onClose, onSubmit
                             className="w-full px-4 py-3 bg-surface border border-border-shadow shadow-inner rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent"
                             required
                         />
-                         {error && <p className="text-danger text-sm mt-2">{error}</p>}
+                        {error && <p className="text-danger text-sm mt-2">{error}</p>}
                     </div>
-                   
+
+                    <div className="flex items-center gap-2">
+                        <input
+                            type="checkbox"
+                            id="affects-budget"
+                            checked={affectsBudget}
+                            onChange={(e) => setAffectsBudget(e.target.checked)}
+                            className="w-4 h-4 text-brand bg-surface border-border-shadow rounded focus:ring-accent"
+                        />
+                        <label htmlFor="affects-budget" className="text-sm font-medium text-text-secondary">
+                            Affects Budget (Include in expense totals)
+                        </label>
+                    </div>
+
                     <div className="flex items-center justify-end gap-4 pt-4">
-                        <button 
-                            type="button" 
+                        <button
+                            type="button"
                             onClick={onClose}
                             className="px-6 py-3 text-sm font-medium rounded-md text-text-primary bg-surface hover:bg-surface/80 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
                         >
                             Cancel
                         </button>
-                        <button 
+                        <button
                             type="submit"
                             className="px-6 py-3 text-sm font-medium rounded-md shadow-sm text-white bg-brand hover:bg-brand/90 transition-all shadow-neu-sm border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow"
                         >

@@ -56,20 +56,20 @@ const CategoryComparisonBarChart: React.FC<CategoryComparisonBarChartProps> = ({
                 <ResponsiveContainer width="100%" height="100%">
                     <BarChart
                         data={chartData}
-                        margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
+                        margin={{ top: 20, right: 30, left: 20, bottom: 60 }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-shadow)" vertical={false} />
                         <XAxis
                             dataKey="name"
                             stroke="var(--color-text-secondary)"
-                            fontSize={12}
+                            fontSize={11}
                             tickLine={false}
                             axisLine={false}
-                            dy={10}
+                            dy={2}
                             interval={0}
                             angle={-45}
                             textAnchor="end"
-                            height={60}
+                            height={80}
                         />
                         <YAxis
                             stroke="var(--color-text-secondary)"

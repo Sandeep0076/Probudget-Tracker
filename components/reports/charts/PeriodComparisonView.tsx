@@ -3,8 +3,12 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, Responsive
 import { Transaction } from '../../../types';
 import { formatCurrency } from '../../../utils/formatters';
 
+import { Category } from '../../../types';
+
 interface PeriodComparisonViewProps {
     data: Transaction[];
+    categories: Category[];
+    includeExcluded?: boolean;
 }
 
 const COLORS = ['#0ea5e9', '#f59e0b'];
@@ -30,7 +34,7 @@ const CustomTooltip = ({ active, payload, label }: any) => {
     return null;
 };
 
-const PeriodComparisonView: React.FC<PeriodComparisonViewProps> = ({ data }) => {
+const PeriodComparisonView: React.FC<PeriodComparisonViewProps> = ({ data, categories, includeExcluded = false }) => {
     const chartData = useMemo(() => {
         // Compare This Month vs Last Month by Category
         const now = new Date();
@@ -38,11 +42,18 @@ const PeriodComparisonView: React.FC<PeriodComparisonViewProps> = ({ data }) => 
         const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1);
         const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0);
 
+        const categoryMap = categories.reduce((acc, c) => {
+            acc[c.name] = c.affectsBudget !== false;
+            return acc;
+        }, {} as Record<string, boolean>);
+
         const thisMonthData: { [category: string]: number } = {};
         const lastMonthData: { [category: string]: number } = {};
         const allCategories = new Set<string>();
 
         data.forEach(t => {
+            if (!includeExcluded && categoryMap[t.category] === false) return; // Skip excluded categories if not in total mode
+
             const tDate = new Date(t.date);
             if (tDate >= thisMonthStart) {
                 thisMonthData[t.category] = (thisMonthData[t.category] || 0) + t.amount;

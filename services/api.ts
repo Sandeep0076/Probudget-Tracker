@@ -61,7 +61,7 @@ export const addOrUpdateOverallBudget = (data: { amount: number; month: number; 
 // Categories
 export const getCategories = () => get<Category[]>('/api/categories');
 export const addCategory = (category: Omit<Category, 'id' | 'isDefault'>) => post<Category>('/api/categories', category);
-export const updateCategory = (id: string, newName: string, oldName: string) => put<{ ok: boolean }>(`/api/categories/${id}`, { newName, oldName });
+export const updateCategory = (id: string, newName: string, oldName: string, affectsBudget?: boolean) => put<{ ok: boolean }>(`/api/categories/${id}`, { newName, oldName, affectsBudget });
 export const deleteCategory = (id: string) => del<{ ok: boolean }>(`/api/categories/${id}`);
 
 // Labels
