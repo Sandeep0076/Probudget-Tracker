@@ -180,7 +180,7 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
                 <ResponsiveContainer width="100%" height="100%">
                     <ComposedChart
                         data={chartData}
-                        margin={{ top: 10, right: 10, left: 0, bottom: 0 }}
+                        margin={{ top: 10, right: 10, left: 10, bottom: 0 }}
                     >
                         <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border-shadow)" vertical={false} />
                         <XAxis
@@ -198,7 +198,7 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
                             tickFormatter={(value) => formatCurrency(value)}
                             tickLine={false}
                             axisLine={false}
-                            dx={-10}
+                            width={80}
                         />
                         <Tooltip content={<SpendingTrendTooltip />} cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1, strokeDasharray: '5 5' }} />
                         <ReferenceLine y={0} stroke="var(--color-border-shadow)" />
