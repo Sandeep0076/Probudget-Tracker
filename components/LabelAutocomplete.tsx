@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
+import { capitalizeLabel } from '../utils/formatters';
 import { CloseIcon } from './icons/CloseIcon';
 
 interface LabelAutocompleteProps {
@@ -27,11 +28,11 @@ const LabelAutocomplete: React.FC<LabelAutocompleteProps> = ({
     // Generate suggestions based on input and available labels
     useEffect(() => {
         if (input.trim()) {
+            const lowerSelected = selectedLabels.map(l => l.toLowerCase());
             const filteredSuggestions = availableLabels.filter(label =>
                 label.toLowerCase().includes(input.toLowerCase()) &&
-                !selectedLabels.includes(label.toLowerCase())
+                !lowerSelected.includes(label.toLowerCase())
             ).slice(0, 5); // Limit to 5 suggestions
-
             setSuggestions(filteredSuggestions);
             setShowSuggestions(filteredSuggestions.length > 0);
         } else {
@@ -61,9 +62,9 @@ const LabelAutocomplete: React.FC<LabelAutocompleteProps> = ({
     }, []);
 
     const addLabel = (label: string) => {
-        const trimmedLabel = label.trim().toLowerCase();
-        if (trimmedLabel && !selectedLabels.includes(trimmedLabel)) {
-            onLabelsChange([...selectedLabels, trimmedLabel]);
+        const normalized = capitalizeLabel(label);
+        if (normalized && !selectedLabels.includes(normalized)) {
+            onLabelsChange([...selectedLabels, normalized]);
         }
         setInput('');
         setShowSuggestions(false);

@@ -101,25 +101,42 @@ const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
                 </div>
 
                 <div className="flex flex-wrap items-center gap-3">
-                    {/* View Mode Toggle */}
-                    <div className="flex items-center bg-surface backdrop-blur-xl p-1 rounded-xl shadow-neu-sm border border-border-highlight">
+                    {/* View Mode Toggle - Redesigned */}
+                    <div className="relative inline-flex items-center bg-gradient-to-br from-surface/80 to-surface/60 backdrop-blur-xl p-1 rounded-2xl shadow-neu-3d border border-border-highlight/50">
+                        <div
+                            className={`absolute top-1 bottom-1 rounded-xl bg-gradient-to-br from-brand to-accent shadow-lg transition-all duration-500 ease-out ${
+                                viewMode === 'budget' ? 'left-1 right-[calc(50%+2px)]' : 'left-[calc(50%+2px)] right-1'
+                            }`}
+                        />
                         <button
                             onClick={() => setViewMode('budget')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${viewMode === 'budget'
-                                ? 'bg-brand text-white shadow-neu-sm'
-                                : 'text-text-secondary hover:text-text-primary hover:bg-surface/50'
-                                }`}
+                            className={`relative z-10 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-500 ease-out min-w-[120px] ${
+                                viewMode === 'budget'
+                                    ? 'text-white scale-105'
+                                    : 'text-text-secondary hover:text-text-primary hover:scale-102'
+                            }`}
                         >
-                            Budget Only
+                            <span className="flex items-center justify-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
+                                </svg>
+                                Budget
+                            </span>
                         </button>
                         <button
                             onClick={() => setViewMode('total')}
-                            className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-all duration-300 ${viewMode === 'total'
-                                ? 'bg-brand text-white shadow-neu-sm'
-                                : 'text-text-secondary hover:text-text-primary hover:bg-surface/50'
-                                }`}
+                            className={`relative z-10 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-500 ease-out min-w-[120px] ${
+                                viewMode === 'total'
+                                    ? 'text-white scale-105'
+                                    : 'text-text-secondary hover:text-text-primary hover:scale-102'
+                            }`}
                         >
-                            Total Outflow
+                            <span className="flex items-center justify-center gap-2">
+                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
+                                </svg>
+                                Total
+                            </span>
                         </button>
                     </div>
 
