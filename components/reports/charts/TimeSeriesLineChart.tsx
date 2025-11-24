@@ -13,6 +13,8 @@ interface SpendingCandlestickData {
     high: number;      // Maximum single transaction amount
     total: number;      // Total spending for the day
     low: number;       // Always 0 for spending
+    logHigh: number;    // Log10 of high
+    logTotal: number;   // Log10 of total
 }
 
 // Separate tooltip component for spending trend
@@ -39,37 +41,37 @@ const SpendingTrendTooltip = ({ active, payload, label }: any) => {
 // Custom candlestick shape function for Recharts Bar
 const CandlestickShape = (props: any) => {
     const { x, y, width, height, payload } = props;
-    const { high, total } = payload as SpendingCandlestickData;
-    
-    if (total === 0 && high === 0) {
+    const { logHigh, logTotal, high, total } = payload as SpendingCandlestickData;
+
+    if (total <= 1 && high <= 1) {
         return null;
     }
-    
+
     const candleColor = 'var(--color-brand)';
     const wickColor = 'var(--color-text-secondary)';
     const candleWidth = Math.max(width * 0.5, 12);
     const candleX = x + (width - candleWidth) / 2;
-    
-    // Calculate wick position (only if high > total)
-    // height is the bar height (from 0 to total)
-    // We need to draw a wick above the bar if high > total
-    const domainMax = props.yAxis?.domain?.[1] || total;
+
+    // Calculate wick position based on log values
+    const chartHeight = props.yAxis?.height || 0;
+    const domainMax = props.yAxis?.domain?.[1] || 1;
     const domainMin = props.yAxis?.domain?.[0] || 0;
     const domainRange = domainMax - domainMin;
-    const chartHeight = props.height || 300;
-    
-    // Calculate the additional height needed for the wick
-    const wickAdditionalValue = Math.max(0, high - total);
-    const wickAdditionalHeight = (wickAdditionalValue / domainRange) * chartHeight;
-    const wickTopY = y - height - wickAdditionalHeight;
-    
+
+    const pixelScale = domainRange > 0 ? chartHeight / domainRange : 0;
+
+    // Calculate the additional height needed for the wick (difference in log values)
+    const logDiff = Math.max(0, logHigh - logTotal);
+    const wickPixelHeight = logDiff * pixelScale;
+    const wickTopY = y - wickPixelHeight;
+
     return (
         <g>
             {/* High wick - vertical line above candle when high > total */}
-            {high > total && wickAdditionalHeight > 0 && (
+            {logHigh > logTotal && wickPixelHeight > 0 && (
                 <line
                     x1={x + width / 2}
-                    y1={y - height}
+                    y1={y}
                     x2={x + width / 2}
                     y2={wickTopY}
                     stroke={wickColor}
@@ -78,10 +80,10 @@ const CandlestickShape = (props: any) => {
                 />
             )}
             {/* Candle body - rectangle showing total spending */}
-            {total > 0 && height > 0 && (
+            {height > 0 && (
                 <rect
                     x={candleX}
-                    y={y - height}
+                    y={y}
                     width={candleWidth}
                     height={height}
                     fill={candleColor}
@@ -96,13 +98,13 @@ const CandlestickShape = (props: any) => {
 
 const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }) => {
     // Separate calculation logic for spending trend (completely independent from cumulative)
-    const { chartData, yAxisDomain } = useMemo(() => {
+    const { chartData, yAxisDomain, ticks } = useMemo(() => {
         const dailySpending: { [key: string]: { transactions: number[], total: number } } = {};
 
         // Sort transactions by date
         const sortedData = [...data].sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
 
-        if (sortedData.length === 0) return { chartData: [], yAxisDomain: [0, 100] };
+        if (sortedData.length === 0) return { chartData: [], yAxisDomain: [0, 1], ticks: [0, 1] };
 
         // Determine grouping based on range
         const isMonthly = range === 'last-6-months' || range === 'this-year';
@@ -131,12 +133,14 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
                 const amounts = dayData.transactions;
                 const high = amounts.length > 0 ? Math.max(...amounts) : 0;
                 const total = dayData.total;
-                
+
                 return {
                     name,
                     high,
                     total,
-                    low: 0 // Always 0 for spending
+                    low: 0, // Always 0 for spending
+                    logHigh: high > 1 ? Math.log10(high) : 0,
+                    logTotal: total > 1 ? Math.log10(total) : 0
                 };
             })
             .sort((a, b) => {
@@ -153,15 +157,15 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
         // Calculate Y-axis domain separately for spending trend
         const allSpendingValues = dataPoints.flatMap(d => [d.high, d.total]).filter(v => v > 0);
         const maxSpendingValue = allSpendingValues.length > 0 ? Math.max(...allSpendingValues) : 100;
-        const minSpendingValue = 0;
-        
-        // Add padding for better visualization
-        const spendingPadding = maxSpendingValue * 0.15;
-        const spendingDomainMax = maxSpendingValue + spendingPadding;
+
+        // Log scale calculations
+        const maxLog = Math.ceil(Math.log10(Math.max(maxSpendingValue, 10))); // Ensure at least up to 10
+        const ticks = Array.from({ length: maxLog + 1 }, (_, i) => i); // [0, 1, 2, ... maxLog]
 
         return {
             chartData: dataPoints,
-            yAxisDomain: [minSpendingValue, spendingDomainMax]
+            yAxisDomain: [0, maxLog],
+            ticks
         };
     }, [data, range]);
 
@@ -193,9 +197,10 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
                         />
                         <YAxis
                             domain={yAxisDomain}
+                            ticks={ticks}
                             stroke="var(--color-text-secondary)"
                             fontSize={12}
-                            tickFormatter={(value) => formatCurrency(value)}
+                            tickFormatter={(value) => formatCurrency(Math.pow(10, value))}
                             tickLine={false}
                             axisLine={false}
                             width={80}
@@ -203,7 +208,7 @@ const TimeSeriesLineChart: React.FC<TimeSeriesLineChartProps> = ({ data, range }
                         <Tooltip content={<SpendingTrendTooltip />} cursor={{ stroke: 'var(--color-text-muted)', strokeWidth: 1, strokeDasharray: '5 5' }} />
                         <ReferenceLine y={0} stroke="var(--color-border-shadow)" />
                         <Bar
-                            dataKey="total"
+                            dataKey="logTotal"
                             fill="var(--color-brand)"
                             shape={<CandlestickShape />}
                             barSize={20}
