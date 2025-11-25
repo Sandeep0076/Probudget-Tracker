@@ -26,31 +26,8 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ activityLogs, isGoogleConne
                 <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow h-fit">
                     <h2 className="text-xl font-semibold text-text-primary mb-4">Integrations</h2>
                     <div className="space-y-4">
-                        <div className="flex items-center justify-between p-4 bg-surface rounded-lg shadow-inner">
-                            <div className="flex items-center gap-3">
-                                <div className="w-10 h-10 bg-white rounded-full flex items-center justify-center shadow-sm">
-                                    <img src="https://www.gstatic.com/images/branding/product/1x/calendar_2020q4_48dp.png" alt="Google Calendar" className="w-6 h-6" />
-                                </div>
-                                <div>
-                                    <h3 className="font-medium text-text-primary">Google Calendar & Tasks</h3>
-                                    <p className="text-xs text-text-secondary">{isGoogleConnected ? 'Connected' : 'Not connected'}</p>
-                                </div>
-                            </div>
-                            {isGoogleConnected ? (
-                                <button
-                                    onClick={onDisconnectGoogle}
-                                    className="px-3 py-1.5 text-sm text-danger hover:bg-danger/10 rounded-md transition-colors"
-                                >
-                                    Disconnect
-                                </button>
-                            ) : (
-                                <button
-                                    onClick={onConnectGoogle}
-                                    className="px-3 py-1.5 text-sm text-white bg-brand hover:bg-brand/90 rounded-md shadow-neu-sm transition-transform transform hover:scale-105"
-                                >
-                                    Connect
-                                </button>
-                            )}
+                        <div className="p-4 bg-surface rounded-lg shadow-inner text-sm text-text-secondary">
+                            <p>Google Calendar integration has been disabled.</p>
                         </div>
                     </div>
                 </div>
