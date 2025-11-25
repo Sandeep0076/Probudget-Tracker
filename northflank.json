@@ -1,0 +1,36 @@
+{
+    "name": "probudget-tracker",
+    "services": [
+        {
+            "name": "summerspends-backend",
+            "type": "deployment",
+            "dockerfilePath": "/Dockerfile",
+            "dockerBuildContext": "/",
+            "ports": [
+                {
+                    "name": "api",
+                    "internalPort": 4000,
+                    "protocol": "HTTP",
+                    "public": true
+                }
+            ]
+        },
+        {
+            "name": "summerspends",
+            "type": "deployment",
+            "dockerfilePath": "/Dockerfile.frontend",
+            "dockerBuildContext": "/",
+            "ports": [
+                {
+                    "name": "web",
+                    "internalPort": 80,
+                    "protocol": "HTTP",
+                    "public": true
+                }
+            ],
+            "buildArguments": {
+                "VITE_API_URL": "${BACKEND_URL}"
+            }
+        }
+    ]
+}

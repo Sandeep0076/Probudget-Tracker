@@ -102,26 +102,9 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
     return eventDate && isSameDay(eventDate, tomorrowKey);
   });
 
-  const handleConnectCalendar = async () => {
-    try {
-      const { url } = await api.getCalendarAuthUrl();
-      window.open(url, '_blank', 'width=480,height=640,noopener,noreferrer');
-      setTimeout(() => {
-        onRefresh();
-      }, 5000); // Refresh after 5 seconds to allow time for auth
-    } catch (err) {
-      console.error('Failed to connect calendar', err);
-    }
-  };
-
-  const handleDisconnectCalendar = async () => {
-    try {
-      await api.disconnectCalendar();
-      onRefresh();
-    } catch (err) {
-      console.error('Failed to disconnect calendar', err);
-    }
-  };
+  // Google Calendar integration removed
+  const handleConnectCalendar = async () => { };
+  const handleDisconnectCalendar = async () => { };
 
   return (
     <>
@@ -145,12 +128,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">Upcoming Calendar</h3>
               <div className="flex gap-2">
-                {events && events.length > 0 && (
-                  <>
-                    <button onClick={handleDisconnectCalendar} className="text-xs text-warning hover:underline">Disconnect</button>
-                    <button onClick={onRefresh} className="text-xs text-brand hover:underline">Refresh</button>
-                  </>
-                )}
+                {/* Google Calendar buttons removed */}
               </div>
             </div>
             <div className="relative mt-3 space-y-2">
@@ -177,23 +155,23 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                 };
 
                 // Filter and map events
-              const upcomingEvents = (events || [])
-                .map((e: any) => ({ ...e, itemType: 'event' }))
-                .filter((e: any) => {
-                  const date = getItemDate(e, 'event');
-                  const isCancelled = e.status === 'cancelled' || e.status === 'completed';
-                  return date && date >= today && date <= nextWeeks && !isCancelled;
-                });
+                const upcomingEvents = (events || [])
+                  .map((e: any) => ({ ...e, itemType: 'event' }))
+                  .filter((e: any) => {
+                    const date = getItemDate(e, 'event');
+                    const isCancelled = e.status === 'cancelled' || e.status === 'completed';
+                    return date && date >= today && date <= nextWeeks && !isCancelled;
+                  });
 
-              // Filter and map tasks
-              // Exclude completed tasks and ensure no trash is shown (backend filters trash, we filter completed)
-              const upcomingTasks = tasks
-                .filter(t => t.status !== 'completed')
-                .map(t => ({ ...t, itemType: 'task' }))
-                .filter(t => {
-                  const date = getItemDate(t, 'task');
-                  return date && date >= today && date <= nextWeeks;
-                });
+                // Filter and map tasks
+                // Exclude completed tasks and ensure no trash is shown (backend filters trash, we filter completed)
+                const upcomingTasks = tasks
+                  .filter(t => t.status !== 'completed')
+                  .map(t => ({ ...t, itemType: 'task' }))
+                  .filter(t => {
+                    const date = getItemDate(t, 'task');
+                    return date && date >= today && date <= nextWeeks;
+                  });
 
                 // Combine and sort
                 const allUpcoming = [...upcomingEvents, ...upcomingTasks].sort((a, b) => {
@@ -208,15 +186,6 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                   return (
                     <div className="text-sm text-text-secondary">
                       No upcoming tasks or events in the next 4 weeks.
-                      {(!events || events.length === 0) && (
-                        <>
-                          {" "}
-                          <button
-                            className="text-brand underline hover:text-brand/80 transition-colors"
-                            onClick={handleConnectCalendar}
-                          >Connect Google Calendar</button>.
-                        </>
-                      )}
                     </div>
                   );
                 }
@@ -242,8 +211,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                           <div className="font-semibold text-text-primary truncate">{title}</div>
                           {!isEvent && item.priority && (
                             <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${item.priority === 'high' ? 'bg-danger/10 text-danger' :
-                                item.priority === 'medium' ? 'bg-warning/10 text-warning' :
-                                  'bg-success/10 text-success'
+                              item.priority === 'medium' ? 'bg-warning/10 text-warning' :
+                                'bg-success/10 text-success'
                               }`}>
                               {item.priority}
                             </span>

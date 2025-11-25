@@ -2,7 +2,6 @@ import express from 'express';
 import cors from 'cors';
 import { supabase } from './supabaseClient.js';
 import { randomUUID, randomBytes, createCipheriv, createDecipheriv } from 'crypto';
-import { google } from 'googleapis';
 import dotenv from 'dotenv';
 import { readFileSync } from 'fs';
 import { join, dirname } from 'path';
@@ -13,18 +12,11 @@ const __dirname = dirname(__filename);
 
 dotenv.config();
 
-const PORT = process.env.PORT ? Number(process.env.PORT) : 4000;
+const PORT = process.env.PORT || 4000;
+const HOST = '0.0.0.0'; // Important for Docker
 const OVERALL_BUDGET_CATEGORY = '##OVERALL_BUDGET##';
-const GOOGLE_API_SCOPES = [
-  'https://www.googleapis.com/auth/calendar',
-  'https://www.googleapis.com/auth/tasks'
-];
-const ENC_KEY = (process.env.ENCRYPTION_KEY || '').padEnd(32, '0').slice(0, 32);
 
-// Google OAuth token refresh threshold (seconds before expiry to refresh)
-// Can be overridden with GCAL_REFRESH_THRESHOLD_SECONDS env; defaults to 60s to minimize unnecessary calls.
-// Note: Access tokens from Google typically last ~3600s (1 hour); cannot be extended beyond Google's policy.
-const TOKEN_REFRESH_THRESHOLD_SECONDS = Number(process.env.GCAL_REFRESH_THRESHOLD_SECONDS || 60);
+const ENC_KEY = (process.env.ENCRYPTION_KEY || '').padEnd(32, '0').slice(0, 32);
 
 const app = express();
 const allowedOrigins = [
@@ -35,19 +27,13 @@ const allowedOrigins = [
 ];
 
 const corsOptions = {
-  origin: (origin, callback) => {
-    // `origin` is undefined for same-origin requests or server-to-server requests.
-    console.log('[CORS] Request from origin:', origin);
-    if (!origin || allowedOrigins.includes(origin)) {
-      callback(null, true);
-    } else {
-      console.error(`[CORS] Error: Origin ${origin} not allowed.`);
-      callback(new Error('Not allowed by CORS'));
-    }
-  },
-  credentials: true,
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization'],
+  origin: [
+    'http://localhost:3000',
+    'http://localhost:5173', // Vite dev
+    process.env.FRONTEND_URL, // Northflank frontend URL
+    /\.northflank\.app$/ // Allow all Northflank subdomains
+  ],
+  credentials: true
 };
 
 app.use(cors(corsOptions));
@@ -787,19 +773,21 @@ app.get('/api/tasks/trash', async (req, res) => {
   res.json(out);
 });
 
-// Restore a trashed task
+// Restore a soft-deleted task
 app.post('/api/tasks/:id/restore', async (req, res) => {
   const { id } = req.params;
   console.log('[POST /api/tasks/:id/restore] Restoring task id:', id);
+
   const { data: existing, error: fetchErr } = await supabase.from('tasks').select('id, deleted_at').eq('id', id).single();
   if (fetchErr || !existing) {
-    console.error('[POST /api/tasks/:id/restore] Task not found:', id, fetchErr);
+    console.error('[POST /api/tasks/:id/restore] Task not found for restore:', id, fetchErr);
     return res.status(404).json({ error: 'Task not found' });
   }
   if (!existing.deleted_at) {
-    console.warn('[POST /api/tasks/:id/restore] Task not in trash:', id);
+    console.warn('[POST /api/tasks/:id/restore] Task not in trash, no need to restore:', id);
     return res.json({ ok: true, notInTrash: true });
   }
+
   const { error: updateErr } = await supabase.from('tasks').update({
     deleted_at: null,
     updated_at: new Date().toISOString().split('T')[0] // DATE format
@@ -1998,7 +1986,7 @@ app.post('/api/admin/migrate-capitalize-labels', async (req, res) => {
     const statements = migrationSql.split(';').map(s => s.trim()).filter(s => s.length > 0 && !s.startsWith('--'));
     const results = [];
     for (const statement of statements) {
-      console.log('[ADMIN] Executing label migration statement:', statement.slice(0,60) + (statement.length>60?'...':''));
+      console.log('[ADMIN] Executing label migration statement:', statement.slice(0, 60) + (statement.length > 60 ? '...' : ''));
       const { error } = await supabase.rpc('exec_sql', { sql: statement });
       if (error) {
         console.error('[ADMIN] Statement failed:', error.message);
@@ -2014,6 +2002,6 @@ app.post('/api/admin/migrate-capitalize-labels', async (req, res) => {
   }
 });
 
-const server = app.listen(PORT, () => {
-  console.log(`Server running on port ${PORT}`);
+const server = app.listen(PORT, HOST, () => {
+  console.log(`Server running on http://${HOST}:${PORT}`);
 });

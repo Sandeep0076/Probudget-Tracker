@@ -1,7 +1,7 @@
 import { Budget, Category, RecurringTransaction, Saving, Transaction, TransactionFormData, TransactionType, ActivityLog, Task, Subtask, ShoppingItem } from '../types';
 
 // Get API base URL from environment variable or default to current origin
-const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_URL || '';
 
 const json = async <T>(res: Response): Promise<T> => {
   if (!res.ok) {
@@ -105,14 +105,16 @@ export const updateShoppingItem = (id: string, item: Partial<Omit<ShoppingItem, 
 export const deleteShoppingItem = (id: string) => del<{ ok: boolean }>(`/api/shopping-items/${id}`);
 
 // Calendar integration
-export const getCalendarAuthUrl = () => get<{ url: string }>(`/api/calendar/auth-url`);
-export const getCalendarStatus = () => get<{ connected: boolean; needs_refresh: boolean }>(`/api/calendar/status`);
-export const listCalendarEvents = (timeMin: string, timeMax: string) => get<any[]>(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`);
-export const listGoogleTasks = () => get<any[]>(`/api/google-tasks`);
-export const toggleGoogleTask = (taskId: string, currentStatus: string) => put<any>(`/api/google-tasks/${taskId}/toggle`, { currentStatus });
-export const disconnectCalendar = () => get<{ ok: boolean }>(`/api/calendar/disconnect`);
-export const toggleCalendarEvent = (eventId: string, currentStatus: string) => put<any>(`/api/calendar/events/${eventId}/toggle`, { currentStatus });
-export const syncGoogleData = () => post<{ ok: boolean; created: number; errors: string[] }>('/api/sync-google', {});
+// Calendar integration
+// Google integration removed by user request
+// export const getCalendarAuthUrl = () => get<{ url: string }>(`/api/calendar/auth-url`);
+// export const getCalendarStatus = () => get<{ connected: boolean; needs_refresh: boolean }>(`/api/calendar/status`);
+// export const listCalendarEvents = (timeMin: string, timeMax: string) => get<any[]>(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`);
+// export const listGoogleTasks = () => get<any[]>(`/api/google-tasks`);
+// export const toggleGoogleTask = (taskId: string, currentStatus: string) => put<any>(`/api/google-tasks/${taskId}/toggle`, { currentStatus });
+// export const disconnectCalendar = () => get<{ ok: boolean }>(`/api/calendar/disconnect`);
+// export const toggleCalendarEvent = (eventId: string, currentStatus: string) => put<any>(`/api/calendar/events/${eventId}/toggle`, { currentStatus });
+// export const syncGoogleData = () => post<{ ok: boolean; created: number; errors: string[] }>('/api/sync-google', {});
 
 // Authentication
 export const login = (username: string, password: string) => post<{ success: boolean; username: string }>('/api/auth/login', { username, password });
