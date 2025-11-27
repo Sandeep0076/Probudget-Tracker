@@ -31,7 +31,8 @@ const corsOptions = {
     'http://localhost:3000',
     'http://localhost:5173', // Vite dev
     process.env.FRONTEND_URL, // Northflank frontend URL
-    /\.northflank\.app$/ // Allow all Northflank subdomains
+    /\.northflank\.app$/, // Allow all Northflank subdomains
+    /\.code\.run$/ // Allow all Northflank code.run subdomains
   ],
   credentials: true
 };
