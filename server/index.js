@@ -99,162 +99,7 @@ function decryptJSON(payload) {
   return JSON.parse(json);
 }
 
-function getOAuth2Client() {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
-  const clientSecret = process.env.GOOGLE_CLIENT_SECRET;
-  const redirectUri = process.env.GOOGLE_REDIRECT_URI;
-  if (!clientId || !clientSecret || !redirectUri) return null;
-  return new google.auth.OAuth2(clientId, clientSecret, redirectUri);
-}
-
-async function refreshGoogleTokensIfNeeded(oauth) {
-  if (!oauth) return null;
-  const creds = oauth.credentials || {};
-  const expiryDate = creds.expiry_date; // milliseconds epoch from googleapis
-  const now = Date.now();
-  try {
-    if (!expiryDate) {
-      console.log('[GCAL] No expiry_date present; attempting token refresh proactively');
-      const r = await oauth.getAccessToken();
-      if (r && r.res && r.res.data) {
-        oauth.setCredentials({ ...creds, access_token: r.token });
-      }
-      // Persist possibly updated credentials
-      await setSetting('gcal_tokens', encryptJSON(oauth.credentials));
-      return oauth.credentials;
-    }
-    const secondsLeft = Math.floor((expiryDate - now) / 1000);
-    console.log('[GCAL] Token seconds until expiry:', secondsLeft, 'Threshold:', TOKEN_REFRESH_THRESHOLD_SECONDS);
-    if (secondsLeft <= 0 || secondsLeft < TOKEN_REFRESH_THRESHOLD_SECONDS) {
-      console.log('[GCAL] Refreshing Google access token (seconds left', secondsLeft, 'threshold', TOKEN_REFRESH_THRESHOLD_SECONDS, ')');
-      const refreshed = await oauth.refreshAccessToken();
-      const newTokens = refreshed.credentials;
-      // Preserve existing refresh_token if new response omits it
-      if (!newTokens.refresh_token && creds.refresh_token) {
-        newTokens.refresh_token = creds.refresh_token;
-      }
-      oauth.setCredentials(newTokens);
-      await setSetting('gcal_tokens', encryptJSON(newTokens));
-      console.log('[GCAL] Token refresh success. New expiry:', newTokens.expiry_date);
-      return newTokens;
-    }
-    return creds; // No refresh needed
-  } catch (e) {
-    if (e && e.response && e.response.data && e.response.data.error === 'invalid_grant') {
-      console.error('[GCAL] Refresh failed: invalid_grant (expired or revoked). Clearing stored tokens.');
-      await supabase.from('settings').delete().eq('key', 'gcal_tokens');
-      return null;
-    }
-    console.error('[GCAL] Unexpected token refresh error:', e.message || e);
-    return creds;
-  }
-}
-
-async function getOAuthClientWithTokens() {
-  const oauth = getOAuth2Client();
-  if (!oauth) return null;
-  const enc = await getSetting('gcal_tokens');
-  if (!enc) return null;
-  oauth.setCredentials(decryptJSON(enc));
-  return oauth;
-}
-
-function withOAuth2(callback) {
-  return async (req, res) => {
-    const oauth = getOAuth2Client();
-    if (!oauth) return res.status(400).json({ error: 'Google OAuth not configured' });
-    const enc = await getSetting('gcal_tokens');
-    if (!enc) return res.status(400).json({ error: 'Google Calendar not connected' });
-    oauth.setCredentials(decryptJSON(enc));
-    console.log('[GCAL] Loaded stored credentials. Expiry:', oauth.credentials && oauth.credentials.expiry_date);
-    const refreshed = await refreshGoogleTokensIfNeeded(oauth);
-    if (!refreshed) {
-      // Tokens invalid; ask client to reconnect
-      return res.status(401).json({ error: 'Google Calendar tokens expired or revoked. Please reconnect.', code: 'GCAL_RECONNECT' });
-    }
-    try {
-      await callback(req, res, oauth);
-    } catch (e) {
-      console.error('Google API error', e);
-      res.status(500).json({ error: String(e) });
-    }
-  };
-}
-
-async function ensureEventForTask(task, oauth) {
-  if (!oauth) return null;
-  if (!task.start || !task.end) return null;
-  const calendar = google.calendar({ version: 'v3', auth: oauth });
-
-  // Convert DATE format to datetime for Google Calendar API
-  const startDateTime = task.start + 'T00:00:00.000Z';
-  const endDateTime = task.end + 'T23:59:59.000Z';
-
-  const event = {
-    summary: task.title,
-    description: task.notes || '',
-    start: { dateTime: startDateTime },
-    end: { dateTime: endDateTime },
-    colorId: undefined,
-  };
-  if (task.repeat && task.repeat.type && task.repeat.type !== 'none') {
-    const rrule = buildRRule(task.repeat);
-    if (rrule) event.recurrence = [rrule];
-  }
-  if (task.gcalEventId) {
-    await calendar.events.update({ calendarId: 'primary', eventId: task.gcalEventId, requestBody: event });
-    return task.gcalEventId;
-  } else {
-    const created = await calendar.events.insert({ calendarId: 'primary', requestBody: event });
-    return created.data.id || null;
-  }
-}
-
-function buildRRule(repeat) {
-  if (!repeat || repeat.type === 'none') return null;
-  if (repeat.type === 'daily') return `RRULE:FREQ=DAILY;INTERVAL=${repeat.interval || 1}`;
-  if (repeat.type === 'weekly') return `RRULE:FREQ=WEEKLY;INTERVAL=${repeat.interval || 1}`;
-  if (repeat.type === 'monthly') {
-    if (repeat.monthlyMode === 'last_day') return 'RRULE:FREQ=MONTHLY;BYMONTHDAY=-1';
-    const dom = repeat.dayOfMonth || 1;
-    return `RRULE:FREQ=MONTHLY;BYMONTHDAY=${dom};INTERVAL=${repeat.interval || 1}`;
-  }
-  return null;
-}
-
-async function ensureTaskOnGoogle(task, oauth) {
-  if (!oauth) return null;
-  const tasksApi = google.tasks({ version: 'v1', auth: oauth });
-  const taskBody = {
-    title: task.title,
-    notes: task.notes || '',
-    status: task.status === 'completed' ? 'completed' : 'needsAction',
-  };
-  if (task.due) {
-    // Convert DATE format to ISO datetime for Google Tasks API
-    taskBody.due = task.due + 'T00:00:00.000Z';
-  }
-
-  try {
-    if (task.gtaskId) {
-      const updated = await tasksApi.tasks.update({
-        tasklist: '@default',
-        task: task.gtaskId,
-        requestBody: taskBody,
-      });
-      return updated.data.id || null;
-    } else {
-      const created = await tasksApi.tasks.insert({
-        tasklist: '@default',
-        requestBody: taskBody,
-      });
-      return created.data.id || null;
-    }
-  } catch (e) {
-    console.error('Failed to sync Google Task:', e.message);
-    return null;
-  }
-}
+// Google integration helper functions removed
 
 app.get('/api/transactions', async (req, res) => {
   const { data, error } = await supabase
@@ -1117,146 +962,49 @@ app.delete('/api/shopping-items/:id', async (req, res) => {
 
 // ===== Google Calendar OAuth & Events =====
 app.get('/api/calendar/auth-url', (req, res) => {
-  const oauth = getOAuth2Client();
-  if (!oauth) return res.status(400).json({ error: 'Missing GOOGLE_* env' });
-  const url = oauth.generateAuthUrl({ access_type: 'offline', scope: GOOGLE_API_SCOPES, prompt: 'consent' });
-  res.json({ url });
+  res.status(404).json({ error: 'Google Calendar integration removed' });
 });
 
 app.get('/api/calendar/callback', async (req, res) => {
-  const oauth = getOAuth2Client();
-  if (!oauth) return res.status(400).send('Missing GOOGLE_* env');
-  const code = req.query.code;
-  if (!code) return res.status(400).send('Missing code');
-  console.log('[GCAL] OAuth callback received. Exchanging code for tokens');
-  const { tokens } = await oauth.getToken(String(code));
-  console.log('[GCAL] Tokens received keys:', Object.keys(tokens));
-  // Merge existing stored refresh token if missing (happens on subsequent consent without prompt=consent sometimes)
-  const existingEnc = await getSetting('gcal_tokens');
-  if (!tokens.refresh_token && existingEnc) {
-    try {
-      const existing = decryptJSON(existingEnc);
-      if (existing.refresh_token) {
-        console.log('[GCAL] Preserving existing refresh_token');
-        tokens.refresh_token = existing.refresh_token;
-      }
-    } catch (e) {
-      console.warn('[GCAL] Could not decrypt existing tokens to preserve refresh_token:', e.message);
-    }
-  }
-  await setSetting('gcal_tokens', encryptJSON(tokens));
-  res.send('<html><body><p>Google Calendar connected. You can close this window.</p></body></html>');
+  res.send('<html><body><p>Google Calendar integration has been removed.</p></body></html>');
 });
 
-app.get('/api/calendar/events', withOAuth2(async (req, res, oauth) => {
-  const calendar = google.calendar({ version: 'v3', auth: oauth });
-  const { timeMin, timeMax } = req.query;
-  console.log('[GCAL] Fetching events - timeMin:', timeMin, 'timeMax:', timeMax);
-  const r = await calendar.events.list({
-    calendarId: 'primary',
-    timeMin: String(timeMin),
-    timeMax: String(timeMax),
-    singleEvents: true,
-    orderBy: 'startTime'
-  });
-  const events = r.data.items || [];
-  console.log('[GCAL] Retrieved', events.length, 'events');
-  if (events.length > 0) {
-    console.log('[GCAL] First 3 events:', events.slice(0, 3).map(e => ({
-      id: e.id,
-      summary: e.summary,
-      start: e.start,
-      status: e.status
-    })));
-  }
-  res.json(events);
-}));
+app.get('/api/calendar/events', async (req, res) => {
+  res.json([]);
+});
 
 app.get('/api/calendar/status', async (req, res) => {
-  const enc = await getSetting('gcal_tokens');
-  if (!enc) return res.json({ connected: false });
-  try {
-    const tokens = decryptJSON(enc);
-    const expiryMs = tokens.expiry_date || null;
-    const secondsLeft = expiryMs ? Math.floor((expiryMs - Date.now()) / 1000) : null;
-    res.json({
-      connected: true,
-      hasRefreshToken: Boolean(tokens.refresh_token),
-      expiry_date: expiryMs,
-      seconds_until_expiry: secondsLeft,
-      needs_refresh: secondsLeft !== null && secondsLeft < TOKEN_REFRESH_THRESHOLD_SECONDS
-    });
-  } catch (e) {
-    console.error('[GCAL] Failed to decrypt tokens for status endpoint:', e.message);
-    res.json({ connected: false, error: 'decrypt_failed' });
-  }
+  res.json({ connected: false });
 });
 
-app.post('/api/calendar/events', withOAuth2(async (req, res, oauth) => {
-  const calendar = google.calendar({ version: 'v3', auth: oauth });
-  const created = await calendar.events.insert({ calendarId: 'primary', requestBody: req.body });
-  res.json(created.data);
-}));
+app.post('/api/calendar/events', async (req, res) => {
+  res.status(404).json({ error: 'Google Calendar integration removed' });
+});
 
-app.put('/api/calendar/events/:id', withOAuth2(async (req, res, oauth) => {
-  const calendar = google.calendar({ version: 'v3', auth: oauth });
-  const updated = await calendar.events.update({ calendarId: 'primary', eventId: req.params.id, requestBody: req.body });
-  res.json(updated.data);
-}));
+app.put('/api/calendar/events/:id', async (req, res) => {
+  res.status(404).json({ error: 'Google Calendar integration removed' });
+});
 
-app.delete('/api/calendar/events/:id', withOAuth2(async (req, res, oauth) => {
-  const calendar = google.calendar({ version: 'v3', auth: oauth });
-  await calendar.events.delete({ calendarId: 'primary', eventId: req.params.id });
-  res.json({ ok: true });
-}));
+app.delete('/api/calendar/events/:id', async (req, res) => {
+  res.status(404).json({ error: 'Google Calendar integration removed' });
+});
 
-app.put('/api/calendar/events/:id/toggle', withOAuth2(async (req, res, oauth) => {
-  const calendar = google.calendar({ version: 'v3', auth: oauth });
-  const { currentStatus } = req.body;
-  const isCancelled = currentStatus === 'cancelled' || currentStatus === 'completed';
-
-  // Toggle: if currently cancelled/completed, restore to confirmed; otherwise mark as cancelled
-  const newStatus = isCancelled ? 'confirmed' : 'cancelled';
-
-  const updated = await calendar.events.patch({
-    calendarId: 'primary',
-    eventId: req.params.id,
-    requestBody: { status: newStatus }
-  });
-
-  res.json(updated.data);
-}));
+app.put('/api/calendar/events/:id/toggle', async (req, res) => {
+  res.status(404).json({ error: 'Google Calendar integration removed' });
+});
 
 app.get('/api/calendar/disconnect', async (req, res) => {
   await supabase.from('settings').delete().eq('key', 'gcal_tokens');
   res.json({ ok: true });
 });
 
-app.get('/api/google-tasks', withOAuth2(async (req, res, oauth) => {
-  const tasksApi = google.tasks({ version: 'v1', auth: oauth });
-  const r = await tasksApi.tasks.list({
-    tasklist: '@default',
-    showCompleted: false,
-    showHidden: false,
-  });
-  res.json(r.data.items || []);
-}));
+app.get('/api/google-tasks', async (req, res) => {
+  res.json([]);
+});
 
-app.put('/api/google-tasks/:id/toggle', withOAuth2(async (req, res, oauth) => {
-  const tasksApi = google.tasks({ version: 'v1', auth: oauth });
-  const { currentStatus } = req.body;
-
-  // Google Tasks status: 'needsAction' or 'completed'
-  const newStatus = currentStatus === 'completed' ? 'needsAction' : 'completed';
-
-  const updated = await tasksApi.tasks.patch({
-    tasklist: '@default',
-    task: req.params.id,
-    requestBody: { status: newStatus, id: req.params.id }
-  });
-
-  res.json(updated.data);
-}));
+app.put('/api/google-tasks/:id/toggle', async (req, res) => {
+  res.status(404).json({ error: 'Google Tasks integration removed' });
+});
 
 app.get('/api/budgets', async (req, res) => {
   const { data, error } = await supabase.from('budgets').select('*').order('category');

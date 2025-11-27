@@ -3,13 +3,10 @@ import { ActivityLog } from '../types';
 
 interface SettingsPageProps {
     activityLogs: ActivityLog[];
-    isGoogleConnected: boolean;
-    onConnectGoogle: () => void;
-    onDisconnectGoogle: () => void;
     onRepairDatabase: () => void;
 }
 
-const SettingsPage: React.FC<SettingsPageProps> = ({ activityLogs, isGoogleConnected, onConnectGoogle, onDisconnectGoogle, onRepairDatabase }) => {
+const SettingsPage: React.FC<SettingsPageProps> = ({ activityLogs, onRepairDatabase }) => {
 
     const formatTimestamp = (timestamp: string) => {
         return new Date(timestamp).toLocaleString('en-US', {
@@ -22,15 +19,7 @@ const SettingsPage: React.FC<SettingsPageProps> = ({ activityLogs, isGoogleConne
         <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8">
             <h1 className="text-2xl font-bold text-text-primary mb-8">Settings</h1>
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-                {/* Integrations */}
-                <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow h-fit">
-                    <h2 className="text-xl font-semibold text-text-primary mb-4">Integrations</h2>
-                    <div className="space-y-4">
-                        <div className="p-4 bg-surface rounded-lg shadow-inner text-sm text-text-secondary">
-                            <p>Google Calendar integration has been disabled.</p>
-                        </div>
-                    </div>
-                </div>
+
                 {/* System Maintenance */}
                 <div className="bg-surface backdrop-blur-xl p-6 rounded-xl shadow-neu-lg border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow h-fit mt-8">
                     <h2 className="text-xl font-semibold text-text-primary mb-4">System Maintenance</h2>

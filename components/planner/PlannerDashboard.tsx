@@ -86,7 +86,16 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
   const overdue = tasks.filter(t => t.due && t.status !== 'completed' && t.due < todayKey);
   const today = tasks.filter(t => isSameDay(t.start || t.due, todayKey));
   const tomorrow = tasks.filter(t => isSameDay(t.start || t.due, tomorrowKey));
-  const someday = tasks.filter(t => !t.start && !t.due && t.status !== 'completed');
+  const upcomingDate = new Date(now);
+  upcomingDate.setDate(now.getDate() + 7);
+  const upcomingKey = new Date(upcomingDate.getTime() - upcomingDate.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
+
+  const someday = tasks.filter(t => {
+    if (t.status === 'completed') return false;
+    const date = t.start || t.due;
+    if (!date) return true;
+    return date > upcomingKey;
+  });
 
   console.log('[PlannerDashboard] Filtering someday tasks - total tasks:', tasks.length, 'someday tasks:', someday.length);
   console.log('[PlannerDashboard] Someday tasks:', someday.map(t => ({ id: t.id, title: t.title, status: t.status })));
@@ -138,7 +147,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const nextWeeks = new Date(today);
-                nextWeeks.setDate(today.getDate() + 28); // 4 weeks
+                nextWeeks.setDate(today.getDate() + 7); // 7 days
                 nextWeeks.setHours(23, 59, 59, 999);
 
                 // Helper to get date object from item

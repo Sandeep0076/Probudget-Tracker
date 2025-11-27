@@ -58,7 +58,6 @@ const App: React.FC = () => {
   const [receiptItemsToConfirm, setReceiptItemsToConfirm] = useState<TransactionFormData[]>([]);
   const [editingTransaction, setEditingTransaction] = useState<Transaction | null>(null);
   const [editingRecurringTransaction, setEditingRecurringTransaction] = useState<RecurringTransaction | null>(null);
-  const [isGoogleConnected, setIsGoogleConnected] = useState(false);
 
   const [theme, setTheme] = useState<Theme>('dark-blue');
   const [customThemeColor, setCustomThemeColor] = useState<string>('#5e258a');
@@ -145,17 +144,6 @@ const App: React.FC = () => {
           await loadTasks();
           await loadShoppingItems();
           await loadCalendarForWeek();
-          await checkGoogleConnection();
-
-          // Auto-sync Google Data
-          try {
-            console.log('[App] Auto-syncing Google data...');
-            await api.syncGoogleData();
-            console.log('[App] Auto-sync complete, reloading tasks...');
-            await loadTasks();
-          } catch (e) {
-            console.log('[App] Auto-sync failed (likely not connected):', e);
-          }
 
           console.log('[App] Application data loaded successfully');
         } catch (e) {
@@ -211,51 +199,12 @@ const App: React.FC = () => {
   };
 
   const loadCalendarForWeek = async () => {
-    // Google fetching disabled in favor of import sync
+    // Google fetching disabled
     setCalendarEvents([]);
   };
 
-  const checkGoogleConnection = async () => {
-    try {
-      const status = await api.getCalendarStatus();
-      setIsGoogleConnected(status.connected);
-    } catch (e) {
-      console.error('Failed to check google status', e);
-      setIsGoogleConnected(false);
-    }
-  };
-
-  const handleConnectCalendar = async () => {
-    try {
-      const { url } = await api.getCalendarAuthUrl();
-      const popup = window.open(url, '_blank', 'width=480,height=640');
-      if (popup) {
-        const poll = window.setInterval(() => {
-          if (popup.closed) {
-            window.clearInterval(poll);
-            checkGoogleConnection();
-            // Trigger sync after connection
-            api.syncGoogleData().then(() => loadTasks()).catch(console.error);
-          }
-        }, 1500);
-      }
-    } catch (err) {
-      console.error('Failed to connect calendar', err);
-    }
-  };
-
-  const handleDisconnectCalendar = async () => {
-    try {
-      await api.disconnectCalendar();
-      setIsGoogleConnected(false);
-      alert('Google Calendar disconnected.');
-    } catch (err) {
-      console.error('Failed to disconnect calendar', err);
-    }
-  };
-
   const handleCalendarDatesChange = async (start: Date, end: Date) => {
-    // Google fetching disabled in favor of import sync
+    // Google fetching disabled
     setCalendarEvents([]);
   };
 
@@ -536,11 +485,7 @@ const App: React.FC = () => {
 
   const handleToggleEvent = async (event: any) => {
     try {
-      if (event.isGtask) {
-        await api.toggleGoogleTask(event.gtaskId, event.status);
-      } else {
-        await api.toggleCalendarEvent(event.id, event.status || 'confirmed');
-      }
+      // Only handle local events if needed, or remove completely if unused
       await loadCalendarForWeek();
     } catch (err) {
       console.error('Failed to toggle event', err);
@@ -734,9 +679,6 @@ const App: React.FC = () => {
       case 'settings':
         return <SettingsPage
           activityLogs={activityLogs}
-          isGoogleConnected={isGoogleConnected}
-          onConnectGoogle={handleConnectCalendar}
-          onDisconnectGoogle={handleDisconnectCalendar}
           onRepairDatabase={handleRepairDatabase}
         />;
       default:
