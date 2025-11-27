@@ -483,6 +483,27 @@ const App: React.FC = () => {
     console.log('[App] handleUpdateTask completed. After reload:', { id, newStatus: updated?.status, newProgress: updated?.progress });
   };
 
+  const handleCompleteTaskToTrash = async (task: Task) => {
+    console.log('[App] handleCompleteTaskToTrash called for task:', task.id, task.title, 'current status:', task.status);
+    try {
+      if (task.status === 'completed') {
+        // Task is already completed, so we're "uncompleting" it by restoring from trash
+        console.log('[App] Task is completed, restoring from trash...');
+        await api.restoreTask(task.id);
+        console.log('[App] Task restored from trash:', task.id);
+      } else {
+        // Task is not completed, so we're completing it and moving to trash
+        console.log('[App] Task is not completed, completing and moving to trash...');
+        await api.completeTaskToTrash(task.id);
+        console.log('[App] Task completed and moved to trash:', task.id);
+      }
+      await loadTasks();
+      console.log('[App] handleCompleteTaskToTrash completed, tasks reloaded');
+    } catch (e) {
+      console.error('[App] handleCompleteTaskToTrash error:', e);
+    }
+  };
+
   const handleToggleEvent = async (event: any) => {
     try {
       // Only handle local events if needed, or remove completely if unused
@@ -763,11 +784,12 @@ const App: React.FC = () => {
                 tasks={tasks.filter(t => (t.taskType || 'todo') === 'todo')}
                 events={calendarEvents}
                 onRefresh={() => { loadTasks(); loadCalendarForWeek(); }}
-                onToggleComplete={(t) => handleUpdateTask(t.id, { status: t.status === 'completed' ? 'new' : 'completed' })}
+                onToggleComplete={handleCompleteTaskToTrash}
                 onToggleEvent={handleToggleEvent}
                 onEditTask={handleEditTask}
                 onDeleteTask={handleDeleteTask}
                 onConvertToSchedule={(taskId) => handleUpdateTask(taskId, { taskType: 'schedule' })}
+                onUpdateTask={handleUpdateTask}
                 username={username}
               />
             )}
