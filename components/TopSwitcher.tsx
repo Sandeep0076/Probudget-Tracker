@@ -1,5 +1,6 @@
 import React from 'react';
 import ThemeSelector from './ThemeSelector';
+import DateDisplay from './DateDisplay';
 import { Theme } from '../App';
 
 interface TopSwitcherProps {
@@ -48,16 +49,21 @@ const TopSwitcher: React.FC<TopSwitcherProps> = ({
             <Tab active={section === 'budget'} onClick={() => onChange('budget')}>Budget</Tab>
             <Tab active={section === 'planner'} onClick={() => onChange('planner')}>Planner</Tab>
           </div>
-          <ThemeSelector
-            currentTheme={currentTheme}
-            onThemeChange={onThemeChange}
-            customThemeColor={customThemeColor}
-            onCustomColorChange={onCustomColorChange}
-            username={username}
-            onUsernameChange={onUsernameChange}
-            password={password}
-            onPasswordChange={onPasswordChange}
-          />
+          <div className="flex items-center gap-2 sm:gap-4">
+            {/* Beautiful Date Display - Now visible on mobile too */}
+            <DateDisplay className="flex" />
+            {/* Theme Selector */}
+            <ThemeSelector
+              currentTheme={currentTheme}
+              onThemeChange={onThemeChange}
+              customThemeColor={customThemeColor}
+              onCustomColorChange={onCustomColorChange}
+              username={username}
+              onUsernameChange={onUsernameChange}
+              password={password}
+              onPasswordChange={onPasswordChange}
+            />
+          </div>
         </div>
       </div>
     </div>
