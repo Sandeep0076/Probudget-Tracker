@@ -17,7 +17,7 @@ interface PlannerDashboardProps {
   username: string;
 }
 
-const DroppableSection: React.FC<{ id: string; title: string; children: React.ReactNode; className?: string }> = ({ id, title, children, className }) => {
+const DroppableSection: React.FC<{ id: string; title: string; children: React.ReactNode; className?: string; maxHeight?: string; scrollable?: boolean }> = ({ id, title, children, className, maxHeight, scrollable }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
@@ -28,7 +28,7 @@ const DroppableSection: React.FC<{ id: string; title: string; children: React.Re
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">{title}</h3>
       </div>
-      <div className="mt-3 space-y-2 min-h-[50px]">{children}</div>
+      <div className={`mt-2 space-y-3 min-h-[50px] ${scrollable ? 'overflow-y-auto p-2' : 'p-2'} ${maxHeight || ''}`}>{children}</div>
     </div>
   );
 };
@@ -61,23 +61,51 @@ const DraggableTaskRow: React.FC<{ task: Task; onToggle: () => void; onEdit: () 
       style={style}
       {...attributes}
       {...listeners}
-      className="group flex items-center justify-between px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5 touch-none"
+      className="group flex items-start gap-3 px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5 touch-none"
     >
-      <div className="flex items-center gap-3 flex-1">
-        <input
-          type="checkbox"
-          checked={task.status === 'completed'}
-          onChange={(e) => { e.stopPropagation(); onToggle(); }}
-          className="w-4 h-4 rounded border-gray-300 cursor-pointer"
-        />
-        <span className={task.status === 'completed' ? 'line-through text-text-muted' : 'text-text-primary font-semibold'}>{task.title}</span>
+      <input
+        type="checkbox"
+        checked={task.status === 'completed'}
+        onChange={(e) => { e.stopPropagation(); onToggle(); }}
+        className="w-4 h-4 mt-1 rounded border-gray-300 cursor-pointer flex-shrink-0"
+      />
+
+      <div className="flex-1 min-w-0">
+        <div className="flex items-start justify-between gap-2">
+          <span className={`font-semibold ${task.status === 'completed' ? 'line-through text-text-muted' : 'text-text-primary'}`}>
+            {task.title}
+          </span>
+          {task.priority && (
+            <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded flex-shrink-0 ${task.priority === 'high' ? 'bg-danger/20 text-danger' :
+                task.priority === 'medium' ? 'bg-warning/20 text-warning' :
+                  'bg-text-muted/20 text-text-muted'
+              }`}>
+              {task.priority}
+            </span>
+          )}
+        </div>
+
+        <div className="flex items-center gap-2 mt-1 text-xs text-text-secondary">
+          <span className="uppercase tracking-wider font-medium">
+            {task.taskType === 'schedule' ? 'SCHEDULE' : 'TASK'}
+          </span>
+          {(task.start || task.due) && (
+            <>
+              <span>•</span>
+              <span>
+                {task.start ? new Date(task.start).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) :
+                  task.due ? new Date(task.due + 'T00:00:00.000Z').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : ''}
+              </span>
+            </>
+          )}
+        </div>
       </div>
-      <div className="flex items-center gap-1">
-        {task.due && <span className="text-xs text-warning font-bold mr-2">{new Date(task.due + 'T00:00:00.000Z').toLocaleDateString()}</span>}
+
+      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity flex-shrink-0">
         {onConvertToSchedule && (
           <button
             onClick={(e) => { e.stopPropagation(); onConvertToSchedule(); }}
-            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-brand/10 rounded-lg transition-opacity"
+            className="p-1.5 hover:bg-brand/10 rounded-lg"
             title="Convert to Schedule"
           >
             <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -87,7 +115,7 @@ const DraggableTaskRow: React.FC<{ task: Task; onToggle: () => void; onEdit: () 
         )}
         <button
           onClick={(e) => { e.stopPropagation(); onEdit(); }}
-          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-border-highlight rounded-lg transition-opacity"
+          className="p-1.5 hover:bg-border-highlight rounded-lg"
           title="Edit"
         >
           <svg className="w-4 h-4 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -96,7 +124,7 @@ const DraggableTaskRow: React.FC<{ task: Task; onToggle: () => void; onEdit: () 
         </button>
         <button
           onClick={(e) => { e.stopPropagation(); onDelete(); }}
-          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-danger/10 rounded-lg transition-opacity"
+          className="p-1.5 hover:bg-danger/10 rounded-lg"
           title="Delete"
         >
           <svg className="w-4 h-4 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,6 +160,8 @@ const EventRow: React.FC<{ event: any; onToggle: () => void }> = ({ event, onTog
 
 const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRefresh, onToggleComplete, onToggleEvent, onEditTask, onDeleteTask, onConvertToSchedule, onUpdateTask, username }) => {
   const [activeId, setActiveId] = useState<string | null>(null);
+
+  console.log('[PlannerDashboard] Rendering with mobile order: Today -> Tomorrow -> Overdue -> Upcoming Calendar -> Someday');
 
   const now = new Date();
   const todayKey = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
@@ -231,27 +261,25 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Today section */}
-        <div className="space-y-4 lg:col-span-1 lg:order-2">
-          <DroppableSection id="today" title="Today">
-            {today.length === 0 && todayEvents.length === 0 && <div className="text-sm text-text-secondary">No tasks for today.</div>}
-            {todayEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
-            {today.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
-          </DroppableSection>
-        </div>
-
-        {/* Upcoming Calendar */}
-        <div className="space-y-4 lg:col-span-1 lg:order-1">
+        {/* Upcoming Calendar - order-4 on mobile, order-1 on desktop */}
+        <div className="space-y-4 lg:col-span-1 order-4 lg:order-1">
           <div className="bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">Upcoming Calendar</h3>
             </div>
-            <div className="relative mt-3 space-y-2">
+            <div className="relative mt-2 space-y-3 max-h-[300px] overflow-y-auto p-2">
               {(() => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
+
+                // Start from day after tomorrow (2 days from now)
+                const dayAfterTomorrow = new Date(today);
+                dayAfterTomorrow.setDate(today.getDate() + 2);
+                dayAfterTomorrow.setHours(0, 0, 0, 0);
+
+                // End at 7 days from now
                 const nextWeeks = new Date(today);
-                nextWeeks.setDate(today.getDate() + 7); // 7 days
+                nextWeeks.setDate(today.getDate() + 7);
                 nextWeeks.setHours(23, 59, 59, 999);
 
                 const getItemDate = (item: any, type: 'event' | 'task') => {
@@ -270,7 +298,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                   .filter((e: any) => {
                     const date = getItemDate(e, 'event');
                     const isCancelled = e.status === 'cancelled' || e.status === 'completed';
-                    return date && date >= today && date <= nextWeeks && !isCancelled;
+                    // Only show events that are between day after tomorrow and 7 days from now
+                    return date && date >= dayAfterTomorrow && date <= nextWeeks && !isCancelled;
                   });
 
                 const upcomingTasks = tasks
@@ -278,7 +307,8 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                   .map(t => ({ ...t, itemType: 'task' }))
                   .filter(t => {
                     const date = getItemDate(t, 'task');
-                    return date && date >= today && date <= nextWeeks;
+                    // Only show tasks that are between day after tomorrow and 7 days from now
+                    return date && date >= dayAfterTomorrow && date <= nextWeeks;
                   });
 
                 const allUpcoming = [...upcomingEvents, ...upcomingTasks].sort((a, b) => {
@@ -290,7 +320,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                 if (allUpcoming.length === 0) {
                   return (
                     <div className="text-sm text-text-secondary">
-                      No upcoming tasks or events in the next 4 weeks.
+                      No upcoming tasks or events in the next week.
                     </div>
                   );
                 }
@@ -344,23 +374,34 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
           </div>
         </div>
 
-        {/* Overdue and Tomorrow */}
-        <div className="space-y-4 lg:col-span-1 lg:order-3">
-          <DroppableSection id="overdue" title="Overdue">
-            {overdue.length === 0 && <div className="text-sm text-text-secondary">All clear.</div>}
-            {overdue.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
+        {/* Today section - order-1 on mobile, order-2 on desktop */}
+        <div className="space-y-4 lg:col-span-1 order-1 lg:order-2">
+          <DroppableSection id="today" title="Today" maxHeight="max-h-[300px]" scrollable={true}>
+            {today.length === 0 && todayEvents.length === 0 && <div className="text-sm text-text-secondary">No tasks for today.</div>}
+            {todayEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
+            {today.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
           </DroppableSection>
+        </div>
 
-          <DroppableSection id="tomorrow" title="Tomorrow">
+        {/* Tomorrow and Overdue section - order-2/3 on mobile, order-3 on desktop */}
+        <div className="space-y-4 lg:col-span-1 order-2 lg:order-3">
+          {/* Tomorrow section */}
+          <DroppableSection id="tomorrow" title="Tomorrow" maxHeight="max-h-[220px]" scrollable={true}>
             {tomorrow.length === 0 && tomorrowEvents.length === 0 && <div className="text-sm text-text-secondary">Nothing yet.</div>}
             {tomorrowEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
             {tomorrow.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
           </DroppableSection>
+
+          {/* Overdue section - shown below tomorrow on both mobile and desktop */}
+          <DroppableSection id="overdue" title="Overdue" maxHeight="max-h-[220px]" scrollable={true}>
+            {overdue.length === 0 && <div className="text-sm text-text-secondary">All clear.</div>}
+            {overdue.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
+          </DroppableSection>
         </div>
 
-        {/* Someday section */}
-        <div className="lg:col-span-3 order-last">
-          <DroppableSection id="someday" title="Someday">
+        {/* Someday section - order-5 on mobile, last on desktop */}
+        <div className="lg:col-span-3 order-5 lg:order-last">
+          <DroppableSection id="someday" title="Someday" maxHeight="max-h-[420px]" scrollable={true}>
             {someday.length === 0 && <div className="text-sm text-text-secondary">No backlog items.</div>}
             {someday.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
           </DroppableSection>

@@ -155,7 +155,7 @@ const TrashboxPage: React.FC = () => {
                   <tr key={t.id} className="border-t border-border-shadow hover:bg-card-bg-dark transition-colors">
                     <td className="p-4 text-text-primary font-medium">{t.title}</td>
                     <td className="p-4 text-text-secondary capitalize">{t.status}</td>
-                    <td className="p-4 text-text-secondary">{t.deletedAt ? new Date(t.deletedAt).toLocaleString() : '—'}</td>
+                    <td className="p-4 text-text-secondary">{t.deletedAt ? new Date(t.deletedAt).toLocaleDateString() : '—'}</td>
                     <td className="p-4 text-text-secondary">{t.labels.join(', ') || '—'}</td>
                     <td className="p-4 space-x-2">
                       <button
