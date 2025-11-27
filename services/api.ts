@@ -104,17 +104,13 @@ export const addShoppingItem = (item: Omit<ShoppingItem, 'id' | 'createdAt'>) =>
 export const updateShoppingItem = (id: string, item: Partial<Omit<ShoppingItem, 'id' | 'createdAt'>>) => put<{ ok: boolean }>(`/api/shopping-items/${id}`, item);
 export const deleteShoppingItem = (id: string) => del<{ ok: boolean }>(`/api/shopping-items/${id}`);
 
-// Calendar integration
-// Calendar integration
-// Google integration removed by user request
-// export const getCalendarAuthUrl = () => get<{ url: string }>(`/api/calendar/auth-url`);
-// export const getCalendarStatus = () => get<{ connected: boolean; needs_refresh: boolean }>(`/api/calendar/status`);
-// export const listCalendarEvents = (timeMin: string, timeMax: string) => get<any[]>(`/api/calendar/events?timeMin=${encodeURIComponent(timeMin)}&timeMax=${encodeURIComponent(timeMax)}`);
-// export const listGoogleTasks = () => get<any[]>(`/api/google-tasks`);
-// export const toggleGoogleTask = (taskId: string, currentStatus: string) => put<any>(`/api/google-tasks/${taskId}/toggle`, { currentStatus });
-// export const disconnectCalendar = () => get<{ ok: boolean }>(`/api/calendar/disconnect`);
-// export const toggleCalendarEvent = (eventId: string, currentStatus: string) => put<any>(`/api/calendar/events/${eventId}/toggle`, { currentStatus });
-// export const syncGoogleData = () => post<{ ok: boolean; created: number; errors: string[] }>('/api/sync-google', {});
+// Google integration removed
+export const getCalendarAuthUrl = () => Promise.reject('Google integration removed');
+export const getCalendarStatus = () => Promise.resolve({ connected: false, needs_refresh: false });
+export const disconnectCalendar = () => Promise.resolve({ ok: true });
+export const syncGoogleData = () => Promise.resolve({ ok: true, created: 0, errors: [] });
+export const toggleGoogleTask = () => Promise.reject('Google integration removed');
+export const toggleCalendarEvent = () => Promise.reject('Google integration removed');
 
 // Authentication
 export const login = (username: string, password: string) => post<{ success: boolean; username: string }>('/api/auth/login', { username, password });
