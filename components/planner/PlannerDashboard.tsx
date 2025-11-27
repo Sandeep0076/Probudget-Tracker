@@ -17,7 +17,7 @@ interface PlannerDashboardProps {
   username: string;
 }
 
-const DroppableSection: React.FC<{ id: string; title: string; children: React.ReactNode; className?: string; maxHeight?: string; scrollable?: boolean }> = ({ id, title, children, className, maxHeight, scrollable }) => {
+const DroppableSection: React.FC<{ id: string; title: string; children: React.ReactNode; className?: string; maxHeight?: string; minHeight?: string; scrollable?: boolean }> = ({ id, title, children, className, maxHeight, minHeight, scrollable }) => {
   const { setNodeRef, isOver } = useDroppable({ id });
 
   return (
@@ -28,7 +28,7 @@ const DroppableSection: React.FC<{ id: string; title: string; children: React.Re
       <div className="flex items-center justify-between">
         <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">{title}</h3>
       </div>
-      <div className={`mt-2 space-y-3 min-h-[50px] ${scrollable ? 'overflow-y-auto p-2' : 'p-2'} ${maxHeight || ''}`}>{children}</div>
+      <div className={`mt-2 space-y-2.5 ${scrollable ? 'overflow-y-auto p-2 pb-3' : 'p-2 pb-3'} ${minHeight || 'min-h-[50px]'} ${maxHeight || ''}`}>{children}</div>
     </div>
   );
 };
@@ -77,8 +77,8 @@ const DraggableTaskRow: React.FC<{ task: Task; onToggle: () => void; onEdit: () 
           </span>
           {task.priority && (
             <span className={`text-xs font-bold uppercase px-2 py-0.5 rounded flex-shrink-0 ${task.priority === 'high' ? 'bg-danger/20 text-danger' :
-                task.priority === 'medium' ? 'bg-warning/20 text-warning' :
-                  'bg-text-muted/20 text-text-muted'
+              task.priority === 'medium' ? 'bg-warning/20 text-warning' :
+                'bg-text-muted/20 text-text-muted'
               }`}>
               {task.priority}
             </span>
@@ -267,7 +267,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">Upcoming Calendar</h3>
             </div>
-            <div className="relative mt-2 space-y-3 max-h-[300px] overflow-y-auto p-2">
+            <div className="relative mt-2 space-y-2.5 max-h-[480px] overflow-y-auto p-2 pb-3">
               {(() => {
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
@@ -376,7 +376,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
 
         {/* Today section - order-1 on mobile, order-2 on desktop */}
         <div className="space-y-4 lg:col-span-1 order-1 lg:order-2">
-          <DroppableSection id="today" title="Today" maxHeight="max-h-[300px]" scrollable={true}>
+          <DroppableSection id="today" title="Today" maxHeight="max-h-[480px]" scrollable={true}>
             {today.length === 0 && todayEvents.length === 0 && <div className="text-sm text-text-secondary">No tasks for today.</div>}
             {todayEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
             {today.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
@@ -386,14 +386,14 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
         {/* Tomorrow and Overdue section - order-2/3 on mobile, order-3 on desktop */}
         <div className="space-y-4 lg:col-span-1 order-2 lg:order-3">
           {/* Tomorrow section */}
-          <DroppableSection id="tomorrow" title="Tomorrow" maxHeight="max-h-[220px]" scrollable={true}>
+          <DroppableSection id="tomorrow" title="Tomorrow" maxHeight="max-h-[228px]" scrollable={true}>
             {tomorrow.length === 0 && tomorrowEvents.length === 0 && <div className="text-sm text-text-secondary">Nothing yet.</div>}
             {tomorrowEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
             {tomorrow.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
           </DroppableSection>
 
           {/* Overdue section - shown below tomorrow on both mobile and desktop */}
-          <DroppableSection id="overdue" title="Overdue" maxHeight="max-h-[220px]" scrollable={true}>
+          <DroppableSection id="overdue" title="Overdue" maxHeight="max-h-[228px]" scrollable={true}>
             {overdue.length === 0 && <div className="text-sm text-text-secondary">All clear.</div>}
             {overdue.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
           </DroppableSection>
@@ -401,7 +401,7 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
 
         {/* Someday section - order-5 on mobile, last on desktop */}
         <div className="lg:col-span-3 order-5 lg:order-last">
-          <DroppableSection id="someday" title="Someday" maxHeight="max-h-[420px]" scrollable={true}>
+          <DroppableSection id="someday" title="Someday" maxHeight="max-h-[670px]" scrollable={true}>
             {someday.length === 0 && <div className="text-sm text-text-secondary">No backlog items.</div>}
             {someday.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
           </DroppableSection>
