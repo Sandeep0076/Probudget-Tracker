@@ -90,6 +90,7 @@ export const getTasks = () => get<Task[]>('/api/tasks');
 export const addTask = (task: Omit<Task, 'id' | 'createdAt' | 'updatedAt' | 'subtasks'> & { subtasks?: Subtask[] }) => post<{ id: string }>(`/api/tasks`, task);
 export const updateTask = (id: string, task: Partial<Omit<Task, 'id' | 'createdAt' | 'updatedAt'>>) => put<{ ok: boolean }>(`/api/tasks/${id}`, task);
 export const deleteTask = (id: string) => del<{ ok: boolean }>(`/api/tasks/${id}`);
+export const completeTaskToTrash = (id: string) => post<{ ok: boolean; completed: boolean; trashedAt: string }>(`/api/tasks/${id}/complete-to-trash`, {});
 export const getAgenda = (range: 'today' | 'week' | 'overdue') => get<any[]>(`/api/tasks/agenda?range=${range}`);
 // Trashbox (Tasks)
 export const getTrashedTasks = () => get<any[]>(`/api/tasks/trash`);

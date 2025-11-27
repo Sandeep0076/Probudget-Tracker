@@ -1,6 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Task } from '../../types';
-import * as api from '../../services/api';
+import { DndContext, DragEndEvent, DragOverlay, useDraggable, useDroppable, useSensor, useSensors, PointerSensor, KeyboardSensor } from '@dnd-kit/core';
+import { sortableKeyboardCoordinates } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 
 interface PlannerDashboardProps {
   tasks: Task[];
@@ -11,46 +13,100 @@ interface PlannerDashboardProps {
   onEditTask: (task: Task) => void;
   onDeleteTask: (taskId: string) => void;
   onConvertToSchedule?: (taskId: string) => void;
+  onUpdateTask: (taskId: string, patch: any) => void;
   username: string;
 }
 
-const Section: React.FC<{ title: string; children: React.ReactNode }> = ({ title, children }) => (
-  <div className="bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
-    <div className="flex items-center justify-between">
-      <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">{title}</h3>
-    </div>
-    <div className="mt-3 space-y-2">{children}</div>
-  </div>
-);
+const DroppableSection: React.FC<{ id: string; title: string; children: React.ReactNode; className?: string }> = ({ id, title, children, className }) => {
+  const { setNodeRef, isOver } = useDroppable({ id });
 
-const TaskRow: React.FC<{ task: Task; onToggle: () => void; onEdit: () => void; onDelete: () => void; onConvertToSchedule?: () => void }> = ({ task, onToggle, onEdit, onDelete, onConvertToSchedule }) => (
-  <div className="group flex items-center justify-between px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5">
-    <label className="flex items-center gap-3 cursor-pointer flex-1">
-      <input type="checkbox" checked={task.status === 'completed'} onChange={onToggle} className="w-4 h-4 rounded border-gray-300" />
-      <span className={task.status === 'completed' ? 'line-through text-text-muted' : 'text-text-primary font-semibold'}>{task.title}</span>
-    </label>
-    <div className="flex items-center gap-1">
-      {task.due && <span className="text-xs text-warning font-bold mr-2">{new Date(task.due + 'T00:00:00.000Z').toLocaleDateString()}</span>}
-      {onConvertToSchedule && (
-        <button onClick={onConvertToSchedule} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-brand/10 rounded-lg transition-opacity" title="Convert to Schedule">
-          <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+  return (
+    <div
+      ref={setNodeRef}
+      className={`bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-all duration-300 ${isOver ? 'ring-2 ring-brand shadow-[0_0_20px_var(--color-brand)]' : ''} ${className || ''}`}
+    >
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">{title}</h3>
+      </div>
+      <div className="mt-3 space-y-2 min-h-[50px]">{children}</div>
+    </div>
+  );
+};
+
+const DraggableTaskRow: React.FC<{ task: Task; onToggle: () => void; onEdit: () => void; onDelete: () => void; onConvertToSchedule?: () => void }> = ({ task, onToggle, onEdit, onDelete, onConvertToSchedule }) => {
+  const { attributes, listeners, setNodeRef, transform, isDragging } = useDraggable({
+    id: task.id,
+    data: { task }
+  });
+
+  const style = transform ? {
+    transform: CSS.Translate.toString(transform),
+  } : undefined;
+
+  if (isDragging) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="opacity-50 flex items-center justify-between px-4 py-3 rounded-xl bg-card-bg border-2 border-brand border-dashed"
+      >
+        <span className="font-semibold text-text-primary">{task.title}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div
+      ref={setNodeRef}
+      style={style}
+      {...attributes}
+      {...listeners}
+      className="group flex items-center justify-between px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5 touch-none"
+    >
+      <div className="flex items-center gap-3 flex-1">
+        <input
+          type="checkbox"
+          checked={task.status === 'completed'}
+          onChange={(e) => { e.stopPropagation(); onToggle(); }}
+          className="w-4 h-4 rounded border-gray-300 cursor-pointer"
+        />
+        <span className={task.status === 'completed' ? 'line-through text-text-muted' : 'text-text-primary font-semibold'}>{task.title}</span>
+      </div>
+      <div className="flex items-center gap-1">
+        {task.due && <span className="text-xs text-warning font-bold mr-2">{new Date(task.due + 'T00:00:00.000Z').toLocaleDateString()}</span>}
+        {onConvertToSchedule && (
+          <button
+            onClick={(e) => { e.stopPropagation(); onConvertToSchedule(); }}
+            className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-brand/10 rounded-lg transition-opacity"
+            title="Convert to Schedule"
+          >
+            <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+            </svg>
+          </button>
+        )}
+        <button
+          onClick={(e) => { e.stopPropagation(); onEdit(); }}
+          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-border-highlight rounded-lg transition-opacity"
+          title="Edit"
+        >
+          <svg className="w-4 h-4 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
           </svg>
         </button>
-      )}
-      <button onClick={onEdit} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-border-highlight rounded-lg transition-opacity" title="Edit">
-        <svg className="w-4 h-4 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-        </svg>
-      </button>
-      <button onClick={onDelete} className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-danger/10 rounded-lg transition-opacity" title="Delete">
-        <svg className="w-4 h-4 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-        </svg>
-      </button>
+        <button
+          onClick={(e) => { e.stopPropagation(); onDelete(); }}
+          className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-danger/10 rounded-lg transition-opacity"
+          title="Delete"
+        >
+          <svg className="w-4 h-4 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+          </svg>
+        </button>
+      </div>
     </div>
-  </div>
-);
+  );
+};
 
 const EventRow: React.FC<{ event: any; onToggle: () => void }> = ({ event, onToggle }) => {
   const title = event.summary || event.title || 'Event';
@@ -74,7 +130,9 @@ const EventRow: React.FC<{ event: any; onToggle: () => void }> = ({ event, onTog
   );
 };
 
-const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRefresh, onToggleComplete, onToggleEvent, onEditTask, onDeleteTask, onConvertToSchedule, username }) => {
+const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRefresh, onToggleComplete, onToggleEvent, onEditTask, onDeleteTask, onConvertToSchedule, onUpdateTask, username }) => {
+  const [activeId, setActiveId] = useState<string | null>(null);
+
   const now = new Date();
   const todayKey = new Date(now.getTime() - now.getTimezoneOffset() * 60000).toISOString().slice(0, 10);
   const tomorrowDate = new Date(now);
@@ -97,9 +155,6 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
     return date > upcomingKey;
   });
 
-  console.log('[PlannerDashboard] Filtering someday tasks - total tasks:', tasks.length, 'someday tasks:', someday.length);
-  console.log('[PlannerDashboard] Someday tasks:', someday.map(t => ({ id: t.id, title: t.title, status: t.status })));
-
   // Filter events for today and tomorrow
   const todayEvents = (events || []).filter((e: any) => {
     const eventDate = e.start?.dateTime || e.start?.date || e.start;
@@ -111,59 +166,105 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
     return eventDate && isSameDay(eventDate, tomorrowKey);
   });
 
-  // Google Calendar integration removed
-  const handleConnectCalendar = async () => { };
-  const handleDisconnectCalendar = async () => { };
+  const sensors = useSensors(
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8,
+      },
+    }),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragStart = (event: any) => {
+    setActiveId(event.active.id);
+  };
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+    setActiveId(null);
+
+    if (!over) return;
+
+    const taskId = active.id as string;
+    const destination = over.id as string;
+
+    console.log('[PlannerDashboard] Drag ended. Task:', taskId, 'Destination:', destination);
+
+    const task = tasks.find(t => t.id === taskId);
+    if (!task) return;
+
+    let patch: any = {};
+
+    switch (destination) {
+      case 'today':
+        patch = { start: todayKey, due: todayKey };
+        break;
+      case 'tomorrow':
+        patch = { start: tomorrowKey, due: tomorrowKey };
+        break;
+      case 'someday':
+        // Clear dates or set to future? Let's clear them for "Someday" bucket behavior
+        // Or set to null to indicate "no specific date"
+        patch = { start: null, due: null };
+        break;
+      case 'overdue':
+        // If dragged TO overdue, maybe treat as today? Or just ignore?
+        // Let's treat as Today for now, as you can't really schedule something to be "overdue"
+        patch = { start: todayKey, due: todayKey };
+        break;
+      default:
+        return;
+    }
+
+    onUpdateTask(taskId, patch);
+  };
+
+  const activeTask = activeId ? tasks.find(t => t.id === activeId) : null;
 
   return (
-    <>
+    <DndContext sensors={sensors} onDragStart={handleDragStart} onDragEnd={handleDragEnd}>
       <div className="mb-6">
         <h1 className="text-2xl font-bold text-text-primary">Welcome back {username}.</h1>
         <p className="text-text-secondary">Here's your task overview and schedule.</p>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Today section - appears first on mobile/tablet, second on desktop */}
+        {/* Today section */}
         <div className="space-y-4 lg:col-span-1 lg:order-2">
-          <Section title="Today">
+          <DroppableSection id="today" title="Today">
             {today.length === 0 && todayEvents.length === 0 && <div className="text-sm text-text-secondary">No tasks for today.</div>}
             {todayEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
-            {today.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
-          </Section>
+            {today.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
+          </DroppableSection>
         </div>
-        {/* Upcoming Calendar - appears second on mobile/tablet, first on desktop */}
+
+        {/* Upcoming Calendar */}
         <div className="space-y-4 lg:col-span-1 lg:order-1">
           <div className="bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
             <div className="flex items-center justify-between">
               <h3 className="text-sm font-semibold tracking-wide uppercase text-text-dark">Upcoming Calendar</h3>
-              <div className="flex gap-2">
-                {/* Google Calendar buttons removed */}
-              </div>
             </div>
             <div className="relative mt-3 space-y-2">
               {(() => {
-                console.log('[PlannerDashboard] Rendering Upcoming Calendar section');
-
                 const today = new Date();
                 today.setHours(0, 0, 0, 0);
                 const nextWeeks = new Date(today);
                 nextWeeks.setDate(today.getDate() + 7); // 7 days
                 nextWeeks.setHours(23, 59, 59, 999);
 
-                // Helper to get date object from item
                 const getItemDate = (item: any, type: 'event' | 'task') => {
                   if (type === 'event') {
                     const val = item.start?.dateTime || item.start?.date || item.start;
                     return val ? new Date(val) : null;
                   } else {
-                    // For tasks, prefer start date, then due date
                     if (item.start) return new Date(item.start);
                     if (item.due) return new Date(item.due + 'T00:00:00');
                     return null;
                   }
                 };
 
-                // Filter and map events
                 const upcomingEvents = (events || [])
                   .map((e: any) => ({ ...e, itemType: 'event' }))
                   .filter((e: any) => {
@@ -172,8 +273,6 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                     return date && date >= today && date <= nextWeeks && !isCancelled;
                   });
 
-                // Filter and map tasks
-                // Exclude completed tasks and ensure no trash is shown (backend filters trash, we filter completed)
                 const upcomingTasks = tasks
                   .filter(t => t.status !== 'completed')
                   .map(t => ({ ...t, itemType: 'task' }))
@@ -182,14 +281,11 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                     return date && date >= today && date <= nextWeeks;
                   });
 
-                // Combine and sort
                 const allUpcoming = [...upcomingEvents, ...upcomingTasks].sort((a, b) => {
                   const dateA = getItemDate(a, a.itemType);
                   const dateB = getItemDate(b, b.itemType);
                   return (dateA?.getTime() || 0) - (dateB?.getTime() || 0);
                 });
-
-                console.log('[PlannerDashboard] Total upcoming items:', allUpcoming.length);
 
                 if (allUpcoming.length === 0) {
                   return (
@@ -212,23 +308,30 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
                     }
                   }
 
+                  if (!isEvent) {
+                    // Make upcoming tasks draggable too if needed, or just display them
+                    // For now, let's make them draggable so you can drag from upcoming to today/tomorrow
+                    return (
+                      <DraggableTaskRow
+                        key={`task-${item.id}`}
+                        task={item}
+                        onToggle={() => onToggleComplete(item)}
+                        onEdit={() => onEditTask(item)}
+                        onDelete={() => onDeleteTask(item.id)}
+                        onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(item.id) : undefined}
+                      />
+                    );
+                  }
+
                   return (
-                    <div key={`${item.itemType}-${item.id}`} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5">
-                      <span className={`h-2 w-2 rounded-full flex-shrink-0 ${isEvent ? 'bg-accent' : 'bg-brand'}`} />
+                    <div key={`event-${item.id}`} className="flex items-center gap-3 px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-shadow duration-200 hover:-translate-y-0.5">
+                      <span className={`h-2 w-2 rounded-full flex-shrink-0 bg-accent`} />
                       <div className="flex-1 min-w-0">
                         <div className="flex items-center justify-between">
                           <div className="font-semibold text-text-primary truncate">{title}</div>
-                          {!isEvent && item.priority && (
-                            <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-bold ${item.priority === 'high' ? 'bg-danger/10 text-danger' :
-                              item.priority === 'medium' ? 'bg-warning/10 text-warning' :
-                                'bg-success/10 text-success'
-                              }`}>
-                              {item.priority}
-                            </span>
-                          )}
                         </div>
                         <div className="flex items-center gap-2 text-xs text-text-secondary font-medium">
-                          <span className="uppercase tracking-wider">{item.itemType}</span>
+                          <span className="uppercase tracking-wider">Event</span>
                           <span>•</span>
                           <span>{when}</span>
                         </div>
@@ -240,27 +343,38 @@ const PlannerDashboard: React.FC<PlannerDashboardProps> = ({ tasks, events, onRe
             </div>
           </div>
         </div>
-        {/* Overdue and Tomorrow - appears third on mobile/tablet, third on desktop */}
+
+        {/* Overdue and Tomorrow */}
         <div className="space-y-4 lg:col-span-1 lg:order-3">
-          <Section title="Overdue">
+          <DroppableSection id="overdue" title="Overdue">
             {overdue.length === 0 && <div className="text-sm text-text-secondary">All clear.</div>}
-            {overdue.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
-          </Section>
-          <Section title="Tomorrow">
+            {overdue.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
+          </DroppableSection>
+
+          <DroppableSection id="tomorrow" title="Tomorrow">
             {tomorrow.length === 0 && tomorrowEvents.length === 0 && <div className="text-sm text-text-secondary">Nothing yet.</div>}
             {tomorrowEvents.map((e: any) => <EventRow key={e.id} event={e} onToggle={() => onToggleEvent(e)} />)}
-            {tomorrow.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
-          </Section>
+            {tomorrow.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
+          </DroppableSection>
         </div>
-        {/* Someday section - always appears at the bottom */}
+
+        {/* Someday section */}
         <div className="lg:col-span-3 order-last">
-          <Section title="Someday">
+          <DroppableSection id="someday" title="Someday">
             {someday.length === 0 && <div className="text-sm text-text-secondary">No backlog items.</div>}
-            {someday.map(t => <TaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
-          </Section>
+            {someday.map(t => <DraggableTaskRow key={t.id} task={t} onToggle={() => onToggleComplete(t)} onEdit={() => onEditTask(t)} onDelete={() => onDeleteTask(t.id)} onConvertToSchedule={onConvertToSchedule ? () => onConvertToSchedule(t.id) : undefined} />)}
+          </DroppableSection>
         </div>
       </div>
-    </>
+
+      <DragOverlay>
+        {activeTask ? (
+          <div className="px-4 py-3 rounded-xl bg-card-bg backdrop-blur-sm shadow-card-hover border-2 border-brand opacity-90">
+            <div className="font-semibold text-text-primary">{activeTask.title}</div>
+          </div>
+        ) : null}
+      </DragOverlay>
+    </DndContext>
   );
 };
 

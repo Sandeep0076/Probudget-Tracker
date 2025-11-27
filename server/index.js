@@ -592,6 +592,37 @@ app.delete('/api/tasks/:id', async (req, res) => {
   res.json({ ok: true, trashedAt: today });
 });
 
+// Complete task and move to trash (one-step operation for checkbox completion)
+app.post('/api/tasks/:id/complete-to-trash', async (req, res) => {
+  const { id } = req.params;
+  console.log('[POST /api/tasks/:id/complete-to-trash] Completing task and moving to trash:', id);
+  
+  const { data: existing, error: fetchErr } = await supabase.from('tasks').select('id, status, deleted_at').eq('id', id).single();
+  if (fetchErr || !existing) {
+    console.error('[POST /api/tasks/:id/complete-to-trash] Task not found:', id, fetchErr);
+    return res.status(404).json({ error: 'Task not found' });
+  }
+  
+  if (existing.deleted_at) {
+    console.warn('[POST /api/tasks/:id/complete-to-trash] Task already in trash:', id);
+    return res.status(400).json({ error: 'Task already in trash' });
+  }
+  
+  const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
+  const { error: updateErr } = await supabase.from('tasks').update({
+    status: 'completed',
+    deleted_at: today
+  }).eq('id', id);
+  
+  if (updateErr) {
+    console.error('[POST /api/tasks/:id/complete-to-trash] Failed to complete and trash task:', updateErr);
+    return res.status(500).json({ error: 'Failed to complete and move task to trash' });
+  }
+  
+  console.log('[POST /api/tasks/:id/complete-to-trash] Task completed and moved to trash:', id);
+  res.json({ ok: true, completed: true, trashedAt: today });
+});
+
 // List trashed tasks (within retention window)
 app.get('/api/tasks/trash', async (req, res) => {
   const { data, error } = await supabase
@@ -624,7 +655,7 @@ app.post('/api/tasks/:id/restore', async (req, res) => {
   const { id } = req.params;
   console.log('[POST /api/tasks/:id/restore] Restoring task id:', id);
 
-  const { data: existing, error: fetchErr } = await supabase.from('tasks').select('id, deleted_at').eq('id', id).single();
+  const { data: existing, error: fetchErr } = await supabase.from('tasks').select('id, deleted_at, status').eq('id', id).single();
   if (fetchErr || !existing) {
     console.error('[POST /api/tasks/:id/restore] Task not found for restore:', id, fetchErr);
     return res.status(404).json({ error: 'Task not found' });
@@ -634,10 +665,19 @@ app.post('/api/tasks/:id/restore', async (req, res) => {
     return res.json({ ok: true, notInTrash: true });
   }
 
-  const { error: updateErr } = await supabase.from('tasks').update({
+  // Prepare update object
+  const updateData = {
     deleted_at: null,
     updated_at: new Date().toISOString().split('T')[0] // DATE format
-  }).eq('id', id);
+  };
+  
+  // If the task was completed, restore it to 'new' status (uncomplete it)
+  if (existing.status === 'completed') {
+    console.log('[POST /api/tasks/:id/restore] Task was completed, restoring to new status');
+    updateData.status = 'new';
+  }
+
+  const { error: updateErr } = await supabase.from('tasks').update(updateData).eq('id', id);
   if (updateErr) {
     console.error('[POST /api/tasks/:id/restore] Failed restore:', updateErr);
     return res.status(500).json({ error: 'Failed to restore task' });
