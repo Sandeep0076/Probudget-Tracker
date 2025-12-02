@@ -3,7 +3,6 @@ import { SettingsIcon } from '../icons/SettingsIcon';
 import { LogoIcon } from '../icons/LogoIcon';
 import { MenuIcon } from '../icons/MenuIcon';
 import { CloseIcon } from '../icons/CloseIcon';
-import { SyncIcon } from '../icons/SyncIcon';
 import { TrashIcon } from '../icons/TrashIcon';
 import { Page } from '../../App';
 
@@ -13,7 +12,6 @@ interface PlannerHeaderProps {
   page: PlannerPage;
   onNavigate: (p: PlannerPage | Page) => void;
   onNewTask: (taskType: 'todo' | 'schedule') => void;
-  onSync: () => void;
 }
 
 const Item: React.FC<{ active: boolean; label: string; onClick: () => void; icon?: React.ReactNode }> = ({
@@ -35,7 +33,7 @@ const Item: React.FC<{ active: boolean; label: string; onClick: () => void; icon
   </a>
 );
 
-const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTask, onSync }) => {
+const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTask }) => {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isNewDropdownOpen, setIsNewDropdownOpen] = useState(false);
 
@@ -78,13 +76,6 @@ const PlannerHeader: React.FC<PlannerHeaderProps> = ({ page, onNavigate, onNewTa
               </div>
             </div>
             <div className="flex items-center gap-2">
-              <button
-                onClick={onSync}
-                className="p-2 rounded-full text-text-secondary hover:bg-surface/70 hover:text-text-primary transition-colors"
-                title="Sync with Google"
-              >
-                <SyncIcon className="w-5 h-5" />
-              </button>
               <div className="relative">
                 <button
                   onClick={() => setIsNewDropdownOpen(!isNewDropdownOpen)}

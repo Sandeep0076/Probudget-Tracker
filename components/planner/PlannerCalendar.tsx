@@ -63,9 +63,85 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({ tasks, externalEvents
   return (
     <div className="bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
       <div>
+        <style>{`
+          .fc-button-primary {
+            background-color: var(--color-button-primary) !important;
+            border-color: var(--color-button-primary) !important;
+            color: var(--color-button-text) !important;
+            text-transform: capitalize;
+            font-weight: 600;
+            border-radius: 0.5rem !important;
+            padding: 0.4rem 1rem !important;
+            transition: all 0.2s;
+            box-shadow: var(--color-shadow-elevation-sm);
+          }
+          .fc-button-primary:hover {
+            background-color: var(--color-button-primary-hover) !important;
+            border-color: var(--color-button-primary-hover) !important;
+            opacity: 0.9;
+            transform: translateY(-1px);
+            box-shadow: var(--color-shadow-elevation-md);
+          }
+          .fc-button-primary:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+          }
+          .fc-button-active {
+            background-color: var(--color-accent) !important;
+            border-color: var(--color-accent) !important;
+          }
+          .fc-toolbar-title {
+            font-size: 1.25rem !important;
+            font-weight: 700;
+            color: var(--color-text-primary);
+          }
+          .fc-daygrid-event {
+            background: transparent !important;
+            border: none !important;
+            margin-top: 2px !important;
+          }
+          .fc-daygrid-day-number {
+            color: var(--color-text-muted);
+            font-weight: 500;
+          }
+          .fc-col-header-cell-cushion {
+            color: var(--color-text-primary);
+            font-weight: 600;
+            text-transform: uppercase;
+            font-size: 0.75rem;
+            letter-spacing: 0.05em;
+          }
+          .fc-theme-standard td, .fc-theme-standard th {
+            border-color: var(--color-border-light) !important;
+          }
+          .fc-day-today {
+            background-color: transparent !important;
+            border: 2px solid var(--color-brand) !important;
+            position: relative;
+          }
+          .fc-day-today::before {
+            content: "";
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: var(--color-brand);
+            opacity: 0.15;
+            pointer-events: none;
+            z-index: 0;
+          }
+          .fc-day-today .fc-daygrid-day-number {
+            font-weight: 800;
+            color: var(--color-brand);
+            font-size: 1.1em;
+            position: relative;
+            z-index: 1;
+          }
+        `}</style>
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          headerToolbar={{ left: 'prev,next today', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
+          headerToolbar={{ left: 'prev,next', center: 'title', right: 'dayGridMonth,timeGridWeek,timeGridDay' }}
           initialView="dayGridMonth"
           selectable
           selectMirror
@@ -78,6 +154,21 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({ tasks, externalEvents
           eventClick={handleEventClick}
           datesSet={info => onDatesChange(info.start, info.end)}
           height="auto"
+          eventContent={(eventInfo) => {
+            const color = eventInfo.event.backgroundColor || 'var(--color-accent)';
+            return (
+              <div className="flex items-center px-2 py-1 rounded-md w-full overflow-hidden shadow-sm hover:shadow-md transition-all duration-200 cursor-pointer"
+                style={{
+                  backgroundColor: `${color}20`,
+                  borderLeft: `3px solid ${color}`,
+                  marginTop: '2px'
+                }}>
+                <span className="text-xs font-semibold truncate" style={{ color: 'var(--color-text-primary)' }}>
+                  {eventInfo.event.title}
+                </span>
+              </div>
+            );
+          }}
         />
       </div>
     </div>

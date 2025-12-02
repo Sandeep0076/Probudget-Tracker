@@ -57,6 +57,7 @@ export const getBudgets = () => get<Budget[]>('/api/budgets');
 export const addCategoryBudget = (data: Omit<Budget, 'id'>) => post<Budget>('/api/budgets/category', data);
 export const updateCategoryBudget = (id: string, amount: number) => put<{ ok: boolean }>(`/api/budgets/${id}`, { amount });
 export const addOrUpdateOverallBudget = (data: { amount: number; month: number; year: number }) => post<Budget>('/api/budgets/overall', data);
+export const ensureCurrentMonthBudgets = () => post<{ copied: number; message: string; budgets?: Budget[] }>('/api/budgets/ensure-current-month', {});
 
 // Categories
 export const getCategories = () => get<Category[]>('/api/categories');

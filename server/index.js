@@ -140,6 +140,17 @@ app.post('/api/transactions', async (req, res) => {
     recurringTransactionId = null
   } = req.body || {};
 
+  console.log('[POST /api/transactions] Creating transaction with data:', {
+    description,
+    amount,
+    date,
+    type,
+    category,
+    quantity,
+    labels,
+    recurringTransactionId
+  });
+
   const { data: transaction, error: txError } = await supabase
     .from('transactions')
     .insert({ description, amount: toCents(amount), date, type, category, quantity, recurring_transaction_id: recurringTransactionId })
@@ -147,9 +158,16 @@ app.post('/api/transactions', async (req, res) => {
     .single();
 
   if (txError) {
-    console.error('Error creating transaction:', txError);
+    console.error('[POST /api/transactions] Error creating transaction:', txError);
     return res.status(500).json({ error: 'Failed to create transaction' });
   }
+
+  console.log('[POST /api/transactions] Transaction created successfully:', {
+    id: transaction.id,
+    description,
+    category,
+    labels
+  });
 
   if (labels.length > 0) {
     const labelIds = await Promise.all(labels.map(name => upsertLabelIdByName(name)));
@@ -171,15 +189,33 @@ app.put('/api/transactions/:id', async (req, res) => {
   const { id } = req.params;
   const { description, amount, date, type, category, quantity = 1, labels = [] } = req.body || {};
 
+  console.log('[PUT /api/transactions/:id] Updating transaction:', {
+    id,
+    description,
+    amount,
+    date,
+    type,
+    category,
+    quantity,
+    labels
+  });
+
   const { error: updateError } = await supabase
     .from('transactions')
     .update({ description, amount: toCents(amount), date, type, category, quantity })
     .eq('id', id);
 
   if (updateError) {
-    console.error('Error updating transaction:', updateError);
+    console.error('[PUT /api/transactions/:id] Error updating transaction:', updateError);
     return res.status(500).json({ error: 'Failed to update transaction' });
   }
+
+  console.log('[PUT /api/transactions/:id] Transaction updated successfully:', {
+    id,
+    description,
+    category,
+    labels: labels.length
+  });
 
   const { error: deleteLabelsError } = await supabase.from('transaction_labels').delete().eq('transaction_id', id);
   if (deleteLabelsError) {
@@ -1053,6 +1089,99 @@ app.get('/api/budgets', async (req, res) => {
   res.json(out);
 });
 
+// Copy category budgets from previous month to current month if they don't exist
+app.post('/api/budgets/ensure-current-month', async (req, res) => {
+  try {
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+    
+    // Calculate previous month
+    let prevMonth = currentMonth - 1;
+    let prevYear = currentYear;
+    if (prevMonth < 0) {
+      prevMonth = 11;
+      prevYear = currentYear - 1;
+    }
+
+    console.log('[BUDGET-PERSIST] Checking budgets for current month:', { month: currentMonth, year: currentYear });
+    console.log('[BUDGET-PERSIST] Previous month:', { month: prevMonth, year: prevYear });
+
+    // Check if current month already has category budgets (excluding overall budget)
+    const { data: currentBudgets, error: currentError } = await supabase
+      .from('budgets')
+      .select('*')
+      .eq('month', currentMonth)
+      .eq('year', currentYear)
+      .neq('category', OVERALL_BUDGET_CATEGORY);
+
+    if (currentError) {
+      console.error('[BUDGET-PERSIST] Error fetching current budgets:', currentError);
+      return res.status(500).json({ error: 'Failed to fetch current budgets' });
+    }
+
+    console.log('[BUDGET-PERSIST] Found', currentBudgets.length, 'category budgets for current month');
+
+    // If current month already has budgets, no need to copy
+    if (currentBudgets.length > 0) {
+      console.log('[BUDGET-PERSIST] Current month already has budgets, skipping copy');
+      return res.json({ copied: 0, message: 'Current month already has budgets' });
+    }
+
+    // Fetch previous month's category budgets (excluding overall budget)
+    const { data: prevBudgets, error: prevError } = await supabase
+      .from('budgets')
+      .select('*')
+      .eq('month', prevMonth)
+      .eq('year', prevYear)
+      .neq('category', OVERALL_BUDGET_CATEGORY);
+
+    if (prevError) {
+      console.error('[BUDGET-PERSIST] Error fetching previous budgets:', prevError);
+      return res.status(500).json({ error: 'Failed to fetch previous budgets' });
+    }
+
+    console.log('[BUDGET-PERSIST] Found', prevBudgets.length, 'category budgets from previous month');
+
+    // If no previous budgets exist, nothing to copy
+    if (prevBudgets.length === 0) {
+      console.log('[BUDGET-PERSIST] No previous budgets to copy');
+      return res.json({ copied: 0, message: 'No previous budgets to copy' });
+    }
+
+    // Copy budgets to current month
+    const newBudgets = prevBudgets.map(b => ({
+      category: b.category,
+      amount: b.amount, // Keep the same amount in cents
+      month: currentMonth,
+      year: currentYear
+    }));
+
+    console.log('[BUDGET-PERSIST] Copying', newBudgets.length, 'budgets to current month');
+
+    const { error: insertError } = await supabase
+      .from('budgets')
+      .insert(newBudgets);
+
+    if (insertError) {
+      console.error('[BUDGET-PERSIST] Error inserting new budgets:', insertError);
+      return res.status(500).json({ error: 'Failed to copy budgets' });
+    }
+
+    console.log('[BUDGET-PERSIST] Successfully copied', newBudgets.length, 'budgets to current month');
+    await addActivity('CREATE', `Automatically copied ${newBudgets.length} category budgets from previous month.`);
+
+    res.json({
+      copied: newBudgets.length,
+      message: `Copied ${newBudgets.length} category budgets from previous month`,
+      budgets: newBudgets.map(b => ({ ...b, amount: toEuros(b.amount) }))
+    });
+  } catch (error) {
+    console.error('[BUDGET-PERSIST] Unexpected error:', error);
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+
 app.post('/api/budgets/category', async (req, res) => {
   const { category, amount, month, year } = req.body || {};
   const { data, error } = await supabase.from('budgets').insert({ category, amount: toCents(amount), month, year }).select().single();
@@ -1355,22 +1484,50 @@ app.post('/api/recurring/generate-due', async (req, res) => {
 });
 
 app.get('/api/savings', async (req, res) => {
+  console.log('[GET /api/savings] Fetching all savings records...');
   const { data, error } = await supabase.from('savings').select('*').order('year').order('month');
-  if (error) return res.status(500).json({ error: 'Failed to fetch savings' });
+  if (error) {
+    console.error('[GET /api/savings] Error fetching savings:', error);
+    return res.status(500).json({ error: 'Failed to fetch savings' });
+  }
   const out = data.map(s => ({ ...s, amount: toEuros(s.amount) }));
+  console.log('[GET /api/savings] Successfully fetched', out.length, 'savings records');
+  if (out.length > 0) {
+    console.log('[GET /api/savings] Sample savings:', out.slice(0, 3).map(s => ({
+      month: s.month,
+      year: s.year,
+      amount: s.amount
+    })));
+  }
   res.json(out);
 });
 
 app.post('/api/savings/upsert', async (req, res) => {
   const { amount, month, year } = req.body || {};
+  console.log('[POST /api/savings/upsert] Upserting savings:', {
+    amount,
+    month,
+    year,
+    amountInCents: toCents(amount),
+    monthName: new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })
+  });
+
   const { data, error } = await supabase.from('savings').upsert({ amount: toCents(amount), month, year }, { onConflict: 'month,year' }).select().single();
 
   if (error) {
-    console.error('Error upserting savings:', error);
+    console.error('[POST /api/savings/upsert] Error upserting savings:', error);
     return res.status(500).json({ error: 'Failed to upsert savings' });
   }
 
-  await addActivity('UPDATE', `Updated savings for ${new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })} to $${Number(amount).toFixed(2)}.`);
+  console.log('[POST /api/savings/upsert] Successfully upserted savings:', {
+    id: data.id,
+    month: data.month,
+    year: data.year,
+    amountInCents: data.amount,
+    amountInEuros: toEuros(data.amount)
+  });
+
+  await addActivity('UPDATE', `Updated savings for ${new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })} to €${Number(amount).toFixed(2)}.`);
   res.json({ ...data, amount: toEuros(data.amount) });
 });
 

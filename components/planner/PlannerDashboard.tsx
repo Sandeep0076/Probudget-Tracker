@@ -86,15 +86,28 @@ const DraggableTaskRow: React.FC<{ task: Task; onToggle: () => void; onEdit: () 
         </div>
 
         <div className="flex items-center gap-2 mt-1 text-xs text-text-secondary">
-          <span className="uppercase tracking-wider font-medium">
-            {task.taskType === 'schedule' ? 'SCHEDULE' : 'TASK'}
-          </span>
+          {task.taskType === 'schedule' && (
+            <span className="uppercase tracking-wider font-medium">
+              SCHEDULE
+            </span>
+          )}
           {(task.start || task.due) && (
             <>
-              <span>•</span>
+              {task.taskType === 'schedule' && <span>•</span>}
               <span>
                 {task.start ? new Date(task.start).toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) :
                   task.due ? new Date(task.due + 'T00:00:00.000Z').toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short' }) : ''}
+              </span>
+            </>
+          )}
+          {task.estimatedTime && (
+            <>
+              <span>•</span>
+              <span className="flex items-center gap-1">
+                <svg className="w-3 h-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                {task.estimatedTime}
               </span>
             </>
           )}
