@@ -25,6 +25,7 @@ import PlannerBacklog from './components/planner/PlannerBacklog';
 import PlannerToBuy from './components/planner/PlannerToBuy';
 import TrashboxPage from './components/planner/TrashboxPage';
 import ShoppingItemModal from './components/ShoppingItemModal';
+import TaskTypeSelectionModal from './components/planner/TaskTypeSelectionModal';
 
 export type Page = 'dashboard' | 'addTransaction' | 'budgets' | 'transactions' | 'categories' | 'reports' | 'confirmReceipt' | 'settings';
 export type Theme = 'dark-blue' | 'light' | 'dark' | 'custom';
@@ -49,6 +50,7 @@ const App: React.FC = () => {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [calendarEvents, setCalendarEvents] = useState<any[]>([]);
   const [isTaskModalOpen, setIsTaskModalOpen] = useState(false);
+  const [isTypeSelectionModalOpen, setIsTypeSelectionModalOpen] = useState(false);
   const [prefillTask, setPrefillTask] = useState<any | null>(null);
   const [newTaskType, setNewTaskType] = useState<'todo' | 'schedule'>('todo');
   const [shoppingItems, setShoppingItems] = useState<ShoppingItem[]>([]);
@@ -155,6 +157,19 @@ const App: React.FC = () => {
   }, [isAuthenticated]);
 
   const loadData = async () => {
+    // First, ensure current month has budgets from previous month
+    try {
+      console.log('[App] Checking if current month needs budget persistence...');
+      const persistResult = await api.ensureCurrentMonthBudgets();
+      console.log('[App] Budget persistence result:', persistResult);
+      if (persistResult.copied > 0) {
+        console.log('[App] Copied', persistResult.copied, 'category budgets from previous month');
+      }
+    } catch (error) {
+      console.error('[App] Failed to ensure current month budgets:', error);
+      // Don't fail the entire load if this fails
+    }
+
     const [transactionsData, budgetsData, categoriesData, savingsData, logsData, recurringData, labelsData] = await Promise.all([
       api.getTransactions(),
       api.getBudgets(),
@@ -440,8 +455,34 @@ const App: React.FC = () => {
   };
 
   const openNewTaskModalWithSlot = (start: string, end: string) => {
-    setNewTaskType('schedule');
-    setPrefillTask({ start, end, taskType: 'schedule' });
+    // Store the slot info but ask user for type first
+    setPrefillTask({ start, end });
+    setIsTypeSelectionModalOpen(true);
+  };
+
+  const handleTypeSelection = (type: 'todo' | 'schedule') => {
+    setIsTypeSelectionModalOpen(false);
+    setNewTaskType(type);
+
+    // Update prefill based on selection
+    if (type === 'todo') {
+      // For todo, use the start date as due date
+      const dateOnly = prefillTask?.start ? prefillTask.start.split('T')[0] : '';
+      setPrefillTask({
+        ...prefillTask,
+        taskType: 'todo',
+        due: dateOnly,
+        start: null,
+        end: null
+      });
+    } else {
+      // For schedule, keep start/end
+      setPrefillTask({
+        ...prefillTask,
+        taskType: 'schedule'
+      });
+    }
+
     setIsTaskModalOpen(true);
   };
 
@@ -767,17 +808,7 @@ const App: React.FC = () => {
         </>
       ) : (
         <>
-          <PlannerHeader page={plannerPage} onNavigate={navigatePlanner} onNewTask={openNewTaskModal} onSync={async () => {
-            try {
-              alert('Syncing with Google...');
-              const res = await api.syncGoogleData();
-              await loadTasks();
-              alert(`Sync Complete! Created ${res.created} new tasks.`);
-            } catch (e) {
-              alert('Sync failed. Please make sure Google Calendar is connected in Settings.');
-              console.error(e);
-            }
-          }} />
+          <PlannerHeader page={plannerPage} onNavigate={navigatePlanner} onNewTask={openNewTaskModal} />
           <main className="max-w-screen-xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
             {plannerPage === 'todo' && (
               <PlannerDashboard
@@ -813,13 +844,27 @@ const App: React.FC = () => {
                 onDeleteTask={handleDeleteTask}
               />
             )}
+            {plannerPage === 'backlog' && (
+              <PlannerBacklog
+                tasks={tasks.filter(t => (t.taskType || 'todo') === 'todo' && t.status === 'backlog')}
+                onEdit={handleEditTask}
+                onDelete={handleDeleteTask}
+                onMoveToBoard={(id) => handleUpdateTask(id, { status: 'todo' })}
+              />
+            )}
             {plannerPage === 'toBuy' && (
               <PlannerToBuy
                 items={shoppingItems}
                 onAddItem={handleAddShoppingItem}
-                onToggleComplete={handleToggleShoppingItem}
-                onEdit={handleEditShoppingItem}
-                onDelete={handleDeleteShoppingItem}
+                onUpdateItem={handleUpdateShoppingItem}
+                onDeleteItem={handleDeleteShoppingItem}
+                onToggleItem={handleToggleShoppingItem}
+                onEditItem={handleEditShoppingItem}
+                isModalOpen={isShoppingModalOpen}
+                onOpenModal={openNewShoppingModal}
+                onCloseModal={() => { setIsShoppingModalOpen(false); setEditingShoppingItem(null); }}
+                editingItem={editingShoppingItem}
+                onSaveItem={handleSaveShoppingItem}
               />
             )}
             {plannerPage === 'trash' && (
@@ -834,6 +879,11 @@ const App: React.FC = () => {
               setPrefillTask(null); // Clear prefill data when modal closes
             }}
             onSave={handleSaveTask}
+          />
+          <TaskTypeSelectionModal
+            isOpen={isTypeSelectionModalOpen}
+            onClose={() => { setIsTypeSelectionModalOpen(false); setPrefillTask(null); }}
+            onSelect={handleTypeSelection}
           />
           <ShoppingItemModal
             isOpen={isShoppingModalOpen}

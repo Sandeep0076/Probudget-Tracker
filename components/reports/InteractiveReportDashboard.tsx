@@ -11,6 +11,7 @@ import CumulativeAreaChart from './charts/CumulativeAreaChart';
 import BudgetVarianceChart from './charts/BudgetVarianceChart';
 import TopExpensesTable from './charts/TopExpensesTable';
 import PeriodComparisonView from './charts/PeriodComparisonView';
+import MonthlySavingsChart from './charts/MonthlySavingsChart';
 
 interface InteractiveReportDashboardProps {
     transactions: Transaction[];
@@ -20,7 +21,7 @@ interface InteractiveReportDashboardProps {
     categories: Category[];
 }
 
-type ReportView = 'overview' | 'trends' | 'comparison' | 'budget-vs-actual';
+type ReportView = 'overview' | 'trends' | 'comparison' | 'budget-vs-actual' | 'savings';
 
 const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
     transactions,
@@ -140,12 +141,12 @@ const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
                         </button>
                     </div>
 
-                    <div className="flex items-center gap-3 bg-surface backdrop-blur-xl p-1.5 rounded-xl shadow-neu-sm border border-border-highlight">
-                        {(['overview', 'trends', 'comparison', 'budget-vs-actual'] as ReportView[]).map((view) => (
+                    <div className="flex items-center gap-3 bg-surface backdrop-blur-xl p-1.5 rounded-xl shadow-neu-sm border border-border-highlight overflow-x-auto">
+                        {(['overview', 'trends', 'comparison', 'budget-vs-actual', 'savings'] as ReportView[]).map((view) => (
                             <button
                                 key={view}
                                 onClick={() => setActiveView(view)}
-                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 ${activeView === view
+                                className={`px-4 py-2 rounded-lg text-sm font-medium transition-all duration-300 whitespace-nowrap ${activeView === view
                                     ? 'bg-brand text-white shadow-neu-sm'
                                     : 'text-text-secondary hover:text-text-primary hover:bg-surface/50'
                                     }`}
@@ -231,6 +232,10 @@ const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
                     <div className="bg-card-bg backdrop-blur-xl p-6 rounded-2xl shadow-neu-3d border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
                         <BudgetVarianceChart transactions={filteredTransactions} budgets={categoryBudgets} />
                     </div>
+                )}
+
+                {activeView === 'savings' && (
+                    <MonthlySavingsChart savings={savings} />
                 )}
             </div>
         </div>

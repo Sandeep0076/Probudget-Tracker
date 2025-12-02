@@ -25,7 +25,7 @@ interface TaskModalProps {
   onSave: (data: any, id?: string) => Promise<void> | void;
 }
 
-const LabeledRow: React.FC<{ label: string; children: React.ReactNode }>=({label,children})=> (
+const LabeledRow: React.FC<{ label: string; children: React.ReactNode }> = ({ label, children }) => (
   <div className="flex items-center gap-3">
     <div className="w-28 text-sm text-gray-600">{label}</div>
     <div className="flex-1">{children}</div>
@@ -35,7 +35,7 @@ const LabeledRow: React.FC<{ label: string; children: React.ReactNode }>=({label
 const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave }) => {
   const taskType = initial?.taskType || 'todo';
   const isTodo = taskType === 'todo';
-  
+
   const [title, setTitle] = useState(initial?.title || '');
   const [notes, setNotes] = useState(initial?.notes || '');
   const [priority, setPriority] = useState<TaskPriority>(initial?.priority || 'medium');
@@ -58,12 +58,12 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
     if (!dateString) return '';
     try {
       // For DATE format (YYYY-MM-DD), create date with UTC timezone to avoid timezone issues
-      const date = isDateOnly || dateString.length === 10 
-        ? new Date(dateString + 'T00:00:00.000Z') 
+      const date = isDateOnly || dateString.length === 10
+        ? new Date(dateString + 'T00:00:00.000Z')
         : new Date(dateString);
-      
+
       if (isNaN(date.getTime())) return '';
-      
+
       if (isDateOnly) {
         // For date input: yyyy-MM-dd (return as-is for DATE format)
         return dateString.length === 10 ? dateString : date.toISOString().split('T')[0];
@@ -115,7 +115,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
       console.log('[TaskModal] Save already in progress, ignoring duplicate click');
       return;
     }
-    
+
     console.log('[TaskModal] Saving task with data:', { title, notes, priority, allDay, start, end, due });
     setSaving(true);
     try {
@@ -126,7 +126,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
       //   backlog/new and user added schedule info. Otherwise preserve existing.
       let taskStatus: TaskStatus;
       console.log('[TaskModal] Status determination - isEdit:', !!initial?.id, 'initial.status:', initial?.status, 'hasSchedule:', Boolean(start || due));
-      
+
       if (!initial?.id) {
         taskStatus = (start || due) ? 'scheduled' : 'backlog';
         console.log('[TaskModal] New task status:', taskStatus);
@@ -157,7 +157,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
           due
         });
       }
-      
+
       const payload: any = {
         title: title.trim(),
         notes: notes.trim(),
@@ -166,10 +166,10 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         start: isTodo ? null : (start || null), // No start date for todo tasks
         end: isTodo ? null : (end || null), // No end date for todo tasks
         due: due || null,
-        repeat: isTodo ? null : (repeat || null), // No repeat for todo tasks
+        repeat: repeat || null,
         color,
-        labels: isTodo ? [] : labels.split(',').map(s=>s.trim()).filter(Boolean), // No labels for todo tasks
-        subtasks: subtasks.map(s=>({ title: s.title, done: s.done })),
+        labels: isTodo ? [] : labels.split(',').map(s => s.trim()).filter(Boolean), // No labels for todo tasks
+        subtasks: subtasks.map(s => ({ title: s.title, done: s.done })),
         status: taskStatus,
         estimatedTime: estimatedTime.trim() || null,
         taskType: taskType
@@ -197,13 +197,13 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
         <div className="space-y-4">
           <input
             value={title}
-            onChange={(e)=>setTitle(e.target.value)}
+            onChange={(e) => setTitle(e.target.value)}
             placeholder="Name of the task"
             className={commonInputClasses}
           />
 
           <LabeledRow label="Priority">
-            <select value={priority} onChange={e=>setPriority(e.target.value as TaskPriority)} className={commonSelectClasses}>
+            <select value={priority} onChange={e => setPriority(e.target.value as TaskPriority)} className={commonSelectClasses}>
               <option value="low">Low</option>
               <option value="medium">Medium</option>
               <option value="high">High</option>
@@ -213,38 +213,71 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
           <LabeledRow label="Estimated Time">
             <input
               value={estimatedTime}
-              onChange={(e)=>setEstimatedTime(e.target.value)}
+              onChange={(e) => setEstimatedTime(e.target.value)}
               placeholder="e.g., 5 min, 2 hours, 2-3 days"
               className={commonInputClasses}
             />
           </LabeledRow>
 
           {isTodo ? (
-            <LabeledRow label="Deadline">
-              <input type="date" value={due} onChange={(e)=>setDue(e.target.value)} className={commonInputClasses} />
-            </LabeledRow>
+            <>
+              <LabeledRow label="Deadline">
+                <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className={commonInputClasses} />
+              </LabeledRow>
+              <LabeledRow label="Repeat">
+                <select
+                  value={repeat?.type || 'none'}
+                  onChange={(e) => {
+                    const t = e.target.value;
+                    if (t === 'none') setRepeat(null);
+                    else setRepeat({ type: t as any, interval: 1 });
+                  }}
+                  className={commonSelectClasses}
+                >
+                  <option value="none">None</option>
+                  <option value="daily">Daily</option>
+                  <option value="weekly">Weekly</option>
+                  <option value="monthly">Monthly</option>
+                </select>
+              </LabeledRow>
+              {repeat?.type === 'monthly' && (
+                <div className="flex gap-3 ml-[124px]">
+                  <select
+                    value={(repeat as any).monthlyMode || 'on_day'}
+                    onChange={(e) => setRepeat({ ...(repeat as any), monthlyMode: e.target.value as any })}
+                    className={commonSelectClasses}
+                  >
+                    <option value="on_day">On day</option>
+                    <option value="last_day">Last day</option>
+                  </select>
+                  {(repeat as any).monthlyMode !== 'last_day' && (
+                    <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e) => setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} />
+                  )}
+                </div>
+              )}
+            </>
           ) : (
             <details className="bg-input-bg rounded-lg p-4 border border-input-border shadow-inner">
               <summary className="cursor-pointer select-none text-text-primary">Schedule</summary>
               <div className="mt-3 space-y-3">
                 <label className="flex items-center gap-2 text-sm">
-                  <input type="checkbox" checked={allDay} onChange={(e)=>setAllDay(e.target.checked)} /> All Day
+                  <input type="checkbox" checked={allDay} onChange={(e) => setAllDay(e.target.checked)} /> All Day
                 </label>
                 <LabeledRow label="From">
-                  <input type="date" value={start} onChange={(e)=>setStart(e.target.value)} className={commonInputClasses} />
+                  <input type="date" value={start} onChange={(e) => setStart(e.target.value)} className={commonInputClasses} />
                 </LabeledRow>
                 <LabeledRow label="To">
-                  <input type="date" value={end} onChange={(e)=>setEnd(e.target.value)} className={commonInputClasses} />
+                  <input type="date" value={end} onChange={(e) => setEnd(e.target.value)} className={commonInputClasses} />
                 </LabeledRow>
                 <LabeledRow label="Deadline">
-                  <input type="date" value={due} onChange={(e)=>setDue(e.target.value)} className={commonInputClasses} />
+                  <input type="date" value={due} onChange={(e) => setDue(e.target.value)} className={commonInputClasses} />
                 </LabeledRow>
                 <LabeledRow label="Repeat">
                   <select
                     value={repeat?.type || 'none'}
-                    onChange={(e)=>{
+                    onChange={(e) => {
                       const t = e.target.value;
-                      if (t==='none') setRepeat(null);
+                      if (t === 'none') setRepeat(null);
                       else setRepeat({ type: t as any, interval: 1 });
                     }}
                     className={commonSelectClasses}
@@ -255,18 +288,18 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
                     <option value="monthly">Monthly</option>
                   </select>
                 </LabeledRow>
-                {repeat?.type==='monthly' && (
+                {repeat?.type === 'monthly' && (
                   <div className="flex gap-3">
                     <select
                       value={(repeat as any).monthlyMode || 'on_day'}
-                      onChange={(e)=>setRepeat({ ...(repeat as any), monthlyMode: e.target.value as any })}
+                      onChange={(e) => setRepeat({ ...(repeat as any), monthlyMode: e.target.value as any })}
                       className={commonSelectClasses}
                     >
                       <option value="on_day">On day</option>
                       <option value="last_day">Last day</option>
                     </select>
-                    {(repeat as any).monthlyMode!=='last_day' && (
-                      <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e)=>setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} />
+                    {(repeat as any).monthlyMode !== 'last_day' && (
+                      <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e) => setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} />
                     )}
                   </div>
                 )}
@@ -275,19 +308,19 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
           )}
 
           <LabeledRow label="Color">
-            <input type="color" value={color} onChange={(e)=>setColor(e.target.value)} />
+            <input type="color" value={color} onChange={(e) => setColor(e.target.value)} />
           </LabeledRow>
 
           <textarea
             value={notes}
-            onChange={(e)=>setNotes(e.target.value)}
+            onChange={(e) => setNotes(e.target.value)}
             placeholder="Notes"
             className={commonInputClasses}
           />
 
           {!isTodo && (
             <LabeledRow label="Labels">
-              <input value={labels} onChange={(e)=>setLabels(e.target.value)} placeholder="comma,separated" className={commonInputClasses} />
+              <input value={labels} onChange={(e) => setLabels(e.target.value)} placeholder="comma,separated" className={commonInputClasses} />
             </LabeledRow>
           )}
 
@@ -297,15 +330,15 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
               <button className="text-sm text-brand" onClick={handleAddSubtask}>+ Add</button>
             </div>
             <div className="space-y-2">
-              {subtasks.map((s,idx)=> (
+              {subtasks.map((s, idx) => (
                 <div key={s.id} className="flex items-center gap-2">
-                  <input type="checkbox" checked={s.done} onChange={(e)=>{
-                    const arr=[...subtasks];
+                  <input type="checkbox" checked={s.done} onChange={(e) => {
+                    const arr = [...subtasks];
                     arr[idx] = { ...s, done: e.target.checked };
                     setSubtasks(arr);
                   }} />
-                  <input value={s.title} onChange={(e)=>{
-                    const arr=[...subtasks];
+                  <input value={s.title} onChange={(e) => {
+                    const arr = [...subtasks];
                     arr[idx] = { ...s, title: e.target.value };
                     setSubtasks(arr);
                   }} placeholder="Subtask title" className={`${commonInputClasses} flex-1`} />

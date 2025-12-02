@@ -7,11 +7,12 @@ interface PlannerBacklogProps {
   onPlanToday: (id: string) => void;
   onEdit: (task: Task) => void;
   onDelete: (taskId: string) => void;
+  onConvertToTodo?: (taskId: string) => void;
 }
 
 type SortOption = 'priority' | 'createdAt';
 
-const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday, onEdit, onDelete }) => {
+const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday, onEdit, onDelete, onConvertToTodo }) => {
   const [sortBy, setSortBy] = useState<SortOption>('createdAt');
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | Task['status']>('all');
@@ -151,6 +152,20 @@ const PlannerBacklog: React.FC<PlannerBacklogProps> = ({ tasks, onPlanToday, onE
               </div>
             </div>
             <div className="flex items-center gap-2 ml-4">
+              {onConvertToTodo && t.taskType === 'schedule' && (
+                <button
+                  onClick={() => {
+                    console.log('[PlannerBacklog] Convert to To Do button clicked for task:', t.id, t.title);
+                    onConvertToTodo(t.id);
+                  }}
+                  className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-brand/10 rounded-lg transition-opacity"
+                  title="Convert to To Do"
+                >
+                  <svg className="w-4 h-4 text-brand" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7h12m0 0l-4-4m4 4l-4 4m0 6H4m0 0l4 4m-4-4l4-4" />
+                  </svg>
+                </button>
+              )}
               <button
                 onClick={() => {
                   console.log('[PlannerBacklog] Edit button clicked for task:', t.id, t.title);

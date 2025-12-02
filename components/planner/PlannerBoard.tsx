@@ -325,9 +325,16 @@ const PlannerBoard: React.FC<PlannerBoardProps> = ({ tasks, onMove, onEdit, onDe
                 <div key={col.key} className="md:col-span-2">
                   <PlannerBacklog
                     tasks={backlogTasks}
-                    onPlanToday={(id) => onMove(id, 'scheduled')}
+                    onPlanToday={(id) => {
+                      console.log('[PlannerBoard] Plan Today clicked for backlog task:', id);
+                      onMove(id, 'scheduled');
+                    }}
                     onEdit={onEdit}
                     onDelete={onDelete}
+                    onConvertToTodo={onConvertToTodo ? (id) => {
+                      console.log('[PlannerBoard] Convert to To Do clicked for schedule in backlog:', id);
+                      onConvertToTodo(id);
+                    } : undefined}
                   />
                 </div>
               );
