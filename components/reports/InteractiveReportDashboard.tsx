@@ -1,5 +1,5 @@
 import React, { useState, useMemo } from 'react';
-import { Transaction, Saving, Budget, TransactionType, Category } from '../../types';
+import { Transaction, Budget, TransactionType, Category } from '../../types';
 import { formatCurrency } from '../../utils/formatters';
 import { ChevronDownIcon } from '../icons/ChevronDownIcon';
 import { CalendarIcon } from '../icons/CalendarIcon';
@@ -12,24 +12,26 @@ import BudgetVarianceChart from './charts/BudgetVarianceChart';
 import TopExpensesTable from './charts/TopExpensesTable';
 import PeriodComparisonView from './charts/PeriodComparisonView';
 import MonthlySavingsChart from './charts/MonthlySavingsChart';
+import { Saving } from '../../types';
 
 interface InteractiveReportDashboardProps {
     transactions: Transaction[];
-    savings: Saving[];
     categoryBudgets: Budget[];
     overallBudget: Budget | null;
     categories: Category[];
+    savings: Saving[];
 }
 
 type ReportView = 'overview' | 'trends' | 'comparison' | 'budget-vs-actual' | 'savings';
 
 const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
     transactions,
-    savings,
     categoryBudgets,
     overallBudget,
-    categories
+    categories,
+    savings
 }) => {
+    console.log('[InteractiveReportDashboard] Received savings data:', savings?.length || 0, 'records');
     const [activeView, setActiveView] = useState<ReportView>('overview');
     const [dateRange, setDateRange] = useState<'this-month' | 'last-month' | 'last-3-months' | 'last-6-months' | 'this-year'>('this-month');
     const [viewMode, setViewMode] = useState<'budget' | 'total'>('budget');
@@ -235,7 +237,9 @@ const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
                 )}
 
                 {activeView === 'savings' && (
-                    <MonthlySavingsChart savings={savings} />
+                    <div className="bg-card-bg backdrop-blur-xl p-6 rounded-2xl shadow-neu-3d border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
+                        <MonthlySavingsChart data={savings} />
+                    </div>
                 )}
             </div>
         </div>
