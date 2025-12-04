@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { GoogleGenAI } from "@google/genai";
-import { Transaction, TransactionType, Saving, ChatMessage, Budget, Category } from '../types';
+import { Transaction, TransactionType, ChatMessage, Budget, Category } from '../types';
 import { ChatIcon } from './icons/ChatIcon';
 import ChatModal from './ChatModal';
 import InteractiveReportDashboard from './reports/InteractiveReportDashboard';
@@ -8,13 +8,14 @@ import InteractiveReportDashboard from './reports/InteractiveReportDashboard';
 // --- Main Page Component ---
 interface ReportsPageProps {
     transactions: Transaction[];
-    savings: Saving[];
     categoryBudgets: Budget[];
     overallBudget: Budget | null;
     categories: Category[];
+    savings: any[]; // Add savings prop
 }
 
-const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, savings, categoryBudgets, overallBudget, categories }) => {
+const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, categoryBudgets, overallBudget, categories, savings }) => {
+    console.log('[ReportsPage] Received savings data:', savings?.length || 0, 'records');
     const [isChatLoading, setIsChatLoading] = useState(false);
     const [chatHistory, setChatHistory] = useState<ChatMessage[]>([]);
     const [isChatModalOpen, setIsChatModalOpen] = useState(false);
@@ -30,8 +31,8 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, savings, catego
     };
 
     const handleSendMessage = async (message: string) => {
-        if (transactions.length === 0 && savings.length === 0) {
-            alert("There is no financial data to analyze. Please add some transactions or savings first.");
+        if (transactions.length === 0) {
+            alert("There is no financial data to analyze. Please add some transactions first.");
             return;
         }
 
@@ -59,7 +60,6 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, savings, catego
 
             --- FINANCIAL DATA ---
             Transactions: ${JSON.stringify(simplifiedTransactions)}
-            Savings: ${JSON.stringify(savings)}
             Budgets: ${JSON.stringify(categoryBudgets)}
             Overall Budget: ${JSON.stringify(overallBudget)}
             Categories: ${JSON.stringify(categories)}
@@ -99,10 +99,10 @@ const ReportsPage: React.FC<ReportsPageProps> = ({ transactions, savings, catego
         <div className="max-w-screen-xl mx-auto p-4 sm:p-6 lg:p-8 relative">
             <InteractiveReportDashboard
                 transactions={transactions}
-                savings={savings}
                 categoryBudgets={categoryBudgets}
                 overallBudget={overallBudget}
                 categories={categories}
+                savings={savings}
             />
 
             {/* Floating Chat Button */}
