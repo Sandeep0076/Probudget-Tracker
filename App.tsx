@@ -26,6 +26,7 @@ import PlannerToBuy from './components/planner/PlannerToBuy';
 import TrashboxPage from './components/planner/TrashboxPage';
 import ShoppingItemModal from './components/ShoppingItemModal';
 import TaskTypeSelectionModal from './components/planner/TaskTypeSelectionModal';
+import { useSwipe } from './hooks/useSwipe';
 
 export type Page = 'dashboard' | 'addTransaction' | 'budgets' | 'transactions' | 'categories' | 'reports' | 'confirmReceipt' | 'settings';
 export type Theme = 'dark-blue' | 'light' | 'dark' | 'custom';
@@ -448,6 +449,45 @@ const App: React.FC = () => {
     }
   };
 
+  const budgetPages: Page[] = ['dashboard', 'budgets', 'transactions', 'categories', 'reports'];
+  const plannerPages: PlannerPage[] = ['todo', 'schedule', 'calendar', 'toBuy', 'trash'];
+
+  const handleSwipeLeft = () => {
+    console.log('[App] handleSwipeLeft triggered', { section, currentPage, plannerPage });
+    if (section === 'budget') {
+      const currentIndex = budgetPages.indexOf(currentPage);
+      if (currentIndex !== -1 && currentIndex < budgetPages.length - 1) {
+        console.log('[App] Navigating to:', budgetPages[currentIndex + 1]);
+        navigate(budgetPages[currentIndex + 1]);
+      }
+    } else {
+      const currentIndex = plannerPages.indexOf(plannerPage);
+      if (currentIndex !== -1 && currentIndex < plannerPages.length - 1) {
+        console.log('[App] Navigating planner to:', plannerPages[currentIndex + 1]);
+        navigatePlanner(plannerPages[currentIndex + 1]);
+      }
+    }
+  };
+
+  const handleSwipeRight = () => {
+    console.log('[App] handleSwipeRight triggered', { section, currentPage, plannerPage });
+    if (section === 'budget') {
+      const currentIndex = budgetPages.indexOf(currentPage);
+      if (currentIndex > 0) {
+        console.log('[App] Navigating to:', budgetPages[currentIndex - 1]);
+        navigate(budgetPages[currentIndex - 1]);
+      }
+    } else {
+      const currentIndex = plannerPages.indexOf(plannerPage);
+      if (currentIndex > 0) {
+        console.log('[App] Navigating planner to:', plannerPages[currentIndex - 1]);
+        navigatePlanner(plannerPages[currentIndex - 1]);
+      }
+    }
+  };
+
+  const swipeHandlers = useSwipe({ onSwipeLeft: handleSwipeLeft, onSwipeRight: handleSwipeRight });
+
   const openNewTaskModal = (taskType: 'todo' | 'schedule') => {
     setNewTaskType(taskType);
     setPrefillTask({ taskType });
@@ -756,8 +796,10 @@ const App: React.FC = () => {
     }
   }
 
+
+
   return (
-    <div className="min-h-screen font-sans text-text-primary bg-transparent">
+    <div className="min-h-screen font-sans text-text-primary bg-transparent" {...swipeHandlers} style={{ touchAction: 'pan-y' }}>
       <TopSwitcher
         section={section}
         onChange={handleSectionChange}
