@@ -238,6 +238,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
                   <option value="daily">Daily</option>
                   <option value="weekly">Weekly</option>
                   <option value="monthly">Monthly</option>
+                  <option value="yearly">Yearly</option>
                 </select>
               </LabeledRow>
               {repeat?.type === 'monthly' && (
@@ -252,6 +253,61 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
                   </select>
                   {(repeat as any).monthlyMode !== 'last_day' && (
                     <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e) => setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} />
+                  )}
+                </div>
+              )}
+              {repeat?.type === 'yearly' && (
+                <div className="flex gap-3 ml-[124px]">
+                  <select
+                    value={(repeat as any).yearlyMode || 'on_date'}
+                    onChange={(e) => setRepeat({ ...(repeat as any), yearlyMode: e.target.value as any })}
+                    className={commonSelectClasses}
+                  >
+                    <option value="on_date">On date</option>
+                    <option value="last_day_of_month">Last day of month</option>
+                  </select>
+                  {(repeat as any).yearlyMode !== 'last_day_of_month' && (
+                    <>
+                      <select
+                        value={(repeat as any).monthOfYear || 1}
+                        onChange={(e) => setRepeat({ ...(repeat as any), monthOfYear: Number(e.target.value) })}
+                        className={commonSelectClasses}
+                      >
+                        <option value={1}>January</option>
+                        <option value={2}>February</option>
+                        <option value={3}>March</option>
+                        <option value={4}>April</option>
+                        <option value={5}>May</option>
+                        <option value={6}>June</option>
+                        <option value={7}>July</option>
+                        <option value={8}>August</option>
+                        <option value={9}>September</option>
+                        <option value={10}>October</option>
+                        <option value={11}>November</option>
+                        <option value={12}>December</option>
+                      </select>
+                      <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e) => setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} placeholder="Day" />
+                    </>
+                  )}
+                  {(repeat as any).yearlyMode === 'last_day_of_month' && (
+                    <select
+                      value={(repeat as any).monthOfYear || 1}
+                      onChange={(e) => setRepeat({ ...(repeat as any), monthOfYear: Number(e.target.value) })}
+                      className={commonSelectClasses}
+                    >
+                      <option value={1}>January</option>
+                      <option value={2}>February</option>
+                      <option value={3}>March</option>
+                      <option value={4}>April</option>
+                      <option value={5}>May</option>
+                      <option value={6}>June</option>
+                      <option value={7}>July</option>
+                      <option value={8}>August</option>
+                      <option value={9}>September</option>
+                      <option value={10}>October</option>
+                      <option value={11}>November</option>
+                      <option value={12}>December</option>
+                    </select>
                   )}
                 </div>
               )}
@@ -286,6 +342,7 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
                     <option value="daily">Daily</option>
                     <option value="weekly">Weekly</option>
                     <option value="monthly">Monthly</option>
+                    <option value="yearly">Yearly</option>
                   </select>
                 </LabeledRow>
                 {repeat?.type === 'monthly' && (
@@ -300,6 +357,61 @@ const TaskModal: React.FC<TaskModalProps> = ({ isOpen, initial, onClose, onSave 
                     </select>
                     {(repeat as any).monthlyMode !== 'last_day' && (
                       <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e) => setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} />
+                    )}
+                  </div>
+                )}
+                {repeat?.type === 'yearly' && (
+                  <div className="flex gap-3">
+                    <select
+                      value={(repeat as any).yearlyMode || 'on_date'}
+                      onChange={(e) => setRepeat({ ...(repeat as any), yearlyMode: e.target.value as any })}
+                      className={commonSelectClasses}
+                    >
+                      <option value="on_date">On date</option>
+                      <option value="last_day_of_month">Last day of month</option>
+                    </select>
+                    {(repeat as any).yearlyMode !== 'last_day_of_month' && (
+                      <>
+                        <select
+                          value={(repeat as any).monthOfYear || 1}
+                          onChange={(e) => setRepeat({ ...(repeat as any), monthOfYear: Number(e.target.value) })}
+                          className={commonSelectClasses}
+                        >
+                          <option value={1}>January</option>
+                          <option value={2}>February</option>
+                          <option value={3}>March</option>
+                          <option value={4}>April</option>
+                          <option value={5}>May</option>
+                          <option value={6}>June</option>
+                          <option value={7}>July</option>
+                          <option value={8}>August</option>
+                          <option value={9}>September</option>
+                          <option value={10}>October</option>
+                          <option value={11}>November</option>
+                          <option value={12}>December</option>
+                        </select>
+                        <input type="number" min={1} max={31} value={(repeat as any).dayOfMonth || 1} onChange={(e) => setRepeat({ ...(repeat as any), dayOfMonth: Number(e.target.value) })} className={`${commonInputClasses} w-24`} placeholder="Day" />
+                      </>
+                    )}
+                    {(repeat as any).yearlyMode === 'last_day_of_month' && (
+                      <select
+                        value={(repeat as any).monthOfYear || 1}
+                        onChange={(e) => setRepeat({ ...(repeat as any), monthOfYear: Number(e.target.value) })}
+                        className={commonSelectClasses}
+                      >
+                        <option value={1}>January</option>
+                        <option value={2}>February</option>
+                        <option value={3}>March</option>
+                        <option value={4}>April</option>
+                        <option value={5}>May</option>
+                        <option value={6}>June</option>
+                        <option value={7}>July</option>
+                        <option value={8}>August</option>
+                        <option value={9}>September</option>
+                        <option value={10}>October</option>
+                        <option value={11}>November</option>
+                        <option value={12}>December</option>
+                      </select>
                     )}
                   </div>
                 )}

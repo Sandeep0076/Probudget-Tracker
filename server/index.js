@@ -497,12 +497,23 @@ app.put('/api/tasks/:id', async (req, res) => {
     }
   }
 
+  // Helper function to safely format date to YYYY-MM-DD without timezone issues
+  const formatToDateOnly = (dateValue) => {
+    if (!dateValue) return dateValue;
+    // If already in YYYY-MM-DD format (10 characters), use as-is
+    if (typeof dateValue === 'string' && dateValue.length === 10 && /^\d{4}-\d{2}-\d{2}$/.test(dateValue)) {
+      return dateValue;
+    }
+    // Otherwise convert to date format
+    return new Date(dateValue).toISOString().split('T')[0];
+  };
+
   // Prepare update data - using DATE format instead of timestamp
   const updateData = {
     title, notes, status, priority, all_day: allDay,
-    start: start ? new Date(start).toISOString().split('T')[0] : start,
-    end: end ? new Date(end).toISOString().split('T')[0] : end,
-    due: due ? new Date(due).toISOString().split('T')[0] : due,
+    start: formatToDateOnly(start),
+    end: formatToDateOnly(end),
+    due: formatToDateOnly(due),
     repeat_json: repeat, color,
     updated_at: new Date().toISOString().split('T')[0], // DATE format
     progress: finalProgress,
@@ -632,29 +643,29 @@ app.delete('/api/tasks/:id', async (req, res) => {
 app.post('/api/tasks/:id/complete-to-trash', async (req, res) => {
   const { id } = req.params;
   console.log('[POST /api/tasks/:id/complete-to-trash] Completing task and moving to trash:', id);
-  
+
   const { data: existing, error: fetchErr } = await supabase.from('tasks').select('id, status, deleted_at').eq('id', id).single();
   if (fetchErr || !existing) {
     console.error('[POST /api/tasks/:id/complete-to-trash] Task not found:', id, fetchErr);
     return res.status(404).json({ error: 'Task not found' });
   }
-  
+
   if (existing.deleted_at) {
     console.warn('[POST /api/tasks/:id/complete-to-trash] Task already in trash:', id);
     return res.status(400).json({ error: 'Task already in trash' });
   }
-  
+
   const today = new Date().toISOString().slice(0, 10); // YYYY-MM-DD format
   const { error: updateErr } = await supabase.from('tasks').update({
     status: 'completed',
     deleted_at: today
   }).eq('id', id);
-  
+
   if (updateErr) {
     console.error('[POST /api/tasks/:id/complete-to-trash] Failed to complete and trash task:', updateErr);
     return res.status(500).json({ error: 'Failed to complete and move task to trash' });
   }
-  
+
   console.log('[POST /api/tasks/:id/complete-to-trash] Task completed and moved to trash:', id);
   res.json({ ok: true, completed: true, trashedAt: today });
 });
@@ -706,7 +717,7 @@ app.post('/api/tasks/:id/restore', async (req, res) => {
     deleted_at: null,
     updated_at: new Date().toISOString().split('T')[0] // DATE format
   };
-  
+
   // If the task was completed, restore it to 'new' status (uncomplete it)
   if (existing.status === 'completed') {
     console.log('[POST /api/tasks/:id/restore] Task was completed, restoring to new status');
@@ -1095,7 +1106,7 @@ app.post('/api/budgets/ensure-current-month', async (req, res) => {
     const today = new Date();
     const currentMonth = today.getMonth();
     const currentYear = today.getFullYear();
-    
+
     // Calculate previous month
     let prevMonth = currentMonth - 1;
     let prevYear = currentYear;

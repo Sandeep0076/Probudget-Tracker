@@ -826,8 +826,37 @@ const App: React.FC = () => {
             <EditTransactionModal
               isOpen={!!editingTransaction}
               onClose={() => setEditingTransaction(null)}
-              onSave={async (updatedTx) => {
-                await handleUpdateTransaction(updatedTx);
+              onSave={async (updatedTx, isRecurring) => {
+                console.log('[App] EditTransactionModal onSave called with recurring flag:', isRecurring);
+                
+                if (isRecurring) {
+                  // Convert to recurring transaction
+                  console.log('[App] Converting transaction to recurring');
+                  const recurringTx: Omit<RecurringTransaction, 'id'> = {
+                    description: updatedTx.description,
+                    amount: updatedTx.amount,
+                    type: updatedTx.type,
+                    category: updatedTx.category,
+                    startDate: updatedTx.date,
+                    frequency: 'monthly',
+                    dayOfMonth: new Date(updatedTx.date).getUTCDate(),
+                    labels: updatedTx.labels,
+                  };
+                  
+                  // Add the recurring transaction
+                  await api.addRecurringTransaction(recurringTx);
+                  
+                  // Delete the original transaction since it's now recurring
+                  await api.deleteTransaction(updatedTx.id);
+                  
+                  // Generate any due transactions
+                  await api.generateDueRecurringTransactions();
+                } else {
+                  // Update the existing transaction
+                  await handleUpdateTransaction(updatedTx);
+                }
+                
+                await loadData();
                 setEditingTransaction(null);
               }}
               transaction={editingTransaction}

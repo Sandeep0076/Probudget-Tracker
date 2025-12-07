@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Transaction, TransactionType, Category } from '../types';
+import { Transaction, TransactionType, Category, TransactionFormData } from '../types';
 import { CloseIcon } from './icons/CloseIcon';
 import LabelAutocomplete from './LabelAutocomplete';
 import { normalizeLabels } from '../utils/formatters';
@@ -7,7 +7,7 @@ import { normalizeLabels } from '../utils/formatters';
 interface EditTransactionModalProps {
     isOpen: boolean;
     onClose: () => void;
-    onSave: (transaction: Transaction) => void;
+    onSave: (transaction: Transaction, isRecurring?: boolean) => void;
     transaction: Transaction;
     categories: Category[];
     availableLabels: string[];
@@ -15,9 +15,12 @@ interface EditTransactionModalProps {
 
 const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onClose, onSave, transaction, categories, availableLabels }) => {
     const [formData, setFormData] = useState<Transaction>(transaction);
+    const [isRecurring, setIsRecurring] = useState(false);
 
     useEffect(() => {
         setFormData(transaction);
+        // Reset recurring state when transaction changes
+        setIsRecurring(false);
     }, [transaction]);
 
     if (!isOpen) return null;
@@ -45,7 +48,8 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
             return;
         }
     const normalized = normalizeLabels(formData.labels);
-    onSave({ ...formData, labels: normalized });
+    console.log('[EditTransactionModal] Saving transaction with recurring flag:', isRecurring);
+    onSave({ ...formData, labels: normalized }, isRecurring);
     };
 
     const commonInputClasses = "w-full px-4 py-3 bg-surface border border-border-shadow shadow-inner rounded-md text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-accent transition-colors";
@@ -105,8 +109,26 @@ const EditTransactionModal: React.FC<EditTransactionModalProps> = ({ isOpen, onC
                             </select>
                         </div>
                         <div>
-                            <label htmlFor="date" className="block text-sm font-medium text-text-secondary mb-1">Date</label>
+                            <label htmlFor="date" className="block text-sm font-medium text-text-secondary mb-1">
+                                {isRecurring ? 'Start Date' : 'Date'}
+                            </label>
                             <input type="date" name="date" id="date" value={formData.date} onChange={handleChange} className={commonInputClasses} />
+                        </div>
+                    </div>
+                    
+                    <div className="flex items-center gap-4 bg-surface p-4 rounded-lg shadow-inner border border-border-shadow">
+                        <label htmlFor="recurring-toggle" className="flex items-center cursor-pointer">
+                            <div className="relative">
+                                <input type="checkbox" id="recurring-toggle" className="sr-only" checked={isRecurring} onChange={() => setIsRecurring(!isRecurring)} />
+                                <div className="block bg-border-shadow w-14 h-8 rounded-full shadow-inner"></div>
+                                <div className={`dot absolute left-1 top-1 bg-surface w-6 h-6 rounded-full transition-transform shadow-neu-sm ${isRecurring ? 'translate-x-6 bg-accent' : ''}`}></div>
+                            </div>
+                        </label>
+                        <div>
+                           <span className="text-sm font-medium text-text-primary">Convert to Recurring</span>
+                           <p className="text-xs text-text-secondary">
+                                {isRecurring ? "This will convert the transaction to a monthly recurring transaction starting from the selected date." : "Enable to make this transaction recurring monthly."}
+                           </p>
                         </div>
                     </div>
                     <div className="flex items-center justify-end gap-4 pt-4">
