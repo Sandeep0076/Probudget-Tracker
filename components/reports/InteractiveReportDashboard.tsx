@@ -107,17 +107,15 @@ const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
                     {/* View Mode Toggle - Redesigned */}
                     <div className="relative inline-flex items-center bg-gradient-to-br from-surface/80 to-surface/60 backdrop-blur-xl p-1 rounded-2xl shadow-neu-3d border border-border-highlight/50">
                         <div
-                            className={`absolute top-1 bottom-1 rounded-xl bg-gradient-to-br from-brand to-accent shadow-lg transition-all duration-500 ease-out ${
-                                viewMode === 'budget' ? 'left-1 right-[calc(50%+2px)]' : 'left-[calc(50%+2px)] right-1'
-                            }`}
+                            className={`absolute top-1 bottom-1 rounded-xl bg-gradient-to-br from-brand to-accent shadow-lg transition-all duration-500 ease-out ${viewMode === 'budget' ? 'left-1 right-[calc(50%+2px)]' : 'left-[calc(50%+2px)] right-1'
+                                }`}
                         />
                         <button
                             onClick={() => setViewMode('budget')}
-                            className={`relative z-10 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-500 ease-out min-w-[120px] ${
-                                viewMode === 'budget'
+                            className={`relative z-10 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-500 ease-out min-w-[120px] ${viewMode === 'budget'
                                     ? 'text-white scale-105'
                                     : 'text-text-secondary hover:text-text-primary hover:scale-102'
-                            }`}
+                                }`}
                         >
                             <span className="flex items-center justify-center gap-2">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -128,11 +126,10 @@ const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
                         </button>
                         <button
                             onClick={() => setViewMode('total')}
-                            className={`relative z-10 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-500 ease-out min-w-[120px] ${
-                                viewMode === 'total'
+                            className={`relative z-10 px-5 py-2.5 rounded-xl text-sm font-semibold transition-all duration-500 ease-out min-w-[120px] ${viewMode === 'total'
                                     ? 'text-white scale-105'
                                     : 'text-text-secondary hover:text-text-primary hover:scale-102'
-                            }`}
+                                }`}
                         >
                             <span className="flex items-center justify-center gap-2">
                                 <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -238,7 +235,7 @@ const InteractiveReportDashboard: React.FC<InteractiveReportDashboardProps> = ({
 
                 {activeView === 'savings' && (
                     <div className="bg-card-bg backdrop-blur-xl p-6 rounded-2xl shadow-neu-3d border-t border-l border-b border-r border-t-border-highlight border-l-border-highlight border-b-border-shadow border-r-border-shadow">
-                        <MonthlySavingsChart data={savings} />
+                        <MonthlySavingsChart data={savings} transactions={transactions} />
                     </div>
                 )}
             </div>

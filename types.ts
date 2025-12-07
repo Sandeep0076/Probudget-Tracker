@@ -78,11 +78,13 @@ export type TaskStatus = 'new' | 'scheduled' | 'in_progress' | 'completed' | 'ba
 export type TaskPriority = 'low' | 'medium' | 'high';
 
 export interface TaskRepeat {
-  type: 'none' | 'daily' | 'weekly' | 'monthly';
+  type: 'none' | 'daily' | 'weekly' | 'monthly' | 'yearly';
   interval?: number;
   byWeekday?: number[];
   monthlyMode?: 'on_day' | 'last_day';
   dayOfMonth?: number;
+  yearlyMode?: 'on_date' | 'last_day_of_month';
+  monthOfYear?: number; // 1-12 for Jan-Dec (for yearly recurrence)
 }
 
 export interface Subtask {
