@@ -8,10 +8,10 @@ const DateDisplay: React.FC<DateDisplayProps> = ({ className = '' }) => {
   const [currentDate, setCurrentDate] = useState(new Date());
 
   useEffect(() => {
-    // Update date every second to keep it current
+    // Update date every 6 hours to keep it current
     const timer = setInterval(() => {
       setCurrentDate(new Date());
-    }, 1000);
+    }, 21600000); // Update every 6 hours (6 * 60 * 60 * 1000 ms)
 
     return () => clearInterval(timer);
   }, []);
@@ -24,8 +24,6 @@ const DateDisplay: React.FC<DateDisplayProps> = ({ className = '' }) => {
     };
     return date.toLocaleDateString('en-US', options);
   };
-
-  console.log('DateDisplay: Current date rendering ->', formatSimpleDate(currentDate));
 
   return (
     <div className={`flex items-center ${className}`}>
