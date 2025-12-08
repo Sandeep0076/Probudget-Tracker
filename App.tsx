@@ -828,7 +828,7 @@ const App: React.FC = () => {
               onClose={() => setEditingTransaction(null)}
               onSave={async (updatedTx, isRecurring) => {
                 console.log('[App] EditTransactionModal onSave called with recurring flag:', isRecurring);
-                
+
                 if (isRecurring) {
                   // Convert to recurring transaction
                   console.log('[App] Converting transaction to recurring');
@@ -842,20 +842,20 @@ const App: React.FC = () => {
                     dayOfMonth: new Date(updatedTx.date).getUTCDate(),
                     labels: updatedTx.labels,
                   };
-                  
+
                   // Add the recurring transaction
                   await api.addRecurringTransaction(recurringTx);
-                  
+
                   // Delete the original transaction since it's now recurring
                   await api.deleteTransaction(updatedTx.id);
-                  
+
                   // Generate any due transactions
                   await api.generateDueRecurringTransactions();
                 } else {
                   // Update the existing transaction
                   await handleUpdateTransaction(updatedTx);
                 }
-                
+
                 await loadData();
                 setEditingTransaction(null);
               }}
@@ -927,15 +927,9 @@ const App: React.FC = () => {
               <PlannerToBuy
                 items={shoppingItems}
                 onAddItem={handleAddShoppingItem}
-                onUpdateItem={handleUpdateShoppingItem}
-                onDeleteItem={handleDeleteShoppingItem}
-                onToggleItem={handleToggleShoppingItem}
-                onEditItem={handleEditShoppingItem}
-                isModalOpen={isShoppingModalOpen}
-                onOpenModal={openNewShoppingModal}
-                onCloseModal={() => { setIsShoppingModalOpen(false); setEditingShoppingItem(null); }}
-                editingItem={editingShoppingItem}
-                onSaveItem={handleSaveShoppingItem}
+                onToggleComplete={handleToggleShoppingItem}
+                onEdit={handleEditShoppingItem}
+                onDelete={handleDeleteShoppingItem}
               />
             )}
             {plannerPage === 'trash' && (
