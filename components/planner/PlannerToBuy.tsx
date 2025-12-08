@@ -13,12 +13,12 @@ interface PlannerToBuyProps {
 type SortOption = 'priority' | 'createdAt' | 'category';
 type FilterOption = 'all' | 'pending' | 'completed';
 
-const PlannerToBuy: React.FC<PlannerToBuyProps> = ({ 
-  items, 
-  onAddItem, 
-  onToggleComplete, 
-  onEdit, 
-  onDelete 
+const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
+  items,
+  onAddItem,
+  onToggleComplete,
+  onEdit,
+  onDelete
 }) => {
   const [sortBy, setSortBy] = useState<SortOption>('createdAt');
   const [filterBy, setFilterBy] = useState<FilterOption>('all');
@@ -30,19 +30,19 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
 
   const filteredItems = useMemo(() => {
     let filtered = items;
-    
+
     if (filterBy === 'pending') {
       filtered = items.filter(item => !item.completed);
     } else if (filterBy === 'completed') {
       filtered = items.filter(item => item.completed);
     }
-    
+
     return filtered;
   }, [items, filterBy]);
 
   const sortedItems = useMemo(() => {
     const sorted = [...filteredItems];
-    
+
     if (sortBy === 'priority') {
       const priorityOrder = { high: 0, medium: 1, low: 2 };
       sorted.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
@@ -51,7 +51,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
     } else {
       sorted.sort((a, b) => new Date(b.createdAt + 'T00:00:00.000Z').getTime() - new Date(a.createdAt + 'T00:00:00.000Z').getTime());
     }
-    
+
     return sorted;
   }, [filteredItems, sortBy]);
 
@@ -83,7 +83,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
 
   const handleAddItem = () => {
     if (!newItemTitle.trim()) return;
-    
+
     onAddItem({
       title: newItemTitle.trim(),
       category: newItemCategory.trim() || undefined,
@@ -92,7 +92,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
       completed: false,
       completedAt: null
     });
-    
+
     setNewItemTitle('');
     setNewItemCategory('');
     setNewItemNotes('');
@@ -112,9 +112,9 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Header with stats */}
+      {/* Header */}
       <div className="bg-card-bg backdrop-blur-xl rounded-xl p-5 shadow-neu-3d hover:shadow-card-hover transition-shadow duration-300">
-        <div className="flex items-center justify-between mb-4">
+        <div className="flex items-center justify-between">
           <h1 className="text-2xl font-bold text-text-primary">Shopping List</h1>
           <button
             onClick={() => setShowAddForm(!showAddForm)}
@@ -125,27 +125,6 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
             </svg>
             Add Item
           </button>
-        </div>
-        
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <div className="text-center p-3 bg-surface/50 rounded-lg">
-            <div className="text-2xl font-bold text-text-primary">{items.length}</div>
-            <div className="text-sm text-text-secondary">Total Items</div>
-          </div>
-          <div className="text-center p-3 bg-surface/50 rounded-lg">
-            <div className="text-2xl font-bold text-warning">{pendingCount}</div>
-            <div className="text-sm text-text-secondary">Pending</div>
-          </div>
-          <div className="text-center p-3 bg-surface/50 rounded-lg">
-            <div className="text-2xl font-bold text-success">{completedCount}</div>
-            <div className="text-sm text-text-secondary">Completed</div>
-          </div>
-          <div className="text-center p-3 bg-surface/50 rounded-lg">
-            <div className="text-2xl font-bold text-accent">
-              {items.length > 0 ? Math.round((completedCount / items.length) * 100) : 0}%
-            </div>
-            <div className="text-sm text-text-secondary">Progress</div>
-          </div>
         </div>
       </div>
 
@@ -166,7 +145,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
                 autoFocus
               />
             </div>
-            
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">Category</label>
@@ -178,7 +157,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
                   className="w-full px-3 py-2 rounded-lg bg-input-bg border border-input-border text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
                 />
               </div>
-              
+
               <div>
                 <label className="block text-sm font-medium text-text-primary mb-2">Priority</label>
                 <select
@@ -192,7 +171,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
                 </select>
               </div>
             </div>
-            
+
             <div>
               <label className="block text-sm font-medium text-text-primary mb-2">Notes</label>
               <textarea
@@ -203,7 +182,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
                 className="w-full px-3 py-2 rounded-lg bg-input-bg border border-input-border text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all resize-none"
               />
             </div>
-            
+
             <div className="flex gap-2 justify-end">
               <button
                 onClick={() => setShowAddForm(false)}
@@ -239,7 +218,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
                 <option value="completed">Completed</option>
               </select>
             </div>
-            
+
             <div className="flex items-center gap-2">
               <span className="text-sm font-medium text-text-primary">Sort:</span>
               <select
@@ -253,28 +232,27 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
               </select>
             </div>
           </div>
-          
+
           <div className="text-sm text-text-secondary">
             Showing {sortedItems.length} of {items.length} items
           </div>
         </div>
-        
+
         {/* Items List */}
         <div className="mt-6 space-y-2">
           {sortedItems.length === 0 && (
             <div className="text-center py-8 text-text-secondary">
               {filterBy === 'all' ? 'No items in your shopping list yet.' :
-               filterBy === 'pending' ? 'No pending items.' :
-               'No completed items.'}
+                filterBy === 'pending' ? 'No pending items.' :
+                  'No completed items.'}
             </div>
           )}
-          
+
           {sortedItems.map((item) => (
-            <div 
-              key={item.id} 
-              className={`group flex items-center gap-4 p-4 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-all duration-200 hover:-translate-y-0.5 ${
-                item.completed ? 'opacity-75' : ''
-              }`}
+            <div
+              key={item.id}
+              className={`group flex items-center gap-4 p-4 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-all duration-200 hover:-translate-y-0.5 ${item.completed ? 'opacity-75' : ''
+                }`}
             >
               <div className="flex-shrink-0">
                 <input
@@ -284,47 +262,45 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
                   className="w-5 h-5 rounded border-gray-300 text-brand focus:ring-brand/50"
                 />
               </div>
-              
+
               <div className="flex-1 min-w-0">
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <h4 className={`text-sm font-semibold ${
-                      item.completed ? 'line-through text-text-muted' : 'text-text-primary'
-                    }`}>
+                    <h4 className={`text-sm font-semibold ${item.completed ? 'line-through text-text-muted' : 'text-text-primary'
+                      }`}>
                       {item.title}
                     </h4>
-                    
+
                     <div className="flex flex-wrap items-center gap-3 mt-1">
                       {item.category && (
                         <span className="text-xs px-2 py-1 bg-surface/50 text-text-secondary rounded-full">
                           {item.category}
                         </span>
                       )}
-                      
+
                       <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityBadge(item.priority)}`}>
                         {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
                       </span>
-                      
+
                       <span className="text-xs text-text-muted">
                         Added: {formatDate(item.createdAt)}
                       </span>
-                      
+
                       {item.completed && item.completedAt && (
                         <span className="text-xs text-success">
                           Completed: {formatDate(item.completedAt)}
                         </span>
                       )}
                     </div>
-                    
+
                     {item.notes && (
-                      <p className={`text-xs mt-2 ${
-                        item.completed ? 'text-text-muted' : 'text-text-secondary'
-                      }`}>
+                      <p className={`text-xs mt-2 ${item.completed ? 'text-text-muted' : 'text-text-secondary'
+                        }`}>
                         {item.notes}
                       </p>
                     )}
                   </div>
-                  
+
                   <div className="flex items-center gap-1 ml-4">
                     <button
                       onClick={() => onEdit(item)}
@@ -335,7 +311,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
-                    
+
                     <button
                       onClick={() => onDelete(item.id)}
                       className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-danger/10 rounded-lg transition-opacity"
