@@ -10,7 +10,7 @@ interface PlannerToBuyProps {
   onDelete: (itemId: string) => void;
 }
 
-type SortOption = 'priority' | 'createdAt' | 'category';
+type SortOption = 'createdAt' | 'category';
 type FilterOption = 'all' | 'pending' | 'completed';
 
 const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
@@ -25,7 +25,6 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
   const [newItemTitle, setNewItemTitle] = useState('');
   const [newItemCategory, setNewItemCategory] = useState('');
   const [newItemNotes, setNewItemNotes] = useState('');
-  const [newItemPriority, setNewItemPriority] = useState<'low' | 'medium' | 'high'>('medium');
   const [showAddForm, setShowAddForm] = useState(false);
 
   const filteredItems = useMemo(() => {
@@ -43,10 +42,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
   const sortedItems = useMemo(() => {
     const sorted = [...filteredItems];
 
-    if (sortBy === 'priority') {
-      const priorityOrder = { high: 0, medium: 1, low: 2 };
-      sorted.sort((a, b) => priorityOrder[a.priority] - priorityOrder[b.priority]);
-    } else if (sortBy === 'category') {
+    if (sortBy === 'category') {
       sorted.sort((a, b) => (a.category || '').localeCompare(b.category || ''));
     } else {
       sorted.sort((a, b) => new Date(b.createdAt + 'T00:00:00.000Z').getTime() - new Date(a.createdAt + 'T00:00:00.000Z').getTime());
@@ -55,31 +51,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
     return sorted;
   }, [filteredItems, sortBy]);
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'text-danger';
-      case 'medium':
-        return 'text-warning';
-      case 'low':
-        return 'text-success';
-      default:
-        return 'text-text-secondary';
-    }
-  };
 
-  const getPriorityBadge = (priority: string) => {
-    switch (priority) {
-      case 'high':
-        return 'bg-danger/10 text-danger border-danger/20';
-      case 'medium':
-        return 'bg-warning/10 text-warning border-warning/20';
-      case 'low':
-        return 'bg-success/10 text-success border-success/20';
-      default:
-        return 'bg-text-secondary/10 text-text-secondary border-text-secondary/20';
-    }
-  };
 
   const handleAddItem = () => {
     if (!newItemTitle.trim()) return;
@@ -88,7 +60,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
       title: newItemTitle.trim(),
       category: newItemCategory.trim() || undefined,
       notes: newItemNotes.trim() || undefined,
-      priority: newItemPriority,
+      priority: 'medium',
       completed: false,
       completedAt: null
     });
@@ -96,7 +68,6 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
     setNewItemTitle('');
     setNewItemCategory('');
     setNewItemNotes('');
-    setNewItemPriority('medium');
     setShowAddForm(false);
   };
 
@@ -146,30 +117,15 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
               />
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">Category</label>
-                <input
-                  type="text"
-                  value={newItemCategory}
-                  onChange={(e) => setNewItemCategory(e.target.value)}
-                  placeholder="e.g., Groceries, Electronics"
-                  className="w-full px-3 py-2 rounded-lg bg-input-bg border border-input-border text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
-                />
-              </div>
-
-              <div>
-                <label className="block text-sm font-medium text-text-primary mb-2">Priority</label>
-                <select
-                  value={newItemPriority}
-                  onChange={(e) => setNewItemPriority(e.target.value as 'low' | 'medium' | 'high')}
-                  className="w-full px-3 py-2 rounded-lg bg-input-bg border border-input-border text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                </select>
-              </div>
+            <div>
+              <label className="block text-sm font-medium text-text-primary mb-2">Category</label>
+              <input
+                type="text"
+                value={newItemCategory}
+                onChange={(e) => setNewItemCategory(e.target.value)}
+                placeholder="e.g., Groceries, Electronics"
+                className="w-full px-3 py-2 rounded-lg bg-input-bg border border-input-border text-text-primary placeholder-text-muted focus:outline-none focus:ring-2 focus:ring-brand/50 focus:border-brand/50 transition-all"
+              />
             </div>
 
             <div>
@@ -227,7 +183,6 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
                 className="text-sm px-3 py-1.5 rounded-lg bg-input-bg border border-input-border text-text-primary focus:outline-none focus:ring-2 focus:ring-brand/50 transition-all"
               >
                 <option value="createdAt">Date Added</option>
-                <option value="priority">Priority</option>
                 <option value="category">Category</option>
               </select>
             </div>
@@ -239,7 +194,7 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
         </div>
 
         {/* Items List */}
-        <div className="mt-6 space-y-2">
+        <div className="mt-4 bg-surface/30 rounded-xl overflow-hidden border border-white/5">
           {sortedItems.length === 0 && (
             <div className="text-center py-8 text-text-secondary">
               {filterBy === 'all' ? 'No items in your shopping list yet.' :
@@ -248,84 +203,73 @@ const PlannerToBuy: React.FC<PlannerToBuyProps> = ({
             </div>
           )}
 
-          {sortedItems.map((item) => (
-            <div
-              key={item.id}
-              className={`group flex items-center gap-4 p-4 rounded-xl bg-card-bg backdrop-blur-sm shadow-neu-sm hover:shadow-neu-lg transition-all duration-200 hover:-translate-y-0.5 ${item.completed ? 'opacity-75' : ''
-                }`}
-            >
-              <div className="flex-shrink-0">
-                <input
-                  type="checkbox"
-                  checked={item.completed}
-                  onChange={() => onToggleComplete(item.id)}
-                  className="w-5 h-5 rounded border-gray-300 text-brand focus:ring-brand/50"
-                />
-              </div>
+          <div className="divide-y divide-white/5">
+            {sortedItems.map((item) => (
+              <div
+                key={item.id}
+                className={`group flex items-center gap-3 px-4 py-1.5 hover:bg-white/5 transition-colors ${item.completed ? 'opacity-60 bg-surface/20' : ''
+                  }`}
+              >
+                <div className="flex-shrink-0 flex items-center">
+                  <input
+                    type="checkbox"
+                    checked={item.completed}
+                    onChange={() => onToggleComplete(item.id)}
+                    className="w-4 h-4 rounded border-gray-300 text-brand focus:ring-brand/50 cursor-pointer"
+                  />
+                </div>
 
-              <div className="flex-1 min-w-0">
-                <div className="flex items-start justify-between">
-                  <div className="flex-1">
-                    <h4 className={`text-sm font-semibold ${item.completed ? 'line-through text-text-muted' : 'text-text-primary'
+                <div className="flex-1 min-w-0 flex items-center justify-between gap-4">
+                  <div className="flex items-center gap-3 min-w-0 flex-1">
+                    <span className={`text-sm font-medium truncate ${item.completed ? 'line-through text-text-muted' : 'text-text-primary'
                       }`}>
                       {item.title}
-                    </h4>
+                    </span>
 
-                    <div className="flex flex-wrap items-center gap-3 mt-1">
+                    <div className="flex items-center gap-2 flex-shrink-0">
                       {item.category && (
-                        <span className="text-xs px-2 py-1 bg-surface/50 text-text-secondary rounded-full">
+                        <span className="text-[10px] px-1.5 py-0.5 bg-surface/50 text-text-secondary rounded">
                           {item.category}
                         </span>
                       )}
-
-                      <span className={`text-xs px-2 py-1 rounded-full border ${getPriorityBadge(item.priority)}`}>
-                        {item.priority.charAt(0).toUpperCase() + item.priority.slice(1)}
-                      </span>
-
-                      <span className="text-xs text-text-muted">
-                        Added: {formatDate(item.createdAt)}
-                      </span>
-
-                      {item.completed && item.completedAt && (
-                        <span className="text-xs text-success">
-                          Completed: {formatDate(item.completedAt)}
-                        </span>
+                      {item.notes && (
+                        <div className="group/note relative">
+                          <svg className="w-3.5 h-3.5 text-text-muted cursor-help" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                          </svg>
+                          <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 px-2 py-1 bg-black/80 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover/note:opacity-100 pointer-events-none transition-opacity z-10">
+                            {item.notes}
+                          </div>
+                        </div>
                       )}
                     </div>
-
-                    {item.notes && (
-                      <p className={`text-xs mt-2 ${item.completed ? 'text-text-muted' : 'text-text-secondary'
-                        }`}>
-                        {item.notes}
-                      </p>
-                    )}
                   </div>
 
-                  <div className="flex items-center gap-1 ml-4">
+                  <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                     <button
                       onClick={() => onEdit(item)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-border-highlight rounded-lg transition-opacity"
+                      className="p-1.5 hover:bg-surface/80 rounded-lg text-text-secondary hover:text-text-primary transition-colors"
                       title="Edit"
                     >
-                      <svg className="w-4 h-4 text-text-primary" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                       </svg>
                     </button>
 
                     <button
                       onClick={() => onDelete(item.id)}
-                      className="opacity-0 group-hover:opacity-100 p-1.5 hover:bg-danger/10 rounded-lg transition-opacity"
+                      className="p-1.5 hover:bg-danger/20 rounded-lg text-text-secondary hover:text-danger transition-colors"
                       title="Delete"
                     >
-                      <svg className="w-4 h-4 text-danger" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                       </svg>
                     </button>
                   </div>
                 </div>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
       </div>
     </div>
