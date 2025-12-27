@@ -15,6 +15,7 @@ interface TransactionsPageProps {
     onEditTransaction: (transaction: Transaction) => void;
     onDeleteTransaction: (transactionId: string) => Promise<void>;
     onEditRecurringTransaction?: (transaction: RecurringTransaction) => void;
+    onDeleteRecurringTransaction?: (id: string) => Promise<void>;
 }
 
 const TRANSACTIONS_PER_PAGE = 10;
@@ -49,7 +50,7 @@ const FilterDropdown: React.FC<{ value: string; onChange: (e: React.ChangeEvent<
 );
 
 
-const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, recurringTransactions, categories, onAddTransactionClick, onEditTransaction, onDeleteTransaction, onEditRecurringTransaction }) => {
+const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, recurringTransactions, categories, onAddTransactionClick, onEditTransaction, onDeleteTransaction, onEditRecurringTransaction, onDeleteRecurringTransaction }) => {
     const [typeFilter, setTypeFilter] = useState<string>('all');
     const [categoryFilter, setCategoryFilter] = useState<string>('all');
     const [labelFilter, setLabelFilter] = useState<string>('all');
@@ -266,7 +267,7 @@ const TransactionsPage: React.FC<TransactionsPageProps> = ({ transactions, recur
                                     <div>
                                         <h3 className="text-lg font-semibold text-text-primary mb-4">Upcoming Recurring Transactions</h3>
                                         <ul className="space-y-2">
-                                            {recurringTransactions.map(tx => <RecurringTransactionListItem key={tx.id} transaction={tx} onEdit={onEditRecurringTransaction} onDelete={() => {}} />)}
+                                            {recurringTransactions.map(tx => <RecurringTransactionListItem key={tx.id} transaction={tx} onEdit={onEditRecurringTransaction} onDelete={onDeleteRecurringTransaction || (() => {})} />)}
                                         </ul>
                                     </div>
                                 )}

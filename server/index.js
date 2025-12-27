@@ -59,10 +59,31 @@ async function upsertLabelIdByName(name) {
   const normalized = typeof name === 'string' && name.length > 0
     ? name.trim().charAt(0).toUpperCase() + name.trim().slice(1)
     : name;
+  
+  console.log(`[upsertLabelIdByName] Processing label: "${normalized}"`);
+  
   let { data: label } = await supabase.from('labels').select('id').eq('name', normalized).single();
-  if (label) return label.id;
+  if (label) {
+    console.log(`[upsertLabelIdByName] Label "${normalized}" already exists with ID: ${label.id}`);
+    return label.id;
+  }
+  
   const { data: newLabel, error: insertError } = await supabase.from('labels').insert({ name: normalized }).select('id').single();
-  if (insertError) throw insertError;
+  if (insertError) {
+    // If duplicate key error (23505), the label was created by another concurrent request
+    // Retry fetching it
+    if (insertError.code === '23505') {
+      console.log(`[upsertLabelIdByName] Duplicate key error for "${normalized}", retrying fetch...`);
+      const { data: retryLabel } = await supabase.from('labels').select('id').eq('name', normalized).single();
+      if (retryLabel) {
+        console.log(`[upsertLabelIdByName] Found label "${normalized}" on retry with ID: ${retryLabel.id}`);
+        return retryLabel.id;
+      }
+    }
+    console.error(`[upsertLabelIdByName] Error inserting label "${normalized}":`, insertError);
+    throw insertError;
+  }
+  console.log(`[upsertLabelIdByName] Created new label "${normalized}" with ID: ${newLabel.id}`);
   return newLabel.id;
 }
 
@@ -314,32 +335,61 @@ app.post('/api/transactions/bulk', async (req, res) => {
     console.log('[BULK] Successfully inserted', insertedTxs?.length, 'transactions');
     console.log('[BULK] Inserted transaction IDs:', insertedTxs.map(t => t.id));
 
-    // Process labels with better error handling
+    // Process labels with better error handling and deduplication
     try {
-      const labelPromises = items.flatMap((item, i) => {
+      // First, collect all unique labels across all transactions
+      const allLabels = new Set();
+      items.forEach(item => {
         const labels = item.labels || [];
-        if (labels.length === 0) {
-          console.log(`[BULK] No labels for transaction ${i + 1}`);
-          return [];
-        }
-        const transactionId = insertedTxs[i].id;
-        console.log(`[BULK] Processing ${labels.length} labels for transaction ${transactionId}:`, labels);
-        return labels.map(async (name) => {
-          try {
-            console.log(`[BULK] Upserting label: "${name}"`);
-            const labelId = await upsertLabelIdByName(name);
-            console.log(`[BULK] Label "${name}" has ID: ${labelId}`);
-            return { transaction_id: transactionId, label_id: labelId };
-          } catch (labelError) {
-            console.error(`[BULK] Error upserting label "${name}":`, labelError);
-            throw labelError;
+        labels.forEach(label => {
+          if (label && typeof label === 'string' && label.trim().length > 0) {
+            // Normalize the label name
+            const normalized = label.trim().charAt(0).toUpperCase() + label.trim().slice(1);
+            allLabels.add(normalized);
           }
         });
       });
 
-      if (labelPromises.length > 0) {
-        console.log('[BULK] Awaiting', labelPromises.length, 'label upsert operations');
-        const transactionLabels = await Promise.all(labelPromises);
+      console.log('[BULK] Found', allLabels.size, 'unique labels across all transactions:', Array.from(allLabels));
+
+      // Upsert all unique labels sequentially to avoid race conditions
+      const labelIdMap = new Map();
+      for (const labelName of allLabels) {
+        try {
+          console.log(`[BULK] Upserting unique label: "${labelName}"`);
+          const labelId = await upsertLabelIdByName(labelName);
+          labelIdMap.set(labelName, labelId);
+          console.log(`[BULK] Label "${labelName}" mapped to ID: ${labelId}`);
+        } catch (labelError) {
+          console.error(`[BULK] Error upserting label "${labelName}":`, labelError);
+          throw labelError;
+        }
+      }
+
+      // Now create transaction-label associations
+      const transactionLabels = [];
+      items.forEach((item, i) => {
+        const labels = item.labels || [];
+        if (labels.length === 0) {
+          console.log(`[BULK] No labels for transaction ${i + 1}`);
+          return;
+        }
+        const transactionId = insertedTxs[i].id;
+        console.log(`[BULK] Creating ${labels.length} label associations for transaction ${transactionId}`);
+        
+        labels.forEach(labelName => {
+          if (labelName && typeof labelName === 'string' && labelName.trim().length > 0) {
+            const normalized = labelName.trim().charAt(0).toUpperCase() + labelName.trim().slice(1);
+            const labelId = labelIdMap.get(normalized);
+            if (labelId) {
+              transactionLabels.push({ transaction_id: transactionId, label_id: labelId });
+            }
+          }
+        });
+      });
+
+      if (transactionLabels.length > 0) {
+        console.log('[BULK] Inserting', transactionLabels.length, 'label associations');
         console.log('[BULK] Label associations to insert:', JSON.stringify(transactionLabels, null, 2));
 
         const { error: labelError } = await supabase.from('transaction_labels').insert(transactionLabels);
@@ -1223,12 +1273,35 @@ app.put('/api/budgets/:id', async (req, res) => {
 
 app.post('/api/budgets/overall', async (req, res) => {
   const { amount, month, year } = req.body || {};
-  const { data, error } = await supabase.from('budgets').upsert({ category: OVERALL_BUDGET_CATEGORY, amount: toCents(amount), month, year }, { onConflict: 'category,month,year' }).select().single();
+  
+  console.log('[POST /api/budgets/overall] Received request:', {
+    amount,
+    month,
+    year,
+    amountInCents: toCents(amount),
+    monthName: new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })
+  });
+
+  // First, upsert the budget for the current month
+  const { data, error } = await supabase.from('budgets').upsert({
+    category: OVERALL_BUDGET_CATEGORY,
+    amount: toCents(amount),
+    month,
+    year
+  }, { onConflict: 'category,month,year' }).select().single();
 
   if (error) {
-    console.error('Error upserting overall budget:', error);
+    console.error('[POST /api/budgets/overall] Error upserting overall budget:', error);
     return res.status(500).json({ error: 'Failed to set overall budget' });
   }
+
+  console.log('[POST /api/budgets/overall] Successfully saved budget for current month:', {
+    id: data.id,
+    category: data.category,
+    amount: toEuros(data.amount),
+    month: data.month,
+    year: data.year
+  });
 
   await addActivity('UPDATE', `Updated overall budget for ${new Date(year, month).toLocaleString('default', { month: 'long', year: 'numeric' })} to $${Number(amount).toFixed(2)}.`);
   res.json({ ...data, amount: toEuros(data.amount) });
@@ -1391,16 +1464,27 @@ app.put('/api/recurring/:id', async (req, res) => {
 
 app.delete('/api/recurring/:id', async (req, res) => {
   const { id } = req.params;
+  console.log('[DELETE /api/recurring/:id] Deleting recurring transaction with id:', id);
+  
   const { data: recurring, error: fetchError } = await supabase.from('recurring_transactions').select('description').eq('id', id).single();
-  if (fetchError) console.error('Could not fetch recurring tx for activity log');
+  if (fetchError) {
+    console.error('[DELETE /api/recurring/:id] Could not fetch recurring tx for activity log:', fetchError);
+  } else {
+    console.log('[DELETE /api/recurring/:id] Found recurring transaction:', recurring.description);
+  }
 
+  console.log('[DELETE /api/recurring/:id] Deleting associated labels...');
   await supabase.from('recurring_transaction_labels').delete().eq('recurring_transaction_id', id);
+  
+  console.log('[DELETE /api/recurring/:id] Deleting recurring transaction from database...');
   const { error } = await supabase.from('recurring_transactions').delete().eq('id', id);
 
   if (error) {
-    console.error('Error deleting recurring tx:', error);
+    console.error('[DELETE /api/recurring/:id] Error deleting recurring tx:', error);
     return res.status(500).json({ error: 'Failed to delete recurring transaction' });
   }
+  
+  console.log('[DELETE /api/recurring/:id] Successfully deleted recurring transaction:', recurring?.description || 'Unknown');
   await addActivity('DELETE', `Deleted recurring transaction: "${recurring?.description || 'Unknown'}".`);
   res.json({ ok: true });
 });

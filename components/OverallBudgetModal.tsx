@@ -13,6 +13,8 @@ const OverallBudgetModal: React.FC<OverallBudgetModalProps> = ({ onClose, onSave
     const handleSubmit = (e: React.FormEvent) => {
         e.preventDefault();
         const numericAmount = parseFloat(amount);
+        console.log('[OverallBudgetModal] handleSubmit called with amount:', numericAmount);
+        
         if (!numericAmount || numericAmount <= 0) {
             alert('Please enter a valid amount greater than zero.');
             return;
@@ -20,6 +22,13 @@ const OverallBudgetModal: React.FC<OverallBudgetModalProps> = ({ onClose, onSave
 
         const currentMonth = new Date().getMonth();
         const currentYear = new Date().getFullYear();
+
+        console.log('[OverallBudgetModal] Saving budget:', {
+            amount: numericAmount,
+            month: currentMonth,
+            year: currentYear,
+            monthName: new Date(currentYear, currentMonth).toLocaleString('default', { month: 'long', year: 'numeric' })
+        });
 
         onSave({
             amount: numericAmount,
