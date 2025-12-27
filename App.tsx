@@ -181,7 +181,27 @@ const App: React.FC = () => {
       api.getLabels(),
     ]);
 
-    const overall = budgetsData.find(b => b.category === api.OVERALL_BUDGET_CATEGORY) || null;
+    const today = new Date();
+    const currentMonth = today.getMonth();
+    const currentYear = today.getFullYear();
+
+    console.log('[App.loadData] Current month/year:', { month: currentMonth, year: currentYear });
+    console.log('[App.loadData] All budgets received:', budgetsData.length);
+    
+    // Find overall budget for current month
+    const overall = budgetsData.find(b =>
+      b.category === api.OVERALL_BUDGET_CATEGORY &&
+      b.month === currentMonth &&
+      b.year === currentYear
+    ) || null;
+    
+    console.log('[App.loadData] Overall budget for current month:', overall ? {
+      id: overall.id,
+      amount: overall.amount,
+      month: overall.month,
+      year: overall.year
+    } : 'NOT FOUND');
+
     const categoryBudgetsData = budgetsData.filter(b => b.category !== api.OVERALL_BUDGET_CATEGORY);
 
     setTransactions(transactionsData);
@@ -379,7 +399,18 @@ const App: React.FC = () => {
 
   const handleAddCategoryBudget = wrapAction(api.addCategoryBudget);
   const handleEditCategoryBudget = wrapAction(api.updateCategoryBudget);
-  const handleSetOverallBudget = wrapAction(api.addOrUpdateOverallBudget);
+  const handleSetOverallBudget = async (budgetData: { amount: number; month: number; year: number; }) => {
+    console.log('[App] handleSetOverallBudget called with:', budgetData);
+    try {
+      await api.addOrUpdateOverallBudget(budgetData);
+      console.log('[App] Overall budget saved successfully');
+      await loadData();
+      console.log('[App] Data reloaded after budget save');
+    } catch (error) {
+      console.error('[App] Failed to save overall budget:', error);
+      alert('Failed to save budget. Please try again.');
+    }
+  };
   const handleSetSaving = wrapAction(api.addOrUpdateSaving);
   const handleAddCategory = wrapAction(api.addCategory);
   const handleUpdateCategory = wrapAction(api.updateCategory);
@@ -418,6 +449,19 @@ const App: React.FC = () => {
     } catch (error) {
       console.error("Failed to update recurring transaction:", error);
       const errorMessage = error instanceof Error ? error.message : "Could not update the recurring transaction. Please try again.";
+      alert(`Error: ${errorMessage}`);
+    }
+  };
+
+  const handleDeleteRecurringTransaction = async (id: string) => {
+    try {
+      console.log('[App] Deleting recurring transaction with id:', id);
+      await api.deleteRecurringTransaction(id);
+      console.log('[App] Recurring transaction deleted successfully');
+      await loadData();
+    } catch (error) {
+      console.error('[App] Failed to delete recurring transaction:', error);
+      const errorMessage = error instanceof Error ? error.message : "Could not delete the recurring transaction. Please try again.";
       alert(`Error: ${errorMessage}`);
     }
   };
@@ -771,7 +815,7 @@ const App: React.FC = () => {
       case 'budgets':
         return <Budgets overallBudget={overallBudget} categoryBudgets={categoryBudgets} transactions={transactions} onSetOverallBudget={handleSetOverallBudget} onAddCategoryBudget={handleAddCategoryBudget} onEditCategoryBudget={handleEditCategoryBudget} categories={categories} savings={savings} onSetSaving={handleSetSaving} />;
       case 'transactions':
-        return <TransactionsPage transactions={transactions} recurringTransactions={recurringTransactions} categories={categories} onAddTransactionClick={handleAddTransactionClick} onEditTransaction={handleEditTransactionClick} onDeleteTransaction={handleDeleteTransaction} onEditRecurringTransaction={handleEditRecurringTransactionClick} />;
+        return <TransactionsPage transactions={transactions} recurringTransactions={recurringTransactions} categories={categories} onAddTransactionClick={handleAddTransactionClick} onEditTransaction={handleEditTransactionClick} onDeleteTransaction={handleDeleteTransaction} onEditRecurringTransaction={handleEditRecurringTransactionClick} onDeleteRecurringTransaction={handleDeleteRecurringTransaction} />;
       case 'categories':
         return <CategoriesPage categories={categories} transactions={transactions} onAddCategory={handleAddCategory} onUpdateCategory={handleUpdateCategory} onDeleteCategory={handleDeleteCategory} />;
       case 'reports':
