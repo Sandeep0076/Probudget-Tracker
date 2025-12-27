@@ -993,19 +993,59 @@ app.get('/api/tasks/agenda', async (req, res) => {
 // Shopping Items APIs
 app.get('/api/shopping-items', async (req, res) => {
   try {
+    console.log('[GET /api/shopping-items] Fetching shopping items...');
+    
+    // First, purge completed items older than 1 day
+    const yesterday = new Date();
+    yesterday.setDate(yesterday.getDate() - 1);
+    const cutoffDate = yesterday.toISOString().split('T')[0]; // DATE format
+    
+    console.log('[GET /api/shopping-items] Purging completed items older than:', cutoffDate);
+    
+    const { data: itemsToDelete, error: fetchError } = await supabase
+      .from('shopping_items')
+      .select('id, title, completedAt')
+      .eq('completed', true)
+      .not('completedAt', 'is', null)
+      .lt('completedAt', cutoffDate);
+    
+    if (fetchError) {
+      console.error('[GET /api/shopping-items] Error fetching items to purge:', fetchError);
+    } else if (itemsToDelete && itemsToDelete.length > 0) {
+      console.log('[GET /api/shopping-items] Found', itemsToDelete.length, 'completed items to purge:',
+        itemsToDelete.map(i => ({ title: i.title, completedAt: i.completedAt })));
+      
+      const { error: deleteError } = await supabase
+        .from('shopping_items')
+        .delete()
+        .eq('completed', true)
+        .not('completedAt', 'is', null)
+        .lt('completedAt', cutoffDate);
+      
+      if (deleteError) {
+        console.error('[GET /api/shopping-items] Error purging completed items:', deleteError);
+      } else {
+        console.log('[GET /api/shopping-items] Successfully purged', itemsToDelete.length, 'completed shopping items');
+      }
+    } else {
+      console.log('[GET /api/shopping-items] No completed items to purge');
+    }
+
+    // Now fetch remaining items
     const { data, error } = await supabase
       .from('shopping_items')
       .select('*')
       .order('createdAt', { ascending: false });
 
     if (error) {
-      console.error('Error fetching shopping items:', error);
+      console.error('[GET /api/shopping-items] Error fetching shopping items:', error);
       return res.status(500).json({ error: 'Failed to fetch shopping items' });
     }
 
+    console.log('[GET /api/shopping-items] Fetched', data.length, 'shopping items');
     res.json(data);
   } catch (err) {
-    console.error('Error in shopping items route:', err);
+    console.error('[GET /api/shopping-items] Error in shopping items route:', err);
     res.status(500).json({ error: 'Internal server error' });
   }
 });

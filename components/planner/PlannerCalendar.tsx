@@ -3,7 +3,7 @@ import FullCalendar from '@fullcalendar/react';
 import dayGridPlugin from '@fullcalendar/daygrid';
 import timeGridPlugin from '@fullcalendar/timegrid';
 import interactionPlugin, { EventResizeDoneArg } from '@fullcalendar/interaction';
-import { DateSelectArg, EventDropArg, EventClickArg } from '@fullcalendar/core';
+import { DateSelectArg, EventDropArg, EventClickArg, DateClickArg } from '@fullcalendar/core';
 import { Task } from '../../types';
 import * as api from '../../services/api';
 
@@ -26,7 +26,18 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({ tasks, externalEvents
   }, [tasks]);
 
   const handleSelect = (arg: DateSelectArg) => {
+    console.log('[PlannerCalendar] Date range selected:', { start: arg.startStr, end: arg.endStr });
     onCreateSlot(arg.startStr, arg.endStr);
+  };
+
+  const handleDateClick = (arg: DateClickArg) => {
+    console.log('[PlannerCalendar] Date clicked (mobile-friendly):', arg.dateStr);
+    // For single date click, use the same date for start and end
+    // This creates a single-day event/task
+    const endDate = new Date(arg.date);
+    endDate.setDate(endDate.getDate() + 1); // End date is next day for all-day events
+    const endStr = endDate.toISOString().split('T')[0];
+    onCreateSlot(arg.dateStr, endStr);
   };
 
   const handleDrop = async (arg: EventDropArg) => {
@@ -149,11 +160,14 @@ const PlannerCalendar: React.FC<PlannerCalendarProps> = ({ tasks, externalEvents
           weekends
           events={events}
           select={handleSelect}
+          dateClick={handleDateClick}
           eventDrop={handleDrop}
           eventResize={handleResize}
           eventClick={handleEventClick}
           datesSet={info => onDatesChange(info.start, info.end)}
           height="auto"
+          longPressDelay={500}
+          selectLongPressDelay={500}
           eventContent={(eventInfo) => {
             const color = eventInfo.event.backgroundColor || 'var(--color-accent)';
             return (
