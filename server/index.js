@@ -75,6 +75,22 @@ app.get('/api/cors-test', (req, res) => {
   });
 });
 
+// Add a health check endpoint
+app.get('/api/health', (req, res) => {
+  console.log('[HEALTH] Health check requested');
+  res.json({ 
+    status: 'ok', 
+    timestamp: new Date().toISOString(),
+    message: 'Server is running'
+  });
+});
+
+// Add request logging middleware
+app.use((req, res, next) => {
+  console.log(`[REQUEST] ${req.method} ${req.path} from origin: ${req.get('Origin') || 'none'}`);
+  next();
+});
+
 
 // Helper functions for amount conversion
 function toEuros(cents) {
@@ -1709,6 +1725,10 @@ app.get('/api/activity', async (req, res) => {
 // ===== Authentication =====
 app.post('/api/auth/login', async (req, res) => {
   const startTs = Date.now();
+  console.log('[LOGIN] POST /api/auth/login endpoint hit');
+  console.log('[LOGIN] Request headers:', JSON.stringify(req.headers, null, 2));
+  console.log('[LOGIN] Request body:', req.body);
+  
   try {
     const { username, password } = req.body || {};
     console.log('[LOGIN] Attempt for username:', username, 'Body keys:', Object.keys(req.body || {}));
@@ -1819,20 +1839,33 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 app.get('/api/settings', async (req, res) => {
-  const theme = await getSetting('theme') || 'dark-blue';
-  const color = await getSetting('customThemeColor') || '#5e258a';
+  console.log('[SETTINGS] GET /api/settings endpoint hit');
+  console.log('[SETTINGS] Request headers:', JSON.stringify(req.headers, null, 2));
+  
+  try {
+    const theme = await getSetting('theme') || 'dark-blue';
+    const color = await getSetting('customThemeColor') || '#5e258a';
 
-  // Get user data from users table
-  const { data: user, error } = await supabase
-    .from('users')
-    .select('username, password')
-    .limit(1)
-    .single();
+    // Get user data from users table
+    const { data: user, error } = await supabase
+      .from('users')
+      .select('username, password')
+      .limit(1)
+      .single();
 
-  const username = user?.username || 'Mr and Mrs Pathania';
-  const password = user?.password || '';
+    if (error) {
+      console.error('[SETTINGS] Error fetching user:', error);
+    }
 
-  res.json({ theme, customThemeColor: color, username, password });
+    const username = user?.username || 'Mr and Mrs Pathania';
+    const password = user?.password || '';
+
+    console.log('[SETTINGS] Returning settings for user:', username);
+    res.json({ theme, customThemeColor: color, username, password });
+  } catch (error) {
+    console.error('[SETTINGS] Unexpected error:', error);
+    res.status(500).json({ error: 'Failed to load settings' });
+  }
 });
 
 app.post('/api/settings', async (req, res) => {
@@ -2139,6 +2172,27 @@ app.post('/api/admin/migrate-capitalize-labels', async (req, res) => {
     console.error('[ADMIN] Capitalize labels migration failed:', e.message);
     res.status(500).json({ error: e.message });
   }
+});
+
+// Global error handler
+app.use((err, req, res, next) => {
+  console.error('[ERROR] Global error handler:', err.stack);
+  res.status(500).json({ 
+    error: 'Internal server error',
+    message: err.message,
+    timestamp: new Date().toISOString()
+  });
+});
+
+// Handle 404s
+app.use((req, res) => {
+  console.log(`[404] Route not found: ${req.method} ${req.path}`);
+  res.status(404).json({ 
+    error: 'Route not found',
+    method: req.method,
+    path: req.path,
+    timestamp: new Date().toISOString()
+  });
 });
 
 const server = app.listen(PORT, HOST, () => {
