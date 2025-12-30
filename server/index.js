@@ -19,37 +19,34 @@ const OVERALL_BUDGET_CATEGORY = '##OVERALL_BUDGET##';
 const ENC_KEY = (process.env.ENCRYPTION_KEY || '').padEnd(32, '0').slice(0, 32);
 
 const app = express();
+
+// Single source of truth for allowed origins
 const allowedOrigins = [
-  'https://probudget-frontend.onrender.com',
+  'https://probudget-frontend.onrender.com', // Production frontend
   'https://port1--summerspends--8yslcsphg2s8.code.run', // Your deployed frontend
   'http://localhost:3000', // Vite dev server (configured port)
   'http://localhost:5173', // Vite dev server (default port)
   'http://localhost:4173', // Vite preview server
-];
+  process.env.FRONTEND_URL, // Additional frontend URL from env
+].filter(Boolean); // Remove any undefined values
 
 const corsOptions = {
   origin: function (origin, callback) {
     // Allow requests with no origin (mobile apps, Postman, etc.)
-    if (!origin) return callback(null, true);
-    
-    const allowedOrigins = [
-      'https://probudget-frontend.onrender.com', // Production frontend
-      'https://port1--summerspends--8yslcsphg2s8.code.run', // Your deployed frontend
-      'http://localhost:3000', // Local development
-      'http://localhost:5173', // Vite dev default
-      'http://localhost:4173', // Vite preview
-      process.env.FRONTEND_URL, // Additional frontend URL from env
-    ].filter(Boolean); // Remove any undefined values
+    if (!origin) {
+      console.log(`[CORS] Allowing request with no origin (Postman/mobile/etc)`);
+      return callback(null, true);
+    }
     
     // Also allow any .code.run domain for your deployment platform
     const isCodeRunDomain = /^https:\/\/.*\.code\.run$/.test(origin);
     const isOnRenderDomain = /^https:\/\/.*\.onrender\.com$/.test(origin);
     
     if (allowedOrigins.includes(origin) || isCodeRunDomain || isOnRenderDomain) {
-      console.log(`[CORS] Allowing origin: ${origin}`);
+      console.log(`[CORS] ✓ Allowing origin: ${origin}`);
       callback(null, true);
     } else {
-      console.log(`[CORS] Blocking origin: ${origin}`);
+      console.log(`[CORS] ✗ Blocking origin: ${origin}`);
       callback(new Error('Not allowed by CORS'));
     }
   },
@@ -58,9 +55,8 @@ const corsOptions = {
 
 app.use(cors(corsOptions));
 console.log('[CORS] Middleware configured with dynamic origin checking');
-console.log('[CORS] Static allowed origins:', allowedOrigins);
+console.log('[CORS] Allowed origins:', allowedOrigins);
 console.log('[CORS] Will also allow any *.code.run and *.onrender.com domains');
-console.log('[CORS] FRONTEND_URL from env:', process.env.FRONTEND_URL);
 app.use(express.json({ limit: '5mb' }));
 
 // Handle preflight OPTIONS requests explicitly
@@ -1725,20 +1721,25 @@ app.get('/api/activity', async (req, res) => {
 // ===== Authentication =====
 app.post('/api/auth/login', async (req, res) => {
   const startTs = Date.now();
+  console.log('\n========================================');
   console.log('[LOGIN] POST /api/auth/login endpoint hit');
-  console.log('[LOGIN] Request headers:', JSON.stringify(req.headers, null, 2));
-  console.log('[LOGIN] Request body:', req.body);
+  console.log('[LOGIN] Request origin:', req.get('Origin') || 'none');
+  console.log('[LOGIN] Request method:', req.method);
+  console.log('[LOGIN] Request Content-Type:', req.get('Content-Type'));
+  console.log('[LOGIN] Request body:', JSON.stringify(req.body, null, 2));
   
   try {
     const { username, password } = req.body || {};
-    console.log('[LOGIN] Attempt for username:', username, 'Body keys:', Object.keys(req.body || {}));
+    console.log('[LOGIN] Extracted username:', username);
+    console.log('[LOGIN] Password provided:', password ? 'yes' : 'no');
 
     if (!username || !password) {
-      console.log('[LOGIN] Missing credentials');
+      console.log('[LOGIN] ✗ Missing credentials');
       return res.status(400).json({ error: 'Username and password are required' });
     }
 
     // Query user
+    console.log('[LOGIN] Querying database for username:', username);
     const { data: user, error: dbError } = await supabase
       .from('users')
       .select('id, username, password')
@@ -1748,27 +1749,31 @@ app.post('/api/auth/login', async (req, res) => {
     if (dbError) {
       // Distinguish not found vs actual DB failure
       if (dbError.code === 'PGRST116') { // No rows found
-        console.log('[LOGIN] User not found for username:', username);
+        console.log('[LOGIN] ✗ User not found for username:', username);
         return res.status(401).json({ error: 'Invalid username or password' });
       }
-      console.error('[LOGIN] Supabase query error:', dbError);
+      console.error('[LOGIN] ✗ Supabase query error:', dbError);
       return res.status(500).json({ error: 'Internal auth error' });
     }
     if (!user) {
-      console.log('[LOGIN] No user record returned');
+      console.log('[LOGIN] ✗ No user record returned');
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
+    console.log('[LOGIN] Found user:', user.username);
+    
     // Verify password (TODO: replace with hashed comparison e.g. bcrypt.compare())
     if (user.password !== password) {
-      console.log('[LOGIN] Password mismatch for username:', username);
+      console.log('[LOGIN] ✗ Password mismatch for username:', username);
       return res.status(401).json({ error: 'Invalid username or password' });
     }
 
-    console.log('[LOGIN] Success for user:', username, 'Elapsed ms:', Date.now() - startTs);
+    console.log('[LOGIN] ✓ Success for user:', username, 'Elapsed ms:', Date.now() - startTs);
+    console.log('========================================\n');
     res.json({ success: true, username: user.username });
   } catch (err) {
-    console.error('[LOGIN] Unexpected error:', err && err.stack ? err.stack : err);
+    console.error('[LOGIN] ✗ Unexpected error:', err && err.stack ? err.stack : err);
+    console.log('========================================\n');
     res.status(500).json({ error: 'Login failed due to server error' });
   }
 });
@@ -1839,14 +1844,23 @@ app.post('/api/auth/reset-password', async (req, res) => {
 });
 
 app.get('/api/settings', async (req, res) => {
+  console.log('\n========================================');
   console.log('[SETTINGS] GET /api/settings endpoint hit');
-  console.log('[SETTINGS] Request headers:', JSON.stringify(req.headers, null, 2));
+  console.log('[SETTINGS] Request origin:', req.get('Origin') || 'none');
+  console.log('[SETTINGS] Request method:', req.method);
+  console.log('[SETTINGS] Request path:', req.path);
   
   try {
+    console.log('[SETTINGS] Fetching theme setting...');
     const theme = await getSetting('theme') || 'dark-blue';
+    console.log('[SETTINGS] Theme:', theme);
+    
+    console.log('[SETTINGS] Fetching custom theme color...');
     const color = await getSetting('customThemeColor') || '#5e258a';
+    console.log('[SETTINGS] Custom color:', color);
 
     // Get user data from users table
+    console.log('[SETTINGS] Fetching user data...');
     const { data: user, error } = await supabase
       .from('users')
       .select('username, password')
@@ -1854,16 +1868,20 @@ app.get('/api/settings', async (req, res) => {
       .single();
 
     if (error) {
-      console.error('[SETTINGS] Error fetching user:', error);
+      console.error('[SETTINGS] ✗ Error fetching user:', error);
+    } else {
+      console.log('[SETTINGS] ✓ User found:', user?.username);
     }
 
     const username = user?.username || 'Mr and Mrs Pathania';
     const password = user?.password || '';
 
-    console.log('[SETTINGS] Returning settings for user:', username);
+    console.log('[SETTINGS] ✓ Returning settings for user:', username);
+    console.log('========================================\n');
     res.json({ theme, customThemeColor: color, username, password });
   } catch (error) {
-    console.error('[SETTINGS] Unexpected error:', error);
+    console.error('[SETTINGS] ✗ Unexpected error:', error);
+    console.log('========================================\n');
     res.status(500).json({ error: 'Failed to load settings' });
   }
 });
