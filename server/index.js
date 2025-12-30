@@ -21,26 +21,59 @@ const ENC_KEY = (process.env.ENCRYPTION_KEY || '').padEnd(32, '0').slice(0, 32);
 const app = express();
 const allowedOrigins = [
   'https://probudget-frontend.onrender.com',
+  'https://port1--summerspends--8yslcsphg2s8.code.run', // Your deployed frontend
   'http://localhost:3000', // Vite dev server (configured port)
   'http://localhost:5173', // Vite dev server (default port)
   'http://localhost:4173', // Vite preview server
 ];
 
 const corsOptions = {
-  origin: [
-    'https://probudget-frontend.onrender.com', // Production frontend
-    'http://localhost:3000', // Local development
-    'http://localhost:5173', // Vite dev default
-    'http://localhost:4173', // Vite preview
-    process.env.FRONTEND_URL, // Additional frontend URL from env
-  ],
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, Postman, etc.)
+    if (!origin) return callback(null, true);
+    
+    const allowedOrigins = [
+      'https://probudget-frontend.onrender.com', // Production frontend
+      'https://port1--summerspends--8yslcsphg2s8.code.run', // Your deployed frontend
+      'http://localhost:3000', // Local development
+      'http://localhost:5173', // Vite dev default
+      'http://localhost:4173', // Vite preview
+      process.env.FRONTEND_URL, // Additional frontend URL from env
+    ].filter(Boolean); // Remove any undefined values
+    
+    // Also allow any .code.run domain for your deployment platform
+    const isCodeRunDomain = /^https:\/\/.*\.code\.run$/.test(origin);
+    const isOnRenderDomain = /^https:\/\/.*\.onrender\.com$/.test(origin);
+    
+    if (allowedOrigins.includes(origin) || isCodeRunDomain || isOnRenderDomain) {
+      console.log(`[CORS] Allowing origin: ${origin}`);
+      callback(null, true);
+    } else {
+      console.log(`[CORS] Blocking origin: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true
 };
 
 app.use(cors(corsOptions));
-console.log('[CORS] Middleware configured to allow origins:', allowedOrigins);
-console.log('[CORS] CORS options origin list:', corsOptions.origin);
+console.log('[CORS] Middleware configured with dynamic origin checking');
+console.log('[CORS] Static allowed origins:', allowedOrigins);
+console.log('[CORS] Will also allow any *.code.run and *.onrender.com domains');
+console.log('[CORS] FRONTEND_URL from env:', process.env.FRONTEND_URL);
 app.use(express.json({ limit: '5mb' }));
+
+// Handle preflight OPTIONS requests explicitly
+app.options('*', cors(corsOptions));
+
+// Add a simple CORS test endpoint
+app.get('/api/cors-test', (req, res) => {
+  res.json({ 
+    message: 'CORS is working!', 
+    origin: req.get('Origin'),
+    timestamp: new Date().toISOString()
+  });
+});
 
 
 // Helper functions for amount conversion
