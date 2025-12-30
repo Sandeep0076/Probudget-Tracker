@@ -29,7 +29,7 @@
                 }
             ],
             "buildArguments": {
-                "VITE_API_URL": "${BACKEND_URL}"
+                "VITE_API_BASE_URL": "${BACKEND_URL}"
             }
         }
     ]
