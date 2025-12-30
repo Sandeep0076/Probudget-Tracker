@@ -1,7 +1,11 @@
 import { Budget, Category, RecurringTransaction, Saving, Transaction, TransactionFormData, TransactionType, ActivityLog, Task, Subtask, ShoppingItem } from '../types';
 
 // Get API base URL from environment variable or default to current origin
-const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+
+// Add logging to help debug API URL issues
+console.log('[API] Using API_BASE_URL:', API_BASE_URL || '(empty - using proxy)');
+console.log('[API] Environment VITE_API_BASE_URL:', import.meta.env.VITE_API_BASE_URL);
 
 const json = async <T>(res: Response): Promise<T> => {
   if (!res.ok) {

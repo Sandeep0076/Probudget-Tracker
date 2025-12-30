@@ -9,7 +9,8 @@
     "preview": "vite preview",
     "server": "node server/index.js",
     "dev:all": "concurrently \"npm run server\" \"npm run dev\"",
-    "start": "node server/index.js"
+    "start": "node server/index.js",
+    "fix-duplicate-users": "node server/fix-duplicate-users.js"
   },
   "dependencies": {
     "@dnd-kit/core": "^6.1.0",

@@ -28,17 +28,18 @@ const allowedOrigins = [
 
 const corsOptions = {
   origin: [
-    'http://localhost:3000',
-    'http://localhost:5173', // Vite dev
-    process.env.FRONTEND_URL, // Northflank frontend URL
-    /\.northflank\.app$/, // Allow all Northflank subdomains
-    /\.code\.run$/ // Allow all Northflank code.run subdomains
+    'https://probudget-frontend.onrender.com', // Production frontend
+    'http://localhost:3000', // Local development
+    'http://localhost:5173', // Vite dev default
+    'http://localhost:4173', // Vite preview
+    process.env.FRONTEND_URL, // Additional frontend URL from env
   ],
   credentials: true
 };
 
 app.use(cors(corsOptions));
 console.log('[CORS] Middleware configured to allow origins:', allowedOrigins);
+console.log('[CORS] CORS options origin list:', corsOptions.origin);
 app.use(express.json({ limit: '5mb' }));
 
 
@@ -1825,52 +1826,76 @@ app.post('/api/settings', async (req, res) => {
 
     // Update user data in users table
     if (username !== undefined || password !== undefined) {
-      // Check if user exists
-      const { data: existingUser } = await supabase
-        .from('users')
-        .select('id')
-        .limit(1)
-        .single();
+      console.log('[POST /api/settings] Updating user credentials...');
+      
+      // Validate that we're not trying to save an empty password
+      if (password !== undefined && password !== null && password.trim() === '') {
+        console.error('[POST /api/settings] ERROR: Cannot save empty password');
+        return res.status(400).json({ error: 'Password cannot be empty' });
+      }
 
-      if (existingUser) {
-        // Update existing user
+      // Check if ANY user exists (there should only be one)
+      const { data: existingUsers, error: fetchError } = await supabase
+        .from('users')
+        .select('id, username, password');
+
+      if (fetchError) {
+        console.error('[POST /api/settings] Error fetching users:', fetchError);
+        throw fetchError;
+      }
+
+      console.log('[POST /api/settings] Found', existingUsers?.length || 0, 'existing users');
+
+      if (existingUsers && existingUsers.length > 0) {
+        // Use the first user (or the one with a valid password)
+        const targetUser = existingUsers.find(u => u.password && u.password !== '') || existingUsers[0];
+        console.log('[POST /api/settings] Updating user ID:', targetUser.id);
+
         const updateData = {};
-        if (username !== undefined) {
-          updateData.username = username;
-          console.log('[POST /api/settings] Updating username to:', username);
+        if (username !== undefined && username.trim() !== '') {
+          updateData.username = username.trim();
+          console.log('[POST /api/settings] Setting username to:', updateData.username);
         }
-        // CRITICAL: Only update password if it's explicitly provided and not empty
-        if (password !== undefined && password !== null && password !== '') {
-          updateData.password = password;
-          console.log('[POST /api/settings] Updating password (length):', password.length);
-        } else if (password === '') {
-          console.warn('[POST /api/settings] WARNING: Attempted to set empty password - IGNORING');
+        if (password !== undefined && password !== null && password.trim() !== '') {
+          updateData.password = password.trim();
+          console.log('[POST /api/settings] Updating password (length):', updateData.password.length);
         }
 
         // Only update if there's something to update
         if (Object.keys(updateData).length > 0) {
-          const { error } = await supabase
+          const { error: updateError } = await supabase
             .from('users')
             .update(updateData)
-            .eq('id', existingUser.id);
+            .eq('id', targetUser.id);
 
-          if (error) throw error;
-          console.log('[POST /api/settings] User data updated successfully');
+          if (updateError) {
+            console.error('[POST /api/settings] Error updating user:', updateError);
+            throw updateError;
+          }
+          console.log('[POST /api/settings] User updated successfully');
         } else {
-          console.log('[POST /api/settings] No user data to update');
+          console.log('[POST /api/settings] No valid user data to update');
         }
       } else {
-        // Insert new user
-        console.log('[POST /api/settings] Creating new user');
-        const { error } = await supabase
+        // No user exists - create one (only if we have valid data)
+        if (!username || !password || username.trim() === '' || password.trim() === '') {
+          console.error('[POST /api/settings] ERROR: Cannot create user with empty username or password');
+          return res.status(400).json({ error: 'Username and password are required' });
+        }
+
+        console.log('[POST /api/settings] Creating new user:', username);
+        const { error: insertError } = await supabase
           .from('users')
           .insert({
-            username: username || 'Mr and Mrs Pathania',
-            password: password || ''
+            username: username.trim(),
+            password: password.trim()
           });
 
-        if (error) throw error;
-        console.log('[POST /api/settings] New user created');
+        if (insertError) {
+          console.error('[POST /api/settings] Error creating user:', insertError);
+          throw insertError;
+        }
+        console.log('[POST /api/settings] New user created successfully');
       }
     }
 
