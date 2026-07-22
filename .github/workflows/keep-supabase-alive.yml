@@ -1,0 +1,52 @@
+# Prevents Supabase Free-tier auto-pause (inactivity after ~7 days).
+# Official paid alternative: upgrade to Pro (no inactivity pausing).
+#
+# Setup (one-time):
+# 1. Repo → Settings → Secrets and variables → Actions
+# 2. Add secrets:
+#    - SUPABASE_URL              (e.g. https://ubctcjzyaftwkyrnmlks.supabase.co)
+#    - SUPABASE_SERVICE_ROLE_KEY (from Supabase → Project Settings → API)
+# 3. Merge this workflow to the default branch (scheduled runs only run there)
+# 4. Actions → "Keep Supabase Alive" → Run workflow (optional smoke test)
+
+name: Keep Supabase Alive
+
+on:
+  schedule:
+    # Monday & Thursday 12:00 UTC — stays well under the 7-day inactivity window
+    - cron: '0 12 * * 1,4'
+  workflow_dispatch: # manual run from the Actions tab
+
+jobs:
+  ping-database:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase REST API
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${SUPABASE_URL:-}" ] || [ -z "${SUPABASE_SERVICE_ROLE_KEY:-}" ]; then
+            echo "Missing secrets: set SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY in repo Actions secrets."
+            exit 1
+          fi
+
+          # Lightweight read against an existing table — counts as DB activity
+          HTTP_CODE=$(curl -sS -o /tmp/supabase-ping.json -w "%{http_code}" \
+            "${SUPABASE_URL}/rest/v1/settings?select=key&limit=1" \
+            -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
+            -H "Accept: application/json")
+
+          echo "HTTP status: ${HTTP_CODE}"
+          cat /tmp/supabase-ping.json
+          echo
+
+          if [ "${HTTP_CODE}" -lt 200 ] || [ "${HTTP_CODE}" -ge 300 ]; then
+            echo "Supabase ping failed"
+            exit 1
+          fi
+
+          echo "Supabase keep-alive ping succeeded"
