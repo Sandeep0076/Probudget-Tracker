@@ -1,10 +1,10 @@
-# Prevents Supabase Free-tier auto-pause (inactivity after ~7 days).
+# Sends periodic database activity to reduce the risk of inactivity pausing.
 # Official paid alternative: upgrade to Pro (no inactivity pausing).
 #
 # Setup (one-time):
 # 1. Repo → Settings → Secrets and variables → Actions
 # 2. Add secrets:
-#    - SUPABASE_URL              (e.g. https://ubctcjzyaftwkyrnmlks.supabase.co)
+#    - SUPABASE_URL              (e.g. https://your-project-ref.supabase.co)
 #    - SUPABASE_SERVICE_ROLE_KEY (from Supabase → Project Settings → API)
 # 3. Merge this workflow to the default branch (scheduled runs only run there)
 # 4. Actions → "Keep Supabase Alive" → Run workflow (optional smoke test)
@@ -17,11 +17,15 @@ on:
     - cron: '0 12 * * 1,4'
   workflow_dispatch: # manual run from the Actions tab
 
+permissions: {}
+
 jobs:
   ping-database:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
     steps:
       - name: Ping Supabase REST API
+        shell: bash
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
@@ -33,19 +37,63 @@ jobs:
             exit 1
           fi
 
-          # Lightweight read against an existing table — counts as DB activity
-          HTTP_CODE=$(curl -sS -o /tmp/supabase-ping.json -w "%{http_code}" \
+          # Accept a project origin only; reject dashboard URLs, paths and credentials.
+          # Never print the secret value in validation errors.
+          SUPABASE_URL=$(python3 - <<'PYURL'
+          import os
+          import re
+          import sys
+          from urllib.parse import urlsplit
+
+          raw = os.environ["SUPABASE_URL"].strip().rstrip("/")
+          try:
+              url = urlsplit(raw)
+              valid = (
+                  url.scheme == "https"
+                  and url.hostname
+                  and "." in url.hostname
+                  and re.fullmatch(r"[A-Za-z0-9.-]+", url.hostname)
+                  and not any(char.isspace() for char in raw)
+                  and not url.username and not url.password
+                  and url.port in (None, 443)
+                  and not url.path and not url.query and not url.fragment
+                  and url.hostname != "supabase.com"
+                  and not url.hostname.endswith(".supabase.com")
+                  and "your-project" not in url.hostname
+              )
+          except ValueError:
+              valid = False
+          if not valid:
+              print("::error::SUPABASE_URL must be the HTTPS Project URL from Supabase Connect, without a path, query or credentials.", file=sys.stderr)
+              sys.exit(1)
+          print(raw)
+          PYURL
+          )
+
+          # Retry DNS/network errors as well as transient HTTP responses. Each
+          # attempt and the overall job are bounded so an outage cannot hang CI.
+          # Discard the response body: settings may contain private application data.
+          CURL_EXIT=0
+          HTTP_CODE=$(curl --silent --show-error --output /dev/null --write-out "%{http_code}" \
+            --connect-timeout 10 --max-time 20 \
+            --retry 3 --retry-all-errors --retry-delay 5 --retry-max-time 90 \
             "${SUPABASE_URL}/rest/v1/settings?select=key&limit=1" \
             -H "apikey: ${SUPABASE_SERVICE_ROLE_KEY}" \
             -H "Authorization: Bearer ${SUPABASE_SERVICE_ROLE_KEY}" \
-            -H "Accept: application/json")
+            -H "Accept: application/json") || CURL_EXIT=$?
+
+          if [ "$CURL_EXIT" -ne 0 ]; then
+            if [ "$CURL_EXIT" -eq 6 ]; then
+              echo "::error::Cannot resolve the Supabase hostname after retries. Verify the SUPABASE_URL Actions secret matches the current Project URL and check that the project exists and is active in Supabase. Restore a paused project before rerunning."
+            else
+              echo "::error::Supabase request failed after retries (curl exit ${CURL_EXIT}). Check network connectivity and Supabase project status."
+            fi
+            exit "$CURL_EXIT"
+          fi
 
           echo "HTTP status: ${HTTP_CODE}"
-          cat /tmp/supabase-ping.json
-          echo
-
-          if [ "${HTTP_CODE}" -lt 200 ] || [ "${HTTP_CODE}" -ge 300 ]; then
-            echo "Supabase ping failed"
+          if [[ ! "$HTTP_CODE" =~ ^2[0-9][0-9]$ ]]; then
+            echo "::error::Supabase ping failed (HTTP ${HTTP_CODE}). Check project status, the service role key, and access to the settings table."
             exit 1
           fi
 

@@ -301,6 +301,26 @@ See [`UI-DESIGN-GUIDE.md`](UI-DESIGN-GUIDE.md) for detailed design system docume
 - Check Supabase project is active
 - Ensure all migrations have been run
 
+### Keep Supabase Alive workflow fails
+
+The workflow reads one key from the `settings` table on Mondays and Thursdays.
+Configure `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` under repository
+**Settings → Secrets and variables → Actions**. Use the current HTTPS Project URL
+from the Supabase dashboard's **Connect** dialog (for example,
+`https://your-project-ref.supabase.co`), and the service role key from the same
+project. Keep the service role key in Actions secrets only.
+
+- **curl exit 6**: The project hostname could not be resolved. The workflow retries
+  temporary failures. If it still fails, compare the URL secret with the current
+  Project URL and check the project's status in Supabase. Restore a paused project
+  before retrying; a deleted project needs a valid replacement URL and key.
+- **HTTP 401/403**: Check the service role key and database permissions.
+- **HTTP 404**: Check the Project URL, Data API availability and `settings` table.
+
+After correcting the configuration, use **Actions → Keep Supabase Alive → Run
+workflow** to verify it. Scheduled runs use the default branch. Periodic requests
+cannot restore a project that is already paused or guarantee it stays active.
+
 ### Receipt Scanning Not Working
 - Verify `VITE_GEMINI_API_KEY` is set
 - Check API key has proper permissions
